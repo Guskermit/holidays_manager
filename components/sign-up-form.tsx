@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { OFFICE_LABELS, type Office } from "@/lib/holidays";
+import { CATEGORIES, CATEGORY_LABELS, COMPANIES, type Category } from "@/lib/categories";
 
 export function SignUpForm({
   className,
@@ -24,6 +25,8 @@ export function SignUpForm({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [office, setOffice] = useState<Office>("madrid");
+  const [category, setCategory] = useState<Category>("Staff");
+  const [company, setCompany] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -50,13 +53,24 @@ export function SignUpForm({
       return;
     }
 
+    if (category === "Externo" && !company) {
+      setError("Please select a company for external employees.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/main`,
-          data: { full_name: fullName, office },
+          data: {
+            full_name: fullName,
+            office,
+            category,
+            company: category === "Externo" ? company : null,
+          },
         },
       });
       if (error) throw error;
@@ -120,6 +134,51 @@ export function SignUpForm({
                   ))}
                 </div>
               </div>
+              <div className="grid gap-2">
+                <Label>Category</Label>
+                <div className="flex flex-wrap gap-2">
+                  {CATEGORIES.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => { setCategory(c); if (c !== "Externo") setCompany(""); }}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-sm border transition-colors",
+                        category === c
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-input hover:bg-accent"
+                      )}
+                    >
+                      {CATEGORY_LABELS[c]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {category === "Externo" && (
+                <div className="grid gap-2">
+                  <Label>Company</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {COMPANIES.map((co) => (
+                      <button
+                        key={co}
+                        type="button"
+                        onClick={() => setCompany(co)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-full text-sm border transition-colors",
+                          company === co
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "border-input hover:bg-accent"
+                        )}
+                      >
+                        {co}
+                      </button>
+                    ))}
+                  </div>
+                  {!company && (
+                    <p className="text-xs text-red-500">Please select a company.</p>
+                  )}
+                </div>
+              )}
               <div className="grid gap-2">
                 <div className="flex items-center">
                   <Label htmlFor="password">Password</Label>

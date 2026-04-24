@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { CATEGORY_DAYS, type Category } from "@/lib/categories";
 
 export async function requestVacation(
   employeeId: string,
@@ -17,7 +18,7 @@ export async function requestVacation(
 
   const { data: employee, error: empError } = await supabase
     .from("employees")
-    .select("id")
+    .select("id, category")
     .eq("id", employeeId)
     .eq("user_id", authData.claims.sub)
     .single();
@@ -26,19 +27,27 @@ export async function requestVacation(
     return { error: "Employee not found or access denied." };
   }
 
-  // Check balance
-  const { data: balance } = await supabase
-    .from("vacation_balances")
-    .select("total_days, used_days, pending_days")
+  // Compute category-based maximum days
+  const maxDays = CATEGORY_DAYS[(employee.category as Category) ?? "Staff"] ?? 26;
+
+  // Sum all approved + pending days for the year
+  const { data: existingRequests } = await supabase
+    .from("vacation_requests")
+    .select("days_requested")
     .eq("employee_id", employeeId)
     .eq("year", year)
-    .single();
+    .in("status", ["approved", "pending"]);
 
-  if (balance) {
-    const remaining = balance.total_days - balance.used_days - balance.pending_days;
-    if (daysRequested > remaining) {
-      return { error: `Insufficient vacation balance. You have ${remaining} days remaining.` };
-    }
+  const usedAndPending = (existingRequests ?? []).reduce(
+    (sum, r) => sum + r.days_requested,
+    0
+  );
+  const remaining = maxDays - usedAndPending;
+
+  if (daysRequested > remaining) {
+    return {
+      error: `Insufficient vacation balance. You have ${remaining} of ${maxDays} days remaining.`,
+    };
   }
 
   // Create the request
@@ -53,13 +62,27 @@ export async function requestVacation(
 
   if (insertError) return { error: insertError.message };
 
-  // Update pending_days in balance (upsert)
+  // Update or create balance
+  const { data: balance } = await supabase
+    .from("vacation_balances")
+    .select("pending_days, total_days")
+    .eq("employee_id", employeeId)
+    .eq("year", year)
+    .single();
+
   if (balance) {
     await supabase
       .from("vacation_balances")
       .update({ pending_days: balance.pending_days + daysRequested })
       .eq("employee_id", employeeId)
       .eq("year", year);
+  } else {
+    await supabase.from("vacation_balances").insert({
+      employee_id: employeeId,
+      year,
+      total_days: maxDays,
+      pending_days: daysRequested,
+    });
   }
 
   return {};

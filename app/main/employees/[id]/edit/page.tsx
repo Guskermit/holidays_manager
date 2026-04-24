@@ -26,12 +26,13 @@ export default async function EditEmployeePage({
     redirect("/main");
   }
 
-  const { data: employee } = await supabase
+  const { data: employee, error: empError } = await supabase
     .from("employees")
-    .select("id, name, email, office, role")
+    .select("id, name, email, office, role, category, company")
     .eq("id", id)
     .single();
 
+  if (empError) console.error("[edit employee] query error:", empError.message, empError.code);
   if (!employee) notFound();
 
   return (

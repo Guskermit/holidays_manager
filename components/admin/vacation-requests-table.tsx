@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
+import React, { useState, useMemo, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -195,9 +195,8 @@ export function VacationRequestsTable({ requests }: Props) {
                 const isRejecting = rejectingId === req.id;
                 const err = actionError[req.id];
                 return (
-                  <>
+                  <React.Fragment key={req.id}>
                     <tr
-                      key={req.id}
                       className={cn(
                         "hover:bg-muted/30 transition-colors",
                         isRejecting && "bg-muted/20"
@@ -299,7 +298,7 @@ export function VacationRequestsTable({ requests }: Props) {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                 );
               })}
             </tbody>

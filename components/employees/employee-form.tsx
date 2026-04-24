@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { OFFICE_LABELS, type Office } from "@/lib/holidays";
+import { CATEGORIES, CATEGORY_LABELS, COMPANIES, type Category } from "@/lib/categories";
 import { cn } from "@/lib/utils";
 import { updateEmployee } from "@/app/main/employees/actions";
 
@@ -16,6 +17,8 @@ type Props = {
     email: string;
     office: string;
     role: string;
+    category: string;
+    company: string | null;
   };
 };
 
@@ -28,6 +31,12 @@ export function EmployeeForm({ employee }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedOffice, setSelectedOffice] = useState(employee.office);
   const [selectedRole, setSelectedRole] = useState(employee.role);
+  const [selectedCategory, setSelectedCategory] = useState<Category>(
+    (CATEGORIES as readonly string[]).includes(employee.category)
+      ? (employee.category as Category)
+      : "Staff"
+  );
+  const [selectedCompany, setSelectedCompany] = useState(employee.company ?? "");
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -118,7 +127,53 @@ export function EmployeeForm({ employee }: Props) {
         <input type="hidden" name="role" value={selectedRole} />
       </div>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {/* Category */}
+      <div className="grid gap-3">
+        <Label>Category</Label>
+        <div className="flex flex-wrap gap-2">
+          {CATEGORIES.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => { setSelectedCategory(c); if (c !== "Externo") setSelectedCompany(""); }}
+              className={cn(
+                "px-4 py-2 rounded-full text-sm border transition-colors",
+                selectedCategory === c
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-input hover:bg-accent"
+              )}
+            >
+              {CATEGORY_LABELS[c]}
+            </button>
+          ))}
+        </div>
+        <input type="hidden" name="category" value={selectedCategory} />
+      </div>
+
+      {/* Company (only for Externo) */}
+      {selectedCategory === "Externo" && (
+        <div className="grid gap-3">
+          <Label>Company</Label>
+          <div className="flex flex-wrap gap-2">
+            {COMPANIES.map((co) => (
+              <button
+                key={co}
+                type="button"
+                onClick={() => setSelectedCompany(co)}
+                className={cn(
+                  "px-4 py-2 rounded-full text-sm border transition-colors",
+                  selectedCompany === co
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-input hover:bg-accent"
+                )}
+              >
+                {co}
+              </button>
+            ))}
+          </div>
+          <input type="hidden" name="company" value={selectedCompany} />
+        </div>
+      )}
 
       <div className="flex gap-3">
         <Button type="submit" disabled={isLoading}>

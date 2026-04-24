@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   getHolidaysForOffice,
@@ -25,17 +26,11 @@ type VacationRequest = {
   year: number;
 };
 
-type Balance = {
-  total_days: number;
-  used_days: number;
-  pending_days: number;
-};
-
 type Props = {
   employeeId: string;
   office: Office;
   requests: VacationRequest[];
-  balance: Balance | null;
+  maxDays: number;
   onSubmit: (
     employeeId: string,
     startDate: string,
@@ -91,9 +86,10 @@ export function VacationCalendar({
   employeeId,
   office,
   requests,
-  balance,
+  maxDays,
   onSubmit,
 }: Props) {
+  const router = useRouter();
   const currentYear = new Date().getFullYear();
   const minDate = new Date(currentYear, 0, 1);
   const maxDate = new Date(currentYear + 1, 0, 31);
@@ -251,7 +247,9 @@ export function VacationCalendar({
   }, [selStart, selEnd, holidays]);
 
   const remaining =
-    balance ? balance.total_days - balance.used_days - balance.pending_days : null;
+    maxDays - (requests
+      .filter(r => r.status === "approved" || r.status === "pending")
+      .reduce((s, r) => s + r.days_requested, 0));
 
   const handleSubmit = async () => {
     if (!selStart) return;
@@ -282,6 +280,7 @@ export function VacationCalendar({
       setSuccessMsg(`Request for ${daysSelected} day${daysSelected > 1 ? "s" : ""} submitted successfully.`);
       setRangeStart(null);
       setRangeEnd(null);
+      router.refresh();
     }
     setIsSubmitting(false);
   };
@@ -469,14 +468,12 @@ export function VacationCalendar({
               <span className="text-muted-foreground">Working days: </span>
               <strong>{daysSelected}</strong>
             </span>
-            {remaining !== null && (
-              <span className={cn(daysSelected > remaining ? "text-red-500" : "")}>
+            <span className={cn(daysSelected > remaining ? "text-red-500" : "")}>
                 <span className="text-muted-foreground">Remaining balance: </span>
                 <strong>{remaining}</strong>
               </span>
-            )}
           </div>
-          {remaining !== null && daysSelected > remaining && (
+          {daysSelected > remaining && (
             <p className="text-xs text-red-500">
               You don't have enough vacation days for this selection.
             </p>
@@ -496,7 +493,7 @@ export function VacationCalendar({
                 isSubmitting ||
                 daysSelected === 0 ||
                 hasOverlap ||
-                (remaining !== null && daysSelected > remaining)
+                daysSelected > remaining
               }
             >
               {isSubmitting ? "Submitting..." : "Request vacation"}
@@ -519,27 +516,45 @@ export function VacationCalendar({
 
       {/* Vacation requests summary */}
       <div className="flex flex-col gap-4">
+        {/* 5-stat balance cards */}
+        {(() => {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const solicitados = requests
+            .filter(r => r.status !== "cancelled")
+            .reduce((s, r) => s + r.days_requested, 0);
+          const aprobados = requests
+            .filter(r => r.status === "approved")
+            .reduce((s, r) => s + r.days_requested, 0);
+          const pendientes = requests
+            .filter(r => r.status === "pending")
+            .reduce((s, r) => s + r.days_requested, 0);
+          const disfrutados = requests
+            .filter(r => r.status === "approved" && new Date(r.end_date + "T00:00:00") < today)
+            .reduce((s, r) => s + r.days_requested, 0);
+          const restantes = maxDays - aprobados - pendientes;
+
+          return (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {[
+                { label: "Solicitados", value: solicitados, color: "text-foreground" },
+                { label: "Aprobados", value: aprobados, color: "text-emerald-600 dark:text-emerald-400" },
+                { label: "Pendientes", value: pendientes, color: "text-amber-600 dark:text-amber-400" },
+                { label: "Disfrutados", value: disfrutados, color: "text-blue-600 dark:text-blue-400" },
+                { label: "Restantes", value: restantes, color: restantes < 0 ? "text-red-500" : "text-foreground" },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="rounded-lg border bg-card p-3 flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">{label}</span>
+                  <span className={`text-2xl font-bold ${color}`}>{value}</span>
+                  <span className="text-xs text-muted-foreground">de {maxDays} días</span>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">My vacation requests</h2>
-          {balance && (
-            <div className="flex gap-4 text-sm">
-              <span className="text-muted-foreground">
-                Total: <strong className="text-foreground">{balance.total_days}</strong>
-              </span>
-              <span className="text-muted-foreground">
-                Used: <strong className="text-foreground">{balance.used_days}</strong>
-              </span>
-              <span className="text-muted-foreground">
-                Pending: <strong className="text-foreground">{balance.pending_days}</strong>
-              </span>
-              <span className="text-muted-foreground">
-                Remaining:{" "}
-                <strong className="text-foreground">
-                  {balance.total_days - balance.used_days - balance.pending_days}
-                </strong>
-              </span>
-            </div>
-          )}
         </div>
 
         {requests.length === 0 ? (

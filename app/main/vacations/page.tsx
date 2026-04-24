@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { VacationCalendar } from "@/components/vacations/vacation-calendar";
 import { requestVacation } from "@/app/main/vacations/actions";
 import { type Office } from "@/lib/holidays";
+import { CATEGORY_DAYS, type Category } from "@/lib/categories";
 import Link from "next/link";
 import { LayoutListIcon } from "lucide-react";
 import { BackNav } from "@/components/back-nav";
@@ -17,7 +18,7 @@ export default async function VacationsPage() {
 
   const { data: employee } = await supabase
     .from("employees")
-    .select("id, name, office")
+    .select("id, name, office, category")
     .eq("user_id", authData.claims.sub)
     .single();
 
@@ -33,20 +34,13 @@ export default async function VacationsPage() {
   }
 
   const currentYear = new Date().getFullYear();
+  const maxDays = CATEGORY_DAYS[(employee.category as Category) ?? "Staff"] ?? 26;
 
-  const [{ data: requests }, { data: balance }] = await Promise.all([
-    supabase
-      .from("vacation_requests")
-      .select("id, start_date, end_date, days_requested, status, year")
-      .eq("employee_id", employee.id)
-      .order("start_date", { ascending: false }),
-    supabase
-      .from("vacation_balances")
-      .select("total_days, used_days, pending_days")
-      .eq("employee_id", employee.id)
-      .eq("year", currentYear)
-      .single(),
-  ]);
+  const { data: requests } = await supabase
+    .from("vacation_requests")
+    .select("id, start_date, end_date, days_requested, status, year")
+    .eq("employee_id", employee.id)
+    .order("start_date", { ascending: false });
 
   return (
     <div className="flex flex-col gap-6">
@@ -71,7 +65,7 @@ export default async function VacationsPage() {
         employeeId={employee.id}
         office={(employee.office as Office) ?? "madrid"}
         requests={requests ?? []}
-        balance={balance ?? null}
+        maxDays={maxDays}
         onSubmit={requestVacation}
       />
     </div>
