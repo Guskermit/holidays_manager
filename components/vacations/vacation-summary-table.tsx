@@ -244,7 +244,7 @@ export function VacationSummaryTable({ employees, projects }: Props) {
                       const ds = toDateString(d);
                       const weekend = isWeekend(d);
                       const holiday = isHoliday(d, officeHolidays);
-                      const status  = dayMap.get(ds);
+                      const status: VacationRequest["status"] | undefined = dayMap.get(ds);
                       const blocked = weekend || holiday;
 
                       return (
