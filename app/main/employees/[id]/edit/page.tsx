@@ -1,5 +1,3 @@
-export const dynamic = "force-dynamic";
-
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { EmployeeForm } from "@/components/employees/employee-form";

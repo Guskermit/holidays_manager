@@ -1,5 +1,3 @@
-export const dynamic = "force-dynamic";
-
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { VacationSummaryTable } from "@/components/vacations/vacation-summary-table";
