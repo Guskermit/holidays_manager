@@ -15,12 +15,15 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { OFFICE_LABELS, type Office } from "@/lib/holidays";
 
 export function SignUpForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [office, setOffice] = useState<Office>("madrid");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +36,14 @@ export function SignUpForm({
     setIsLoading(true);
     setError(null);
 
+    const allowedDomains = ["es.ey.com", "studio.ey.com"];
+    const emailDomain = email.split("@")[1]?.toLowerCase();
+    if (!allowedDomains.includes(emailDomain)) {
+      setError("Only @es.ey.com or @studio.ey.com email addresses are allowed.");
+      setIsLoading(false);
+      return;
+    }
+
     if (password !== repeatPassword) {
       setError("Passwords do not match");
       setIsLoading(false);
@@ -44,7 +55,8 @@ export function SignUpForm({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/protected`,
+          emailRedirectTo: `${window.location.origin}/main`,
+          data: { full_name: fullName, office },
         },
       });
       if (error) throw error;
@@ -67,6 +79,17 @@ export function SignUpForm({
           <form onSubmit={handleSignUp}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
+                <Label htmlFor="full-name">Full name</Label>
+                <Input
+                  id="full-name"
+                  type="text"
+                  placeholder="Jane Doe"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
@@ -76,6 +99,26 @@ export function SignUpForm({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
+              </div>
+              <div className="grid gap-2">
+                <Label>Office</Label>
+                <div className="flex flex-wrap gap-2">
+                  {(Object.keys(OFFICE_LABELS) as Office[]).map((o) => (
+                    <button
+                      key={o}
+                      type="button"
+                      onClick={() => setOffice(o)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-sm border transition-colors",
+                        office === o
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-input hover:bg-accent"
+                      )}
+                    >
+                      {OFFICE_LABELS[o]}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
