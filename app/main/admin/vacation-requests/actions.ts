@@ -72,7 +72,8 @@ export async function approveVacationRequest(requestId: string): Promise<{ error
   }
 
   // Send email (non-blocking — don't fail the action if email fails)
-  const emp = req.employees as { name: string; email: string } | null;
+  const empRaw = Array.isArray(req.employees) ? req.employees[0] : req.employees;
+  const emp = empRaw as { name: string; email: string } | null | undefined;
   if (emp?.email) {
     try {
       await sendVacationApprovedEmail({
@@ -137,7 +138,8 @@ export async function rejectVacationRequest(
   }
 
   // Send email
-  const emp = req.employees as { name: string; email: string } | null;
+  const empRaw = Array.isArray(req.employees) ? req.employees[0] : req.employees;
+  const emp = empRaw as { name: string; email: string } | null | undefined;
   if (emp?.email) {
     try {
       await sendVacationRejectedEmail({
