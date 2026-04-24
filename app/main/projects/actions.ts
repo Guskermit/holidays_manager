@@ -51,7 +51,7 @@ export async function createProject(formData: FormData) {
 
     const { error: assignError } = await supabase
       .from("employee_projects")
-      .insert(assignments);
+      .upsert(assignments, { onConflict: "employee_id,project_id", ignoreDuplicates: true });
 
     if (assignError) {
       return { error: assignError.message };
@@ -117,7 +117,7 @@ export async function updateProject(
 
     const { error: assignError } = await supabase
       .from("employee_projects")
-      .insert(assignments);
+      .upsert(assignments, { onConflict: "employee_id,project_id", ignoreDuplicates: true });
 
     if (assignError) {
       return { error: assignError.message };
