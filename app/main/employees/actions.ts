@@ -24,11 +24,13 @@ export async function updateEmployee(
     return { error: "Not authorized" };
   }
 
-  const name     = (formData.get("name")     as string)?.trim();
-  const office   = (formData.get("office")   as string)?.trim();
-  const role     = (formData.get("role")     as string)?.trim();
-  const category = (formData.get("category") as string)?.trim();
-  const company  = (formData.get("company")  as string | null)?.trim() || null;
+  const name        = (formData.get("name")         as string)?.trim();
+  const office      = (formData.get("office")       as string)?.trim();
+  const role        = (formData.get("role")         as string)?.trim();
+  const category    = (formData.get("category")     as string)?.trim();
+  const company     = (formData.get("company")      as string | null)?.trim() || null;
+  const costRaw     = (formData.get("cost_per_hour") as string)?.trim();
+  const costPerHour = costRaw !== "" && costRaw != null ? parseFloat(costRaw) : null;
 
   if (!name || !office || !role || !category) {
     return { error: "All fields are required" };
@@ -50,6 +52,7 @@ export async function updateEmployee(
       role,
       category,
       company: category === "Externo" ? company : null,
+      cost_per_hour: costPerHour,
     })
     .eq("id", employeeId);
 

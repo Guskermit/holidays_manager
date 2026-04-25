@@ -141,6 +141,8 @@ export const strings = {
     formRoleLabel:        "Role",
     formCategoryLabel:    "Category",
     formCompanyLabel:     "Company",
+    formCostPerHourLabel: "Coste por hora (€)",
+    formCostPerHourHint:  "Coste base que se cargará automáticamente al asignar este empleado a una oportunidad.",
   },
 
   // ── Projects ───────────────────────────────────────────────
@@ -335,6 +337,85 @@ export const strings = {
     searchDashboardCard:     "Search by skills",
     searchDashboardCardDesc: "Find employees by their registered skills and see their category and active projects.",
     searchDashboardCardLink: "Go to Skills search →",
+  },
+
+  // ── Pricing ───────────────────────────────────────────────
+  pricing: {
+    pageTitle:              "Pricing de Oportunidades",
+    pageSubtitle:           "Gestiona el pricing de las oportunidades de negocio.",
+    newButton:              "Nueva oportunidad",
+    newTitle:               "Nueva oportunidad",
+    newSubtitle:            "Define los datos de la oportunidad y asigna empleados con su dedicación semanal.",
+    editTitle:              "Editar oportunidad",
+    editSubtitle:           "Modifica los datos de la oportunidad y la dedicación del equipo.",
+
+    // Form fields
+    fieldClient:            "Cliente",
+    fieldClientPlaceholder: "Nombre del cliente",
+    fieldName:              "Nombre de la oportunidad",
+    fieldNamePlaceholder:   "Nombre descriptivo de la oportunidad",
+    fieldDescription:       "Descripción",
+    fieldDescriptionPlaceholder: "Descripción o notas adicionales",
+    fieldMargin:            "Margen (%)",
+    fieldMarginPlaceholder: "0",
+    fieldStartDate:         "Fecha de inicio",
+    fieldEndDate:           "Fecha de fin",
+
+    // Employees section
+    employeesTitle:         "Equipo",
+    addEmployeeButton:      "Añadir empleado",
+    noEmployees:            "No hay empleados asignados. Añade al menos uno.",
+    colEmployee:            "Empleado",
+    colCostPerHour:         "Coste/h (€)",
+    colRevenuePerHour:      "Revenue/h (€)",
+    colTotalHours:          "Total h",
+    colTotalCost:           "Coste total (€)",
+    removeEmployee:         "Eliminar",
+
+    // Totals
+    summaryTotalHours:      "Horas totales del proyecto",
+    summaryTotalCost:       "Coste total",
+    summaryRevenue:         "Revenue (con margen)",
+    summaryTarifa:          "Tarifa media (€/h)",
+    summaryHoursSocio:      "Horas Socio",
+    summaryHoursManager:    "Horas Manager",
+    summaryHoursSenior:     "Horas Senior",
+    summaryHoursStaff:      "Horas Staff",
+
+    // Warnings
+    warnNoSocio:            "No hay ningún Socio en la oportunidad.",
+    warnSocioHours:         (actual: number, expected: number) =>
+                              `Las horas del Socio son ${actual}h pero deberían ser el 1,5% del total (${expected}h).`,
+    warnNoManager:          "No hay ningún Manager o Senior Manager en la oportunidad.",
+    warnManagerHours:       (actual: number, expected: number) =>
+                              `Las horas de los Managers son ${actual}h pero deberían ser el 10% del total (${expected}h).`,
+
+    // Actions
+    saveButton:             "Guardar oportunidad",
+    savingButton:           "Guardando...",
+    deleteButton:           "Eliminar",
+    deleteConfirm:          "¿Eliminar esta oportunidad? Esta acción no se puede deshacer.",
+    duplicateButton:        "Duplicar",
+
+    // List
+    colClient:              "Cliente",
+    colProject:             "Proyecto",
+    colDates:               "Fechas",
+    colMargin:              "Margen",
+    colTeamSize:            "Equipo",
+    colActions:             "Acciones",
+    noOpportunities:        "No hay oportunidades creadas todavía.",
+    dash:                   "—",
+
+    // Errors
+    errorLoading:           (msg: string) => `Error cargando oportunidades: ${msg}`,
+    errorSaving:            (msg: string) => `Error guardando: ${msg}`,
+    errorDeleting:          (msg: string) => `Error eliminando: ${msg}`,
+
+    // Dashboard card
+    dashboardCard:          "Pricing",
+    dashboardCardDesc:      "Gestiona el pricing de oportunidades de negocio y asigna equipos.",
+    dashboardCardLink:      "Ir a Pricing →",
   },
 
 } as const;

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { FolderKanbanIcon, CalendarDaysIcon, LayoutListIcon, CheckCircle2Icon, ClockIcon, SunIcon, UsersIcon, ClipboardListIcon, BrainIcon, SearchIcon } from "lucide-react";
+import { FolderKanbanIcon, CalendarDaysIcon, LayoutListIcon, CheckCircle2Icon, ClockIcon, SunIcon, UsersIcon, ClipboardListIcon, BrainIcon, SearchIcon, TrendingUpIcon } from "lucide-react";
 import { strings } from "@/lib/strings";
 
 export default async function ProtectedPage() {
@@ -87,146 +87,152 @@ export default async function ProtectedPage() {
         </div>
       )}
 
-      {/* Navigation cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {employee?.role === "admin" && (
+      {/* ── Vacaciones ──────────────────────────────────── */}
+      <div className="flex flex-col gap-4">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          Vacaciones
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <Link
-            href="/main/projects"
-            className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-violet-500 transition-colors"
+            href="/main/vacations"
+            className="group flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-teal-500 transition-colors"
           >
-            <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-600">{strings.dashboard.adminBadge}</span>
-            <div className="flex items-center justify-center size-12 rounded-lg bg-violet-500/10 text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition-colors">
-              <FolderKanbanIcon className="size-6" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-semibold">{strings.dashboard.cardProjects}</h2>
-              <p className="text-sm text-muted-foreground">
-                {strings.dashboard.cardProjectsDesc}
-              </p>
-            </div>
-            <span className="text-sm text-violet-600 font-medium group-hover:underline">
-              {strings.dashboard.cardProjectsLink}
-            </span>
-          </Link>
-        )}
-
-        {employee?.role === "admin" && (
-          <Link
-            href="/main/employees"
-            className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-violet-500 transition-colors"
-          >
-            <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-600">{strings.dashboard.adminBadge}</span>
-            <div className="flex items-center justify-center size-12 rounded-lg bg-violet-500/10 text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition-colors">
-              <UsersIcon className="size-6" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-semibold">{strings.dashboard.cardEmployees}</h2>
-              <p className="text-sm text-muted-foreground">
-                {strings.dashboard.cardEmployeesDesc}
-              </p>
-            </div>
-            <span className="text-sm text-violet-600 font-medium group-hover:underline">
-              {strings.dashboard.cardEmployeesLink}
-            </span>
-          </Link>
-        )}
-
-        {employee?.role === "admin" && (
-          <Link
-            href="/main/admin/vacation-requests"
-            className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-teal-500 transition-colors"
-          >
-            <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-600">{strings.dashboard.adminBadge}</span>
             <div className="flex items-center justify-center size-12 rounded-lg bg-teal-500/10 text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-colors">
-              <ClipboardListIcon className="size-6" />
+              <CalendarDaysIcon className="size-6" />
             </div>
             <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-semibold">{strings.dashboard.cardRequests}</h2>
-              <p className="text-sm text-muted-foreground">
-                {strings.dashboard.cardRequestsDesc}
-              </p>
-            </div>
-            <span className="text-sm text-teal-600 font-medium group-hover:underline">
-              {strings.dashboard.cardRequestsLink}
-            </span>
-          </Link>
-        )}
-
-        <Link
-          href="/main/vacations"
-          className="group flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-teal-500 transition-colors"
-        >
-          <div className="flex items-center justify-center size-12 rounded-lg bg-teal-500/10 text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-colors">
-            <CalendarDaysIcon className="size-6" />
-          </div>
-          <div className="flex flex-col gap-1">
               <h2 className="text-lg font-semibold">{strings.dashboard.cardVacations}</h2>
-              <p className="text-sm text-muted-foreground">
-                {strings.dashboard.cardVacationsDesc}
-            </p>
-          </div>
-          <span className="text-sm text-teal-600 font-medium group-hover:underline">
-              {strings.dashboard.cardVacationsLink}
-          </span>
-        </Link>
+              <p className="text-sm text-muted-foreground">{strings.dashboard.cardVacationsDesc}</p>
+            </div>
+            <span className="text-sm text-teal-600 font-medium group-hover:underline">{strings.dashboard.cardVacationsLink}</span>
+          </Link>
 
-        <Link
-          href="/main/vacations/summary"
-          className="group flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-teal-500 transition-colors"
-        >
-          <div className="flex items-center justify-center size-12 rounded-lg bg-teal-500/10 text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-colors">
-            <LayoutListIcon className="size-6" />
-          </div>
-          <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-semibold">{strings.dashboard.cardOverview}</h2>
-              <p className="text-sm text-muted-foreground">
-                {strings.dashboard.cardOverviewDesc}
-            </p>
-          </div>
-          <span className="text-sm text-teal-600 font-medium group-hover:underline">
-              {strings.dashboard.cardOverviewLink}
-          </span>
-        </Link>
-
-        <Link
-          href="/main/skills"
-          className="group flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-amber-500 transition-colors"
-        >
-          <div className="flex items-center justify-center size-12 rounded-lg bg-amber-500/10 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
-            <BrainIcon className="size-6" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <h2 className="text-lg font-semibold">{strings.skills.dashboardCard}</h2>
-            <p className="text-sm text-muted-foreground">
-              {strings.skills.dashboardCardDesc}
-            </p>
-          </div>
-          <span className="text-sm text-amber-600 font-medium group-hover:underline">
-            {strings.skills.dashboardCardLink}
-          </span>
-        </Link>
-
-        {employee?.role === "admin" && (
           <Link
-            href="/main/admin/skills-search"
-            className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-amber-500 transition-colors"
+            href="/main/vacations/summary"
+            className="group flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-teal-500 transition-colors"
           >
-            <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600">{strings.dashboard.adminBadge}</span>
-            <div className="flex items-center justify-center size-12 rounded-lg bg-amber-500/10 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
-              <SearchIcon className="size-6" />
+            <div className="flex items-center justify-center size-12 rounded-lg bg-teal-500/10 text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+              <LayoutListIcon className="size-6" />
             </div>
             <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-semibold">{strings.skills.searchDashboardCard}</h2>
-              <p className="text-sm text-muted-foreground">
-                {strings.skills.searchDashboardCardDesc}
-              </p>
+              <h2 className="text-lg font-semibold">{strings.dashboard.cardOverview}</h2>
+              <p className="text-sm text-muted-foreground">{strings.dashboard.cardOverviewDesc}</p>
             </div>
-            <span className="text-sm text-amber-600 font-medium group-hover:underline">
-              {strings.skills.searchDashboardCardLink}
-            </span>
+            <span className="text-sm text-teal-600 font-medium group-hover:underline">{strings.dashboard.cardOverviewLink}</span>
           </Link>
-        )}
+
+          {employee?.role === "admin" && (
+            <Link
+              href="/main/admin/vacation-requests"
+              className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-teal-500 transition-colors"
+            >
+              <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-600">{strings.dashboard.adminBadge}</span>
+              <div className="flex items-center justify-center size-12 rounded-lg bg-teal-500/10 text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+                <ClipboardListIcon className="size-6" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <h2 className="text-lg font-semibold">{strings.dashboard.cardRequests}</h2>
+                <p className="text-sm text-muted-foreground">{strings.dashboard.cardRequestsDesc}</p>
+              </div>
+              <span className="text-sm text-teal-600 font-medium group-hover:underline">{strings.dashboard.cardRequestsLink}</span>
+            </Link>
+          )}
+        </div>
       </div>
+
+      {/* ── Skills ──────────────────────────────────────── */}
+      <div className="flex flex-col gap-4">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          Skills
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Link
+            href="/main/skills"
+            className="group flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-amber-500 transition-colors"
+          >
+            <div className="flex items-center justify-center size-12 rounded-lg bg-amber-500/10 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+              <BrainIcon className="size-6" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <h2 className="text-lg font-semibold">{strings.skills.dashboardCard}</h2>
+              <p className="text-sm text-muted-foreground">{strings.skills.dashboardCardDesc}</p>
+            </div>
+            <span className="text-sm text-amber-600 font-medium group-hover:underline">{strings.skills.dashboardCardLink}</span>
+          </Link>
+
+          {employee?.role === "admin" && (
+            <Link
+              href="/main/admin/skills-search"
+              className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-amber-500 transition-colors"
+            >
+              <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600">{strings.dashboard.adminBadge}</span>
+              <div className="flex items-center justify-center size-12 rounded-lg bg-amber-500/10 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                <SearchIcon className="size-6" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <h2 className="text-lg font-semibold">{strings.skills.searchDashboardCard}</h2>
+                <p className="text-sm text-muted-foreground">{strings.skills.searchDashboardCardDesc}</p>
+              </div>
+              <span className="text-sm text-amber-600 font-medium group-hover:underline">{strings.skills.searchDashboardCardLink}</span>
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* ── Administración (admin only) ─────────────────── */}
+      {employee?.role === "admin" && (
+        <div className="flex flex-col gap-4">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            Administración
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Link
+              href="/main/projects"
+              className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-violet-500 transition-colors"
+            >
+              <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-600">{strings.dashboard.adminBadge}</span>
+              <div className="flex items-center justify-center size-12 rounded-lg bg-violet-500/10 text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition-colors">
+                <FolderKanbanIcon className="size-6" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <h2 className="text-lg font-semibold">{strings.dashboard.cardProjects}</h2>
+                <p className="text-sm text-muted-foreground">{strings.dashboard.cardProjectsDesc}</p>
+              </div>
+              <span className="text-sm text-violet-600 font-medium group-hover:underline">{strings.dashboard.cardProjectsLink}</span>
+            </Link>
+
+            <Link
+              href="/main/employees"
+              className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-violet-500 transition-colors"
+            >
+              <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-600">{strings.dashboard.adminBadge}</span>
+              <div className="flex items-center justify-center size-12 rounded-lg bg-violet-500/10 text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition-colors">
+                <UsersIcon className="size-6" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <h2 className="text-lg font-semibold">{strings.dashboard.cardEmployees}</h2>
+                <p className="text-sm text-muted-foreground">{strings.dashboard.cardEmployeesDesc}</p>
+              </div>
+              <span className="text-sm text-violet-600 font-medium group-hover:underline">{strings.dashboard.cardEmployeesLink}</span>
+            </Link>
+
+            <Link
+              href="/main/pricing"
+              className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-violet-500 transition-colors"
+            >
+              <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-600">{strings.dashboard.adminBadge}</span>
+              <div className="flex items-center justify-center size-12 rounded-lg bg-violet-500/10 text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition-colors">
+                <TrendingUpIcon className="size-6" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <h2 className="text-lg font-semibold">{strings.pricing.dashboardCard}</h2>
+                <p className="text-sm text-muted-foreground">{strings.pricing.dashboardCardDesc}</p>
+              </div>
+              <span className="text-sm text-violet-600 font-medium group-hover:underline">{strings.pricing.dashboardCardLink}</span>
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

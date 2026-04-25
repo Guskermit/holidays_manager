@@ -1,4 +1,4 @@
-export const CATEGORIES = ["Staff", "Senior", "Manager", "Senior-Manager", "Externo"] as const;
+export const CATEGORIES = ["Staff", "Senior", "Manager", "Senior-Manager", "Externo", "Socio"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const CATEGORY_LABELS: Record<Category, string> = {
@@ -7,6 +7,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   Manager: "Manager",
   "Senior-Manager": "Senior Manager",
   Externo: "Externo",
+  Socio: "Socio",
 };
 
 /** Maximum vacation days per category per year */
@@ -16,6 +17,7 @@ export const CATEGORY_DAYS: Record<Category, number> = {
   Manager: 31,
   "Senior-Manager": 31,
   Externo: 22,
+  Socio: 31,
 };
 
 export const COMPANIES = [

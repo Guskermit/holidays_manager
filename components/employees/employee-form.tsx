@@ -20,6 +20,7 @@ type Props = {
     role: string;
     category: string;
     company: string | null;
+    cost_per_hour: number | null;
   };
 };
 
@@ -175,6 +176,22 @@ export function EmployeeForm({ employee }: Props) {
           <input type="hidden" name="company" value={selectedCompany} />
         </div>
       )}
+
+      {/* Cost per hour */}
+      <div className="grid gap-2">
+        <Label htmlFor="cost_per_hour">{strings.employees.formCostPerHourLabel}</Label>
+        <Input
+          id="cost_per_hour"
+          name="cost_per_hour"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="0.00"
+          defaultValue={employee.cost_per_hour ?? ""}
+          className="max-w-[200px]"
+        />
+        <p className="text-xs text-muted-foreground">{strings.employees.formCostPerHourHint}</p>
+      </div>
 
       <div className="flex gap-3">
         <Button type="submit" disabled={isLoading}>
