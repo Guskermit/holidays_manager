@@ -370,6 +370,7 @@ export const strings = {
     colRevenuePerHour:      "Revenue/h (€)",
     colTotalHours:          "Total h",
     colTotalCost:           "Coste total (€)",
+    colNsr:                 "NSR (€)",
     removeEmployee:         "Eliminar",
 
     // Totals
