@@ -110,6 +110,7 @@ export const strings = {
     cardEmployees:          "Employees",
     cardEmployeesDesc:      "View the full employee list and edit their details, office and role.",
     cardEmployeesLink:      "Go to Employees →",
+    adminBadge:             "Admin",
     cardRequests:           "Vacation requests",
     cardRequestsDesc:       "Review, approve or reject team vacation requests and notify employees by email.",
     cardRequestsLink:       "Go to Requests →",
@@ -291,6 +292,49 @@ export const strings = {
     rejectCancelButton:   "Cancel",
     rejectPlaceholder:    "Rejection reason (optional)…",
     confirmRejectButton:  "Confirm reject",
+  },
+
+  // ── Skills ─────────────────────────────────────────────────
+  skills: {
+    pageTitle:            "My skills",
+    pageSubtitle:         "Add keywords that describe your professional knowledge and expertise.",
+    inputPlaceholder:     "Add a skill (e.g. TypeScript, Power BI…)",
+    inputAriaLabel:       "New skill name",
+    addButton:            "Add",
+    noSkills:             "No skills in the pool yet. Be the first to add one!",
+    allSkillsLabel:       "All skills",
+    allSkillsHint:        "Click a skill to add or remove it from your profile. Type to search or create a new one.",
+    mySkillsLabel:        "My skills",
+    skillAlreadyAdded:    "You have already added this skill.",
+    noMatchCreate:        "No skills match your search. Press Enter or click Add to create it.",
+    errorLoading:         "Error loading skills. Please try again.",
+    errorAdding:          (msg: string) => `Could not add skill: ${msg}`,
+    errorRemoving:        (msg: string) => `Could not remove skill: ${msg}`,
+    dashboardCard:        "Skills",
+    dashboardCardDesc:    "Register your professional knowledge and expertise as searchable keywords.",
+    dashboardCardLink:    "Go to Skills →",
+
+    // Admin — search employees by skill
+    searchPageTitle:      "Search by skills",
+    searchPageSubtitle:   "Find employees by one or more skills. Select skills below to filter the results.",
+    searchNoSkillsPool:   "No skills have been registered yet.",
+    searchFilterLabel:    "Filter by skills",
+    searchFilterHint:     "Click skills to filter. Multiple selections act as AND (employee must have all).",
+    searchClearFilters:   "Clear filters",
+    searchResultsCount:   (n: number) => `${n} employee${n !== 1 ? "s" : ""} found`,
+    searchNoResults:      "No employees match the selected skills.",
+    searchNoFilters:      "Select one or more skills above to start searching.",
+    searchColEmployee:    "Employee",
+    searchColCategory:    "Category",
+    searchColProjects:    "Active projects",
+    searchColSkills:      "Skills",
+    searchNoProjects:     "—",
+    searchExportCsv:      "Download Excel",
+
+    // Admin dashboard card
+    searchDashboardCard:     "Search by skills",
+    searchDashboardCardDesc: "Find employees by their registered skills and see their category and active projects.",
+    searchDashboardCardLink: "Go to Skills search →",
   },
 
 } as const;

@@ -225,3 +225,47 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=   # Solo en servidor, nunca exponer al cliente
 ```
+
+---
+
+## Convenciones de Desarrollo
+
+### Gestión de textos UI — `lib/strings.ts`
+
+**Regla:** Todo texto visible por el usuario (etiquetas, mensajes, placeholders, títulos, botones, mensajes de error, etc.) debe definirse en `lib/strings.ts` y nunca escribirse directamente en los componentes o páginas.
+
+**Cuándo aplicar esta regla:**
+- Al añadir una nueva página o ruta bajo `app/`.
+- Al crear un nuevo componente con texto visible.
+- Al añadir nuevas funcionalidades que incluyan cualquier cadena de texto en la UI.
+
+**Cómo hacerlo:**
+
+1. Abre `lib/strings.ts` y añade las nuevas entradas bajo la sección correspondiente (`dashboard`, `employees`, `projects`, `vacations`, `admin`, `auth`, `common`, etc.). Si la funcionalidad es nueva, crea una sección nueva.
+
+2. Usa funciones para textos dinámicos:
+   ```ts
+   // Texto estático
+   listTitle: "Proyectos",
+   // Texto dinámico
+   listCount: (n: number) => `${n} proyecto${n !== 1 ? "s" : ""} registrado${n !== 1 ? "s" : ""}`,
+   ```
+
+3. Importa `strings` en el componente o página y úsalo:
+   ```tsx
+   import { strings } from "@/lib/strings";
+   // ...
+   <h1>{strings.projects.listTitle}</h1>
+   <p>{strings.projects.listCount(projects.length)}</p>
+   ```
+
+**No está permitido:**
+```tsx
+// ❌ Texto hardcodeado en el componente
+<h1>Proyectos</h1>
+<Button>Guardar</Button>
+
+// ✅ Correcto
+<h1>{strings.projects.listTitle}</h1>
+<Button>{strings.common.save}</Button>
+```
