@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { ProjectForm } from "@/components/projects/project-form";
 import { BackNav } from "@/components/back-nav";
+import { strings } from "@/lib/strings";
 
 export default async function NewProjectPage() {
   const supabase = await createClient();
@@ -30,9 +31,9 @@ export default async function NewProjectPage() {
     <div className="flex flex-col gap-6">
       <BackNav />
       <div>
-        <h1 className="text-2xl font-bold">New project</h1>
+        <h1 className="text-2xl font-bold">{strings.projects.newTitle}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Fill in the details and assign team members.
+          {strings.projects.newSubtitle}
         </p>
       </div>
 

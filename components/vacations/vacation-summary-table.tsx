@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { strings } from "@/lib/strings";
 import {
   getHolidaysForOffice,
   isWeekend,
@@ -48,16 +49,13 @@ const STATUS_COLOR: Record<VacationRequest["status"], string> = {
 };
 
 const STATUS_LABEL: Record<VacationRequest["status"], string> = {
-  approved: "Approved",
-  pending:  "Pending",
-  rejected: "Rejected",
-  cancelled:"Cancelled",
+  approved: strings.vacations.statusApproved,
+  pending:  strings.vacations.statusPending,
+  rejected: strings.vacations.statusRejected,
+  cancelled:strings.vacations.statusCancelled,
 };
 
-const MONTH_NAMES = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December",
-];
+const MONTH_NAMES = strings.vacations.calendarMonths;
 
 export function VacationSummaryTable({ employees, projects }: Props) {
   const today = new Date();
@@ -120,7 +118,7 @@ export function VacationSummaryTable({ employees, projects }: Props) {
 
       {/* ── Filters ── */}
       <div className="flex flex-wrap items-center gap-3">
-        <span className="text-sm font-medium shrink-0">Filter by project:</span>
+        <span className="text-sm font-medium shrink-0">{strings.vacations.overviewFilterLabel}</span>
         <button
           type="button"
           onClick={() => setProjectFilter("all")}
@@ -131,7 +129,7 @@ export function VacationSummaryTable({ employees, projects }: Props) {
               : "border-input hover:bg-accent"
           )}
         >
-          All employees
+          {strings.vacations.overviewFilterAll}
         </button>
         {projects.map(p => (
           <button
@@ -161,9 +159,7 @@ export function VacationSummaryTable({ employees, projects }: Props) {
             className="size-3 rounded-full shrink-0"
             style={{ backgroundColor: selectedProject.color ?? "#6366f1" }}
           />
-          Showing {visibleEmployees.length} employee
-          {visibleEmployees.length !== 1 ? "s" : ""} assigned to{" "}
-          <strong className="text-foreground">{selectedProject.name}</strong>
+          {strings.vacations.overviewFilterShowing(visibleEmployees.length, selectedProject.name)}
         </div>
       )}
 
@@ -189,13 +185,13 @@ export function VacationSummaryTable({ employees, projects }: Props) {
           </span>
         ))}
         <span className="flex items-center gap-1.5">
-          <span className="size-3 rounded bg-muted-foreground/20" /> Weekend / Holiday
+          <span className="size-3 rounded bg-muted-foreground/20" /> {strings.vacations.legendWeekend} / {strings.vacations.legendHoliday}
         </span>
       </div>
 
       {/* ── Table ── */}
       {visibleEmployees.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-8 text-center">No employees to display.</p>
+        <p className="text-sm text-muted-foreground py-8 text-center">{strings.vacations.overviewEmpty}</p>
       ) : (
         <div className="overflow-x-auto rounded-md border">
           <table className="text-xs border-collapse min-w-full">
@@ -203,10 +199,10 @@ export function VacationSummaryTable({ employees, projects }: Props) {
               <tr className="bg-muted/50">
                 {/* sticky employee name column */}
                 <th className="sticky left-0 z-10 bg-muted/80 backdrop-blur text-left font-medium px-3 py-2 min-w-40 border-r">
-                  Employee
+                  {strings.vacations.overviewColEmployee}
                 </th>
                 <th className="text-left font-medium px-2 py-2 min-w-20 border-r text-muted-foreground">
-                  Office
+                  {strings.vacations.overviewColOffice}
                 </th>
                 {days.map(d => {
                   const weekend = isWeekend(d);
@@ -254,9 +250,9 @@ export function VacationSummaryTable({ employees, projects }: Props) {
                             status
                               ? STATUS_LABEL[status]
                               : holiday
-                              ? "Public holiday"
+                              ? strings.vacations.calendarTitleHoliday
                               : weekend
-                              ? "Weekend"
+                              ? strings.vacations.calendarTitleWeekend
                               : undefined
                           }
                           className={cn(

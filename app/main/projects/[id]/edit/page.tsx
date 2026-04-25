@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { ProjectForm } from "@/components/projects/project-form";
 import { BackNav } from "@/components/back-nav";
+import { strings } from "@/lib/strings";
 
 export default async function EditProjectPage({
   params,
@@ -63,10 +64,9 @@ export default async function EditProjectPage({
     <div className="flex flex-col gap-6">
       <BackNav />
       <div>
-        <h1 className="text-2xl font-bold">Edit project</h1>
+        <h1 className="text-2xl font-bold">{strings.projects.editTitle}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Update the details for{" "}
-          <span className="font-medium text-foreground">{project.name}</span>.
+          {strings.projects.editSubtitle(project.name)}
         </p>
       </div>
 

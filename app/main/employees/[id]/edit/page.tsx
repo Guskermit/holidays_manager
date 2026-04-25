@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { EmployeeForm } from "@/components/employees/employee-form";
 import { BackNav } from "@/components/back-nav";
+import { strings } from "@/lib/strings";
 
 export default async function EditEmployeePage({
   params,
@@ -39,10 +40,9 @@ export default async function EditEmployeePage({
     <div className="flex flex-col gap-6">
       <BackNav />
       <div>
-        <h1 className="text-2xl font-bold">Edit employee</h1>
+        <h1 className="text-2xl font-bold">{strings.employees.editTitle}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Update details for{" "}
-          <span className="font-medium text-foreground">{employee.name}</span>.
+          {strings.employees.editSubtitle(employee.name)}
         </p>
       </div>
 

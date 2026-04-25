@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { strings } from "@/lib/strings";
 
 type VacationRequest = {
   id: string;
@@ -41,10 +42,10 @@ type Props = {
 };
 
 const STATUS_LABELS: Record<VacationRequest["status"], string> = {
-  pending: "Pending",
-  approved: "Approved",
-  rejected: "Rejected",
-  cancelled: "Cancelled",
+  pending: strings.vacations.statusPending,
+  approved: strings.vacations.statusApproved,
+  rejected: strings.vacations.statusRejected,
+  cancelled: strings.vacations.statusCancelled,
 };
 
 const STATUS_VARIANT: Record<
@@ -64,11 +65,8 @@ const STATUS_ROW_COLOR: Record<VacationRequest["status"], string> = {
   cancelled: "border-l-4 border-l-muted-foreground/30 opacity-60",
 };
 
-const DAYS_SHORT = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
-const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
+const DAYS_SHORT = strings.vacations.calendarDaysShort;
+const MONTH_NAMES = strings.vacations.calendarMonths;
 
 function buildMonth(year: number, month: number): (Date | null)[] {
   const firstDay = new Date(year, month, 1);
@@ -226,9 +224,7 @@ export function VacationCalendar({
       const newStart = date < rangeStart ? date : rangeStart;
       const newEnd = date < rangeStart ? rangeStart : date;
       if (rangeOverlaps(newStart, newEnd)) {
-        setSubmitError(
-          "Your selection overlaps with an existing vacation request. Please choose different dates."
-        );
+        setSubmitError(strings.vacations.errorOverlapSubmit);
         return;
       }
       setSubmitError(null);
@@ -254,9 +250,7 @@ export function VacationCalendar({
   const handleSubmit = async () => {
     if (!selStart) return;
     if (hasOverlap) {
-      setSubmitError(
-        "Your selection overlaps with an existing vacation request. Please choose different dates."
-      );
+      setSubmitError(strings.vacations.errorOverlapSubmit);
       return;
     }
     setIsSubmitting(true);
@@ -277,7 +271,7 @@ export function VacationCalendar({
     if (result?.error) {
       setSubmitError(result.error);
     } else {
-      setSuccessMsg(`Request for ${daysSelected} day${daysSelected > 1 ? "s" : ""} submitted successfully.`);
+      setSuccessMsg(strings.vacations.successMessage(daysSelected));
       setRangeStart(null);
       setRangeEnd(null);
       router.refresh();
@@ -312,12 +306,12 @@ export function VacationCalendar({
     <div className="flex flex-col gap-8">
       {/* Office indicator */}
       <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">Office:</span>
+        <span className="text-sm text-muted-foreground">{strings.vacations.calendarOfficeLabel}</span>
         <span className="px-3 py-1 rounded-full text-sm bg-primary text-primary-foreground font-medium">
           {OFFICE_LABELS[office]}
         </span>
         <span className="text-xs text-muted-foreground">
-          Holidays shown are specific to your office.
+          {strings.vacations.calendarOfficeHint}
         </span>
       </div>
 
@@ -391,11 +385,11 @@ export function VacationCalendar({
                       }}
                       onMouseLeave={() => setHovered(null)}
                       title={
-                        existingStatus === "approved" ? "Approved"
-                        : existingStatus === "pending" ? "Pending approval"
-                        : existingStatus === "rejected" ? "Rejected"
-                        : holiday ? "Public holiday"
-                        : weekend ? "Weekend"
+                        existingStatus === "approved" ? strings.vacations.calendarTitleApproved
+                        : existingStatus === "pending" ? strings.vacations.calendarTitlePending
+                        : existingStatus === "rejected" ? strings.vacations.calendarTitleRejected
+                        : holiday ? strings.vacations.calendarTitleHoliday
+                        : weekend ? strings.vacations.calendarTitleWeekend
                         : undefined
                       }
                       className={cn(
@@ -429,58 +423,58 @@ export function VacationCalendar({
       {/* Legend */}
       <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <span className="size-3 rounded bg-primary" /> Selected
+          <span className="size-3 rounded bg-primary" /> {strings.vacations.legendSelected}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="size-3 rounded bg-primary/20" /> Range
+          <span className="size-3 rounded bg-primary/20" /> {strings.vacations.legendRange}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="size-3 rounded bg-emerald-100 dark:bg-emerald-900/30" /> Approved
+          <span className="size-3 rounded bg-emerald-100 dark:bg-emerald-900/30" /> {strings.vacations.legendApproved}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="size-3 rounded bg-amber-200 dark:bg-amber-800/40" /> Pending
+          <span className="size-3 rounded bg-amber-200 dark:bg-amber-800/40" /> {strings.vacations.legendPending}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="size-3 rounded bg-red-100 dark:bg-red-900/30" /> Rejected
+          <span className="size-3 rounded bg-red-100 dark:bg-red-900/30" /> {strings.vacations.legendRejected}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="size-3 rounded bg-amber-100 dark:bg-amber-900/30 border border-amber-300" /> Public holiday
+          <span className="size-3 rounded bg-amber-100 dark:bg-amber-900/30 border border-amber-300" /> {strings.vacations.legendHoliday}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="size-3 rounded bg-muted/30" /> Weekend
+          <span className="size-3 rounded bg-muted/30" /> {strings.vacations.legendWeekend}
         </span>
       </div>
 
       {/* Selection summary + submit */}
       {(rangeStart || daysSelected > 0) && (
         <div className="rounded-lg border p-4 flex flex-col gap-3 bg-muted/20">
-          <p className="text-sm font-medium">Selection</p>
+          <p className="text-sm font-medium">{strings.vacations.selectionTitle}</p>
           <div className="flex flex-wrap gap-6 text-sm">
             <span>
-              <span className="text-muted-foreground">From: </span>
+              <span className="text-muted-foreground">{strings.vacations.selectionFrom}</span>
               {selStart?.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" }) ?? "—"}
             </span>
             <span>
-              <span className="text-muted-foreground">To: </span>
+              <span className="text-muted-foreground">{strings.vacations.selectionTo}</span>
               {(selEnd ?? selStart)?.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" }) ?? "—"}
             </span>
             <span>
-              <span className="text-muted-foreground">Working days: </span>
+              <span className="text-muted-foreground">{strings.vacations.selectionWorkingDays}</span>
               <strong>{daysSelected}</strong>
             </span>
             <span className={cn(daysSelected > remaining ? "text-red-500" : "")}>
-                <span className="text-muted-foreground">Remaining balance: </span>
+                <span className="text-muted-foreground">{strings.vacations.selectionRemaining}</span>
                 <strong>{remaining}</strong>
               </span>
           </div>
           {daysSelected > remaining && (
             <p className="text-xs text-red-500">
-              You don't have enough vacation days for this selection.
+              {strings.vacations.errorNotEnoughDays}
             </p>
           )}
           {hasOverlap && (
             <p className="text-xs text-red-500">
-              Your selection overlaps with an existing vacation request.
+              {strings.vacations.errorOverlapInline}
             </p>
           )}
           {submitError && <p className="text-xs text-red-500">{submitError}</p>}
@@ -496,7 +490,7 @@ export function VacationCalendar({
                 daysSelected > remaining
               }
             >
-              {isSubmitting ? "Submitting..." : "Request vacation"}
+              {isSubmitting ? strings.vacations.submitLoading : strings.vacations.submitIdle}
             </Button>
             <Button
               size="sm"
@@ -508,7 +502,7 @@ export function VacationCalendar({
                 setSuccessMsg(null);
               }}
             >
-              Clear
+              {strings.vacations.clearButton}
             </Button>
           </div>
         </div>
@@ -537,16 +531,16 @@ export function VacationCalendar({
           return (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {[
-                { label: "Solicitados", value: solicitados, color: "text-foreground" },
-                { label: "Aprobados", value: aprobados, color: "text-emerald-600 dark:text-emerald-400" },
-                { label: "Pendientes", value: pendientes, color: "text-amber-600 dark:text-amber-400" },
-                { label: "Disfrutados", value: disfrutados, color: "text-blue-600 dark:text-blue-400" },
-                { label: "Restantes", value: restantes, color: restantes < 0 ? "text-red-500" : "text-foreground" },
+                { label: strings.vacations.statSolicitados, value: solicitados, color: "text-foreground" },
+                { label: strings.vacations.statAprobados, value: aprobados, color: "text-emerald-600 dark:text-emerald-400" },
+                { label: strings.vacations.statPendientes, value: pendientes, color: "text-amber-600 dark:text-amber-400" },
+                { label: strings.vacations.statDisfrutados, value: disfrutados, color: "text-blue-600 dark:text-blue-400" },
+                { label: strings.vacations.statRestantes, value: restantes, color: restantes < 0 ? "text-red-500" : "text-foreground" },
               ].map(({ label, value, color }) => (
                 <div key={label} className="rounded-lg border bg-card p-3 flex flex-col gap-1">
                   <span className="text-xs text-muted-foreground">{label}</span>
                   <span className={`text-2xl font-bold ${color}`}>{value}</span>
-                  <span className="text-xs text-muted-foreground">de {maxDays} días</span>
+                  <span className="text-xs text-muted-foreground">{strings.vacations.statOf(maxDays)}</span>
                 </div>
               ))}
             </div>
@@ -554,26 +548,26 @@ export function VacationCalendar({
         })()}
 
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">My vacation requests</h2>
+          <h2 className="text-base font-semibold">{strings.vacations.requestsTitle}</h2>
         </div>
 
         {requests.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No vacation requests yet.</p>
+          <p className="text-sm text-muted-foreground">{strings.vacations.requestsEmpty}</p>
         ) : (
           <div className="flex flex-col gap-3">
             {/* Legend */}
             <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5">
-                <span className="size-3 rounded-sm bg-amber-400" /> Pending approval
+                <span className="size-3 rounded-sm bg-amber-400" /> {strings.vacations.requestsLegendPending}
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="size-3 rounded-sm bg-emerald-500" /> Approved
+                <span className="size-3 rounded-sm bg-emerald-500" /> {strings.vacations.requestsLegendApproved}
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="size-3 rounded-sm bg-red-400" /> Rejected
+                <span className="size-3 rounded-sm bg-red-400" /> {strings.vacations.requestsLegendRejected}
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="size-3 rounded-sm bg-muted-foreground/30" /> Cancelled
+                <span className="size-3 rounded-sm bg-muted-foreground/30" /> {strings.vacations.requestsLegendCancelled}
               </span>
             </div>
 
@@ -581,11 +575,11 @@ export function VacationCalendar({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-muted/50 border-b">
-                    <th className="text-left font-medium px-4 py-2">From</th>
-                    <th className="text-left font-medium px-4 py-2">To</th>
-                    <th className="text-left font-medium px-4 py-2">Days</th>
-                    <th className="text-left font-medium px-4 py-2">Year</th>
-                    <th className="text-left font-medium px-4 py-2">Status</th>
+                    <th className="text-left font-medium px-4 py-2">{strings.vacations.colFrom}</th>
+                    <th className="text-left font-medium px-4 py-2">{strings.vacations.colTo}</th>
+                    <th className="text-left font-medium px-4 py-2">{strings.vacations.colDays}</th>
+                    <th className="text-left font-medium px-4 py-2">{strings.vacations.colYear}</th>
+                    <th className="text-left font-medium px-4 py-2">{strings.vacations.colStatus}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">

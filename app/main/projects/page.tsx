@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PlusIcon, PencilIcon } from "lucide-react";
 import { BackNav } from "@/components/back-nav";
+import { strings } from "@/lib/strings";
 
 export default async function ProjectsPage() {
   const supabase = await createClient();
@@ -45,7 +46,7 @@ export default async function ProjectsPage() {
   if (error) {
     return (
       <p className="text-sm text-red-500">
-        Error loading projects: {error.message}
+        {strings.projects.errorLoading(error.message)}
       </p>
     );
   }
@@ -67,16 +68,15 @@ export default async function ProjectsPage() {
       <BackNav />
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Projects</h1>
+          <h1 className="text-2xl font-bold">{strings.projects.listTitle}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {projects?.length ?? 0} project
-            {projects?.length !== 1 ? "s" : ""} registered
+            {strings.projects.listCount(projects?.length ?? 0)}
           </p>
         </div>
         <Button asChild>
           <Link href="/main/projects/new">
             <PlusIcon className="size-4" />
-            New project
+            {strings.projects.newButton}
           </Link>
         </Button>
       </div>
@@ -87,12 +87,12 @@ export default async function ProjectsPage() {
             <thead>
               <tr className="bg-muted/50 border-b">
                 <th className="text-left font-medium px-4 py-3 w-12"></th>
-                <th className="text-left font-medium px-4 py-3">ID Engagement</th>
-                <th className="text-left font-medium px-4 py-3">Name</th>
-                <th className="text-left font-medium px-4 py-3">Start date</th>
-                <th className="text-left font-medium px-4 py-3">End date</th>
-                <th className="text-left font-medium px-4 py-3">Status</th>
-                <th className="text-left font-medium px-4 py-3">Employees</th>
+                <th className="text-left font-medium px-4 py-3">{strings.projects.colId}</th>
+                <th className="text-left font-medium px-4 py-3">{strings.projects.colName}</th>
+                <th className="text-left font-medium px-4 py-3">{strings.projects.colStart}</th>
+                <th className="text-left font-medium px-4 py-3">{strings.projects.colEnd}</th>
+                <th className="text-left font-medium px-4 py-3">{strings.projects.colStatus}</th>
+                <th className="text-left font-medium px-4 py-3">{strings.projects.colEmployees}</th>
                 <th className="px-4 py-3 w-16"></th>
               </tr>
             </thead>
@@ -131,16 +131,15 @@ export default async function ProjectsPage() {
                   </td>
                   <td className="px-4 py-3">
                     {isActive(project.end_date) ? (
-                      <Badge variant="default">Active</Badge>
+                      <Badge variant="default">{strings.projects.badgeActive}</Badge>
                     ) : (
-                      <Badge variant="secondary">Finished</Badge>
+                      <Badge variant="secondary">{strings.projects.badgeFinished}</Badge>
                     )}
                   </td>
                   <td className="px-4 py-3">
                     {project.employee_projects.length > 0 ? (
                       <span className="text-muted-foreground">
-                        {project.employee_projects.length} employee
-                        {project.employee_projects.length > 1 ? "s" : ""}
+                        {strings.projects.employeeCount(project.employee_projects.length)}
                       </span>
                     ) : (
                       <span className="text-muted-foreground/50">—</span>
@@ -160,11 +159,11 @@ export default async function ProjectsPage() {
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-md border border-dashed py-16 gap-3 text-center">
-          <p className="text-muted-foreground text-sm">No projects yet.</p>
+          <p className="text-muted-foreground text-sm">{strings.projects.emptyState}</p>
           <Button asChild variant="outline" size="sm">
             <Link href="/main/projects/new">
               <PlusIcon className="size-4" />
-              Create your first project
+              {strings.projects.emptyCreate}
             </Link>
           </Button>
         </div>

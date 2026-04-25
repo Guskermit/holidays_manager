@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { VacationSummaryTable } from "@/components/vacations/vacation-summary-table";
 import { BackNav } from "@/components/back-nav";
+import { strings } from "@/lib/strings";
 
 export default async function VacationSummaryPage() {
   const supabase = await createClient();
@@ -83,11 +84,11 @@ export default async function VacationSummaryPage() {
     <div className="flex flex-col gap-6">
       <BackNav />
       <div>
-        <h1 className="text-2xl font-bold">Vacation overview</h1>
+        <h1 className="text-2xl font-bold">{strings.vacations.overviewTitle}</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {isAdmin
-            ? "Monthly view of all employees' vacation requests."
-            : "Monthly view of your project team's vacation requests."}
+            ? strings.vacations.overviewSubtitleAdmin
+            : strings.vacations.overviewSubtitleUser}
         </p>
       </div>
 

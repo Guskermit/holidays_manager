@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { FolderKanbanIcon, CalendarDaysIcon, LayoutListIcon, CheckCircle2Icon, ClockIcon, SunIcon, UsersIcon, ClipboardListIcon } from "lucide-react";
+import { strings } from "@/lib/strings";
 
 export default async function ProtectedPage() {
   const supabase = await createClient();
@@ -39,10 +40,10 @@ export default async function ProtectedPage() {
       {/* Hero */}
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">
-          Welcome back, {displayName.split(" ")[0]} 👋
+          {strings.dashboard.greeting(displayName.split(" ")[0])}
         </h1>
         <p className="text-muted-foreground">
-          What would you like to manage today?
+          {strings.dashboard.subtitle}
         </p>
       </div>
 
@@ -50,7 +51,7 @@ export default async function ProtectedPage() {
       {balance && (
         <div className="flex flex-col gap-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            My vacations · {currentYear}
+            {strings.dashboard.vacationSectionTitle(currentYear)}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="flex items-center gap-4 rounded-xl border p-4">
@@ -59,7 +60,7 @@ export default async function ProtectedPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{balance.used_days}</p>
-                <p className="text-xs text-muted-foreground">Days taken</p>
+                <p className="text-xs text-muted-foreground">{strings.dashboard.statDaysTaken}</p>
               </div>
             </div>
 
@@ -69,7 +70,7 @@ export default async function ProtectedPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{balance.pending_days}</p>
-                <p className="text-xs text-muted-foreground">Pending approval</p>
+                <p className="text-xs text-muted-foreground">{strings.dashboard.statPending}</p>
               </div>
             </div>
 
@@ -79,7 +80,7 @@ export default async function ProtectedPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{remaining}</p>
-                <p className="text-xs text-muted-foreground">Remaining of {balance.total_days}</p>
+                <p className="text-xs text-muted-foreground">{strings.dashboard.statRemaining(balance.total_days)}</p>
               </div>
             </div>
           </div>
@@ -97,13 +98,13 @@ export default async function ProtectedPage() {
               <FolderKanbanIcon className="size-6" />
             </div>
             <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-semibold">Projects</h2>
+              <h2 className="text-lg font-semibold">{strings.dashboard.cardProjects}</h2>
               <p className="text-sm text-muted-foreground">
-                View and manage all engagement projects, their dates and assigned team members.
+                {strings.dashboard.cardProjectsDesc}
               </p>
             </div>
             <span className="text-sm text-primary font-medium group-hover:underline">
-              Go to Projects →
+              {strings.dashboard.cardProjectsLink}
             </span>
           </Link>
         )}
@@ -117,13 +118,13 @@ export default async function ProtectedPage() {
               <UsersIcon className="size-6" />
             </div>
             <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-semibold">Employees</h2>
+              <h2 className="text-lg font-semibold">{strings.dashboard.cardEmployees}</h2>
               <p className="text-sm text-muted-foreground">
-                View the full employee list and edit their details, office and role.
+                {strings.dashboard.cardEmployeesDesc}
               </p>
             </div>
             <span className="text-sm text-primary font-medium group-hover:underline">
-              Go to Employees →
+              {strings.dashboard.cardEmployeesLink}
             </span>
           </Link>
         )}
@@ -137,13 +138,13 @@ export default async function ProtectedPage() {
               <ClipboardListIcon className="size-6" />
             </div>
             <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-semibold">Vacation requests</h2>
+              <h2 className="text-lg font-semibold">{strings.dashboard.cardRequests}</h2>
               <p className="text-sm text-muted-foreground">
-                Review, approve or reject team vacation requests and notify employees by email.
+                {strings.dashboard.cardRequestsDesc}
               </p>
             </div>
             <span className="text-sm text-primary font-medium group-hover:underline">
-              Go to Requests →
+              {strings.dashboard.cardRequestsLink}
             </span>
           </Link>
         )}
@@ -156,13 +157,13 @@ export default async function ProtectedPage() {
             <CalendarDaysIcon className="size-6" />
           </div>
           <div className="flex flex-col gap-1">
-            <h2 className="text-lg font-semibold">Vacations</h2>
-            <p className="text-sm text-muted-foreground">
-              Request vacation days, track your balance and review the status of your requests.
+              <h2 className="text-lg font-semibold">{strings.dashboard.cardVacations}</h2>
+              <p className="text-sm text-muted-foreground">
+                {strings.dashboard.cardVacationsDesc}
             </p>
           </div>
           <span className="text-sm text-primary font-medium group-hover:underline">
-            Go to Vacations →
+              {strings.dashboard.cardVacationsLink}
           </span>
         </Link>
 
@@ -174,13 +175,13 @@ export default async function ProtectedPage() {
             <LayoutListIcon className="size-6" />
           </div>
           <div className="flex flex-col gap-1">
-            <h2 className="text-lg font-semibold">Vacation overview</h2>
-            <p className="text-sm text-muted-foreground">
-              Monthly calendar view of the whole team's vacations, filterable by project.
+              <h2 className="text-lg font-semibold">{strings.dashboard.cardOverview}</h2>
+              <p className="text-sm text-muted-foreground">
+                {strings.dashboard.cardOverviewDesc}
             </p>
           </div>
           <span className="text-sm text-primary font-medium group-hover:underline">
-            Go to Overview →
+              {strings.dashboard.cardOverviewLink}
           </span>
         </Link>
       </div>

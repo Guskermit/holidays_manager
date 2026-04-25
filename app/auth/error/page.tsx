@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Suspense } from "react";
+import { strings } from "@/lib/strings";
 
 async function ErrorContent({
   searchParams,
@@ -12,11 +13,11 @@ async function ErrorContent({
     <>
       {params?.error ? (
         <p className="text-sm text-muted-foreground">
-          Code error: {params.error}
+          {strings.auth.error.codePrefix}{params.error}
         </p>
       ) : (
         <p className="text-sm text-muted-foreground">
-          An unspecified error occurred.
+          {strings.auth.error.fallback}
         </p>
       )}
     </>
@@ -35,7 +36,7 @@ export default function Page({
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl">
-                Sorry, something went wrong.
+                {strings.auth.error.title}
               </CardTitle>
             </CardHeader>
             <CardContent>

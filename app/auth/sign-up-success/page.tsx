@@ -5,6 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { strings } from "@/lib/strings";
 
 export default function Page() {
   return (
@@ -14,14 +15,13 @@ export default function Page() {
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl">
-                Thank you for signing up!
+                {strings.auth.signUpSuccess.title}
               </CardTitle>
-              <CardDescription>Check your email to confirm</CardDescription>
+              <CardDescription>{strings.auth.signUpSuccess.description}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                You&apos;ve successfully signed up. Please check your email to
-                confirm your account before signing in.
+                {strings.auth.signUpSuccess.body}
               </p>
             </CardContent>
           </Card>

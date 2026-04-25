@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { OFFICE_LABELS, type Office } from "@/lib/holidays";
 import { CATEGORIES, CATEGORY_LABELS, COMPANIES, type Category } from "@/lib/categories";
+import { strings } from "@/lib/strings";
 import { cn } from "@/lib/utils";
 import { updateEmployee } from "@/app/main/employees/actions";
 
@@ -56,7 +57,7 @@ export function EmployeeForm({ employee }: Props) {
     <form onSubmit={handleSubmit} className="flex flex-col gap-6 max-w-lg">
       {/* Name */}
       <div className="grid gap-2">
-        <Label htmlFor="name">Full name</Label>
+        <Label htmlFor="name">{strings.employees.formNameLabel}</Label>
         <Input
           id="name"
           name="name"
@@ -67,7 +68,7 @@ export function EmployeeForm({ employee }: Props) {
 
       {/* Email — read-only, managed by auth */}
       <div className="grid gap-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{strings.employees.formEmailLabel}</Label>
         <Input
           id="email"
           name="email"
@@ -77,13 +78,13 @@ export function EmployeeForm({ employee }: Props) {
           className="bg-muted cursor-not-allowed"
         />
         <p className="text-xs text-muted-foreground">
-          Email is managed by the authentication system and cannot be changed here.
+          {strings.employees.formEmailReadOnly}
         </p>
       </div>
 
       {/* Office */}
       <div className="grid gap-3">
-        <Label>Office</Label>
+        <Label>{strings.employees.formOfficeLabel}</Label>
         <div className="flex flex-wrap gap-2">
           {OFFICES.map(([value, label]) => (
             <button
@@ -106,7 +107,7 @@ export function EmployeeForm({ employee }: Props) {
 
       {/* Role */}
       <div className="grid gap-3">
-        <Label>Role</Label>
+        <Label>{strings.employees.formRoleLabel}</Label>
         <div className="flex gap-2">
           {ROLES.map((r) => (
             <button
@@ -129,7 +130,7 @@ export function EmployeeForm({ employee }: Props) {
 
       {/* Category */}
       <div className="grid gap-3">
-        <Label>Category</Label>
+        <Label>{strings.employees.formCategoryLabel}</Label>
         <div className="flex flex-wrap gap-2">
           {CATEGORIES.map((c) => (
             <button
@@ -153,7 +154,7 @@ export function EmployeeForm({ employee }: Props) {
       {/* Company (only for Externo) */}
       {selectedCategory === "Externo" && (
         <div className="grid gap-3">
-          <Label>Company</Label>
+          <Label>{strings.employees.formCompanyLabel}</Label>
           <div className="flex flex-wrap gap-2">
             {COMPANIES.map((co) => (
               <button
@@ -177,14 +178,14 @@ export function EmployeeForm({ employee }: Props) {
 
       <div className="flex gap-3">
         <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Saving..." : "Save changes"}
+          {isLoading ? strings.common.saving : strings.common.save}
         </Button>
         <Button
           type="button"
           variant="outline"
           onClick={() => router.push("/main/employees")}
         >
-          Cancel
+          {strings.common.cancel}
         </Button>
       </div>
     </form>

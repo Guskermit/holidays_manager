@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { VacationRequestsTable } from "@/components/admin/vacation-requests-table";
 import { BackNav } from "@/components/back-nav";
+import { strings } from "@/lib/strings";
 
 export default async function AdminVacationRequestsPage() {
   const supabase = await createClient();
@@ -41,12 +42,12 @@ export default async function AdminVacationRequestsPage() {
       <div className="flex flex-col gap-6">
         <BackNav />
         <div>
-          <h1 className="text-2xl font-bold">Vacation requests</h1>
+          <h1 className="text-2xl font-bold">{strings.admin.requestsTitle}</h1>
           <p className="text-sm text-red-500 mt-2">
-            Error loading requests: <code>{reqError.message}</code>
+            {strings.admin.requestsError(reqError.message)}
           </p>
           <p className="text-sm text-muted-foreground mt-1">
-            Make sure migrations 000006, 000007 and 000008 have been applied in Supabase.
+            {strings.admin.requestsMigrationHint}
           </p>
         </div>
       </div>
@@ -84,11 +85,11 @@ export default async function AdminVacationRequestsPage() {
     <div className="flex flex-col gap-6">
       <BackNav />
       <div>
-        <h1 className="text-2xl font-bold">Vacation requests</h1>
+        <h1 className="text-2xl font-bold">{strings.admin.requestsTitle}</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {pendingCount > 0
-            ? `${pendingCount} request${pendingCount !== 1 ? "s" : ""} pending approval.`
-            : "All requests have been reviewed."}
+            ? strings.admin.requestsCountPending(pendingCount)
+            : strings.admin.requestsAllReviewed}
         </p>
       </div>
 

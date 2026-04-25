@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { PencilIcon } from "lucide-react";
 import { OFFICE_LABELS } from "@/lib/holidays";
 import { BackNav } from "@/components/back-nav";
+import { strings } from "@/lib/strings";
 
 export default async function EmployeesPage() {
   const supabase = await createClient();
@@ -35,9 +36,9 @@ export default async function EmployeesPage() {
       <BackNav />
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Employees</h1>
+          <h1 className="text-2xl font-bold">{strings.employees.listTitle}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {employees?.length ?? 0} employee{employees?.length !== 1 ? "s" : ""} registered
+            {strings.employees.listCount(employees?.length ?? 0)}
           </p>
         </div>
       </div>
@@ -47,11 +48,11 @@ export default async function EmployeesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/50 border-b">
-                <th className="text-left font-medium px-4 py-3">Name</th>
-                <th className="text-left font-medium px-4 py-3">Email</th>
-                <th className="text-left font-medium px-4 py-3">Office</th>
-                <th className="text-left font-medium px-4 py-3">Role</th>
-                <th className="text-left font-medium px-4 py-3">Joined</th>
+                <th className="text-left font-medium px-4 py-3">{strings.employees.colName}</th>
+                <th className="text-left font-medium px-4 py-3">{strings.employees.colEmail}</th>
+                <th className="text-left font-medium px-4 py-3">{strings.employees.colOffice}</th>
+                <th className="text-left font-medium px-4 py-3">{strings.employees.colRole}</th>
+                <th className="text-left font-medium px-4 py-3">{strings.employees.colJoined}</th>
                 <th className="text-left font-medium px-4 py-3 w-16"></th>
               </tr>
             </thead>
@@ -88,7 +89,7 @@ export default async function EmployeesPage() {
           </table>
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground py-8 text-center">No employees found.</p>
+        <p className="text-sm text-muted-foreground py-8 text-center">{strings.employees.empty}</p>
       )}
     </div>
   );

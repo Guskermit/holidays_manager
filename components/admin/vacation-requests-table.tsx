@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { CheckIcon, XIcon, ChevronDownIcon } from "lucide-react";
 import { approveVacationRequest, rejectVacationRequest } from "@/app/main/admin/vacation-requests/actions";
+import { strings } from "@/lib/strings";
 
 type Status = "pending" | "approved" | "rejected" | "cancelled";
 
@@ -28,17 +29,17 @@ type Props = {
 };
 
 const STATUS_BADGE: Record<Status, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending:   { label: "Pending",   variant: "outline" },
-  approved:  { label: "Approved",  variant: "default" },
-  rejected:  { label: "Rejected",  variant: "destructive" },
-  cancelled: { label: "Cancelled", variant: "secondary" },
+  pending:   { label: strings.admin.statusPending,   variant: "outline" },
+  approved:  { label: strings.admin.statusApproved,  variant: "default" },
+  rejected:  { label: strings.admin.statusRejected,  variant: "destructive" },
+  cancelled: { label: strings.admin.statusCancelled, variant: "secondary" },
 };
 
 const STATUS_FILTERS: { value: "all" | Status; label: string }[] = [
-  { value: "all",       label: "All" },
-  { value: "pending",   label: "Pending" },
-  { value: "approved",  label: "Approved" },
-  { value: "rejected",  label: "Rejected" },
+  { value: "all",       label: strings.admin.filterAll },
+  { value: "pending",   label: strings.admin.filterPending },
+  { value: "approved",  label: strings.admin.filterApproved },
+  { value: "rejected",  label: strings.admin.filterRejected },
 ];
 
 const fmt = (d: string) =>
@@ -126,7 +127,7 @@ export function VacationRequestsTable({ requests }: Props) {
         <div className="flex flex-wrap gap-3 items-center">
           {/* Employee search */}
           <Input
-            placeholder="Search by employee name…"
+            placeholder={strings.admin.searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-xs"
@@ -135,7 +136,7 @@ export function VacationRequestsTable({ requests }: Props) {
           {/* Project filter */}
           {projects.length > 0 && (
             <div className="flex flex-wrap gap-2 items-center">
-              <span className="text-sm text-muted-foreground">Project:</span>
+              <span className="text-sm text-muted-foreground">{strings.admin.projectFilterLabel}</span>
               <button
                 type="button"
                 onClick={() => setProjectFilter("all")}
@@ -146,7 +147,7 @@ export function VacationRequestsTable({ requests }: Props) {
                     : "border-input hover:bg-accent"
                 )}
               >
-                All
+                  {strings.admin.filterAll}
               </button>
               {projects.map((p) => (
                 <button
@@ -174,20 +175,20 @@ export function VacationRequestsTable({ requests }: Props) {
 
       {/* ── Table ── */}
       {filtered.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-12 text-center">No requests match the current filters.</p>
+        <p className="text-sm text-muted-foreground py-12 text-center">{strings.admin.tableEmpty}</p>
       ) : (
         <div className="rounded-md border overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/50 border-b">
-                <th className="text-left font-medium px-4 py-3">Employee</th>
-                <th className="text-left font-medium px-4 py-3">Project</th>
-                <th className="text-left font-medium px-4 py-3">From</th>
-                <th className="text-left font-medium px-4 py-3">To</th>
-                <th className="text-left font-medium px-4 py-3">Days</th>
-                <th className="text-left font-medium px-4 py-3">Requested</th>
-                <th className="text-left font-medium px-4 py-3">Status</th>
-                <th className="text-left font-medium px-4 py-3 w-48">Actions</th>
+                <th className="text-left font-medium px-4 py-3">{strings.admin.colEmployee}</th>
+                <th className="text-left font-medium px-4 py-3">{strings.admin.colProject}</th>
+                <th className="text-left font-medium px-4 py-3">{strings.admin.colFrom}</th>
+                <th className="text-left font-medium px-4 py-3">{strings.admin.colTo}</th>
+                <th className="text-left font-medium px-4 py-3">{strings.admin.colDays}</th>
+                <th className="text-left font-medium px-4 py-3">{strings.admin.colRequested}</th>
+                <th className="text-left font-medium px-4 py-3">{strings.admin.colStatus}</th>
+                <th className="text-left font-medium px-4 py-3 w-48">{strings.admin.colActions}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -239,7 +240,7 @@ export function VacationRequestsTable({ requests }: Props) {
                               onClick={() => handleApprove(req.id)}
                             >
                               <CheckIcon className="size-3.5 mr-1" />
-                              Approve
+                              {strings.admin.approveButton}
                             </Button>
                             <Button
                               size="sm"
@@ -253,7 +254,7 @@ export function VacationRequestsTable({ requests }: Props) {
                               }
                             >
                               <XIcon className="size-3.5 mr-1" />
-                              {isRejecting ? "Cancel" : "Reject"}
+                              {isRejecting ? strings.admin.rejectCancelButton : strings.admin.rejectButton}
                             </Button>
                           </div>
                         )}
@@ -271,7 +272,7 @@ export function VacationRequestsTable({ requests }: Props) {
                         <td colSpan={8} className="px-4 py-3">
                           <div className="flex items-center gap-3 max-w-xl">
                             <Input
-                              placeholder="Rejection reason (optional)…"
+                              placeholder={strings.admin.rejectPlaceholder}
                               value={rejectReason}
                               onChange={(e) => setRejectReason(e.target.value)}
                               className="flex-1"
@@ -283,7 +284,7 @@ export function VacationRequestsTable({ requests }: Props) {
                               disabled={isPending}
                               onClick={() => handleReject(req.id)}
                             >
-                              Confirm reject
+                              {strings.admin.confirmRejectButton}
                             </Button>
                           </div>
                         </td>

@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useState } from "react";
+import { strings } from "@/lib/strings";
 
 export function ForgotPasswordForm({
   className,
@@ -49,34 +50,32 @@ export function ForgotPasswordForm({
       {success ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Check Your Email</CardTitle>
-            <CardDescription>Password reset instructions sent</CardDescription>
+            <CardTitle className="text-2xl">{strings.auth.forgotPassword.successTitle}</CardTitle>
+            <CardDescription>{strings.auth.forgotPassword.successDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              If you registered using your email and password, you will receive
-              a password reset email.
+              {strings.auth.forgotPassword.successBody}
             </p>
           </CardContent>
         </Card>
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Reset Your Password</CardTitle>
+            <CardTitle className="text-2xl">{strings.auth.forgotPassword.title}</CardTitle>
             <CardDescription>
-              Type in your email and we&apos;ll send you a link to reset your
-              password
+              {strings.auth.forgotPassword.description}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleForgotPassword}>
               <div className="flex flex-col gap-6">
                 <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{strings.auth.forgotPassword.emailLabel}</Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="m@example.com"
+                    placeholder={strings.auth.forgotPassword.emailPlaceholder}
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -84,16 +83,16 @@ export function ForgotPasswordForm({
                 </div>
                 {error && <p className="text-sm text-red-500">{error}</p>}
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Sending..." : "Send reset email"}
+                  {isLoading ? strings.auth.forgotPassword.submitLoading : strings.auth.forgotPassword.submitIdle}
                 </Button>
               </div>
               <div className="mt-4 text-center text-sm">
-                Already have an account?{" "}
+                {strings.auth.forgotPassword.hasAccount}{" "}
                 <Link
                   href="/auth/login"
                   className="underline underline-offset-4"
                 >
-                  Login
+                  {strings.auth.forgotPassword.loginLink}
                 </Link>
               </div>
             </form>

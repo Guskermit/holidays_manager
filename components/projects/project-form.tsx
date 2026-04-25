@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { createProject, updateProject } from "@/app/main/projects/actions";
+import { strings } from "@/lib/strings";
 
 const COLOR_PALETTE = [
   { label: "Indigo",  value: "#6366f1" },
@@ -107,18 +108,18 @@ export function ProjectForm({ employees, initialValues }: Props) {
           onClick={() => iconInputRef.current?.click()}
           className="relative flex-shrink-0 size-20 rounded-full overflow-hidden border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           style={{ backgroundColor: iconPreview ? "transparent" : selectedColor + "33" }}
-          title="Upload icon"
+          title={strings.projects.formIconUploadTitle}
         >
           {iconPreview ? (
-            <img src={iconPreview} alt="Icon preview" className="size-full object-cover" />
+            <img src={iconPreview} alt={strings.projects.formIconAlt} className="size-full object-cover" />
           ) : (
             <span className="text-2xl" style={{ color: selectedColor }}>📁</span>
           )}
         </button>
         <div className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Project icon</span>
+          <span className="text-sm font-medium">{strings.projects.formIconLabel}</span>
           <span className="text-xs text-muted-foreground">
-            Click the circle to upload an image. Will be displayed rounded.
+            {strings.projects.formIconHint}
           </span>
           <Button
             type="button"
@@ -127,7 +128,7 @@ export function ProjectForm({ employees, initialValues }: Props) {
             className="mt-1 w-fit"
             onClick={() => iconInputRef.current?.click()}
           >
-            Choose image
+            {strings.projects.formIconChoose}
           </Button>
         </div>
         <input
@@ -147,7 +148,7 @@ export function ProjectForm({ employees, initialValues }: Props) {
 
       {/* Color picker */}
       <div className="grid gap-3">
-        <Label>Project color</Label>
+        <Label>{strings.projects.formColorLabel}</Label>
         <div className="flex flex-wrap gap-2">
           {COLOR_PALETTE.map((c) => (
             <button
@@ -166,7 +167,7 @@ export function ProjectForm({ employees, initialValues }: Props) {
           ))}
         </div>
         <p className="text-xs text-muted-foreground">
-          Selected:{" "}
+          {strings.projects.formColorSelected}{" "}
           <span
             className="inline-block size-3 rounded-full align-middle mr-1"
             style={{ backgroundColor: selectedColor }}
@@ -178,11 +179,11 @@ export function ProjectForm({ employees, initialValues }: Props) {
 
       {/* ID Engagement — read-only in edit mode */}
       <div className="grid gap-2">
-        <Label htmlFor="id_engagement">ID Engagement</Label>
+        <Label htmlFor="id_engagement">{strings.projects.formIdLabel}</Label>
         <Input
           id="id_engagement"
           name="id_engagement"
-          placeholder="ENG-001"
+          placeholder={strings.projects.formIdPlaceholder}
           required
           defaultValue={initialValues?.idEngagement}
           readOnly={isEdit}
@@ -190,18 +191,18 @@ export function ProjectForm({ employees, initialValues }: Props) {
         />
         {isEdit && (
           <p className="text-xs text-muted-foreground">
-            The engagement ID cannot be changed after creation.
+            {strings.projects.formIdHint}
           </p>
         )}
       </div>
 
       {/* Project name */}
       <div className="grid gap-2">
-        <Label htmlFor="name">Project name</Label>
+        <Label htmlFor="name">{strings.projects.formNameLabel}</Label>
         <Input
           id="name"
           name="name"
-          placeholder="Project name"
+          placeholder={strings.projects.formNamePlaceholder}
           required
           defaultValue={initialValues?.name}
         />
@@ -210,7 +211,7 @@ export function ProjectForm({ employees, initialValues }: Props) {
       {/* Dates */}
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="start_date">Start date</Label>
+          <Label htmlFor="start_date">{strings.projects.formStartLabel}</Label>
           <Input
             id="start_date"
             name="start_date"
@@ -220,7 +221,7 @@ export function ProjectForm({ employees, initialValues }: Props) {
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="end_date">End date</Label>
+          <Label htmlFor="end_date">{strings.projects.formEndLabel}</Label>
           <Input
             id="end_date"
             name="end_date"
@@ -232,9 +233,9 @@ export function ProjectForm({ employees, initialValues }: Props) {
 
       {/* Employee assignment */}
       <div className="grid gap-3">
-        <Label>Assign employees</Label>
+        <Label>{strings.projects.formEmployeesLabel}</Label>
         {employees.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No employees found.</p>
+          <p className="text-sm text-muted-foreground">{strings.projects.formEmployeesEmpty}</p>
         ) : (
           <div className="border rounded-md divide-y max-h-64 overflow-y-auto">
             {employees.map((employee) => (
@@ -259,7 +260,7 @@ export function ProjectForm({ employees, initialValues }: Props) {
         )}
         {selectedEmployees.size > 0 && (
           <p className="text-xs text-muted-foreground">
-            {selectedEmployees.size} employee{selectedEmployees.size > 1 ? "s" : ""} selected
+            {strings.projects.formEmployeesCount(selectedEmployees.size)}
           </p>
         )}
       </div>
@@ -269,11 +270,11 @@ export function ProjectForm({ employees, initialValues }: Props) {
       <div className="flex gap-3">
         <Button type="submit" disabled={isLoading}>
           {isLoading
-            ? isEdit ? "Saving..." : "Creating..."
-            : isEdit ? "Save changes" : "Create project"}
+            ? isEdit ? strings.common.saving : strings.projects.submitCreating
+            : isEdit ? strings.common.save : strings.projects.submitCreate}
         </Button>
         <Button type="button" variant="outline" onClick={() => router.push("/main/projects")}>
-          Cancel
+          {strings.common.cancel}
         </Button>
       </div>
     </form>

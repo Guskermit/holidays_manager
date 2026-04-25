@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { OFFICE_LABELS, type Office } from "@/lib/holidays";
 import { CATEGORIES, CATEGORY_LABELS, COMPANIES, type Category } from "@/lib/categories";
+import { strings } from "@/lib/strings";
 
 export function SignUpForm({
   className,
@@ -42,19 +43,19 @@ export function SignUpForm({
     const allowedDomains = ["es.ey.com", "studio.ey.com"];
     const emailDomain = email.split("@")[1]?.toLowerCase();
     if (!allowedDomains.includes(emailDomain)) {
-      setError("Only @es.ey.com or @studio.ey.com email addresses are allowed.");
+      setError(strings.auth.signUp.errorDomain);
       setIsLoading(false);
       return;
     }
 
     if (password !== repeatPassword) {
-      setError("Passwords do not match");
+      setError(strings.auth.signUp.errorPasswordMatch);
       setIsLoading(false);
       return;
     }
 
     if (category === "Externo" && !company) {
-      setError("Please select a company for external employees.");
+      setError(strings.auth.signUp.errorCompany);
       setIsLoading(false);
       return;
     }
@@ -76,7 +77,7 @@ export function SignUpForm({
       if (error) throw error;
       router.push("/auth/sign-up-success");
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      setError(error instanceof Error ? error.message : strings.auth.signUp.errorGeneric);
     } finally {
       setIsLoading(false);
     }
@@ -86,36 +87,36 @@ export function SignUpForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Sign up</CardTitle>
-          <CardDescription>Create a new account</CardDescription>
+          <CardTitle className="text-2xl">{strings.auth.signUp.title}</CardTitle>
+          <CardDescription>{strings.auth.signUp.description}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignUp}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
-                <Label htmlFor="full-name">Full name</Label>
+                <Label htmlFor="full-name">{strings.auth.signUp.fullNameLabel}</Label>
                 <Input
                   id="full-name"
                   type="text"
-                  placeholder="Jane Doe"
+                  placeholder={strings.auth.signUp.fullNamePlaceholder}
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{strings.auth.signUp.emailLabel}</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder={strings.auth.signUp.emailPlaceholder}
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Office</Label>
+                <Label>{strings.auth.signUp.officeLabel}</Label>
                 <div className="flex flex-wrap gap-2">
                   {(Object.keys(OFFICE_LABELS) as Office[]).map((o) => (
                     <button
@@ -135,7 +136,7 @@ export function SignUpForm({
                 </div>
               </div>
               <div className="grid gap-2">
-                <Label>Category</Label>
+                <Label>{strings.auth.signUp.categoryLabel}</Label>
                 <div className="flex flex-wrap gap-2">
                   {CATEGORIES.map((c) => (
                     <button
@@ -156,7 +157,7 @@ export function SignUpForm({
               </div>
               {category === "Externo" && (
                 <div className="grid gap-2">
-                  <Label>Company</Label>
+                  <Label>{strings.auth.signUp.companyLabel}</Label>
                   <div className="flex flex-wrap gap-2">
                     {COMPANIES.map((co) => (
                       <button
@@ -175,13 +176,13 @@ export function SignUpForm({
                     ))}
                   </div>
                   {!company && (
-                    <p className="text-xs text-red-500">Please select a company.</p>
+                    <p className="text-xs text-red-500">{strings.auth.signUp.companyRequired}</p>
                   )}
                 </div>
               )}
               <div className="grid gap-2">
                 <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">{strings.auth.signUp.passwordLabel}</Label>
                 </div>
                 <Input
                   id="password"
@@ -193,7 +194,7 @@ export function SignUpForm({
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
-                  <Label htmlFor="repeat-password">Repeat Password</Label>
+                  <Label htmlFor="repeat-password">{strings.auth.signUp.repeatPasswordLabel}</Label>
                 </div>
                 <Input
                   id="repeat-password"
@@ -205,13 +206,13 @@ export function SignUpForm({
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating an account..." : "Sign up"}
+                {isLoading ? strings.auth.signUp.submitLoading : strings.auth.signUp.submitIdle}
               </Button>
             </div>
             <div className="mt-4 text-center text-sm">
-              Already have an account?{" "}
+              {strings.auth.signUp.hasAccount}{" "}
               <Link href="/auth/login" className="underline underline-offset-4">
-                Login
+                {strings.auth.signUp.loginLink}
               </Link>
             </div>
           </form>
