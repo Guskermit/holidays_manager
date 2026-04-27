@@ -291,6 +291,7 @@ export const strings = {
 
     approveButton:        "Approve",
     rejectButton:         "Reject",
+    cancelButton:         "Cancel approval",
     rejectCancelButton:   "Cancel",
     rejectPlaceholder:    "Rejection reason (optional)…",
     confirmRejectButton:  "Confirm reject",

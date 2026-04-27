@@ -5,8 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { CheckIcon, XIcon } from "lucide-react";
-import { approveVacationRequest, rejectVacationRequest } from "@/app/main/admin/vacation-requests/actions";
+import { CheckIcon, XIcon, BanIcon } from "lucide-react";
+import { approveVacationRequest, rejectVacationRequest, cancelApprovedRequest } from "@/app/main/admin/vacation-requests/actions";
 import { strings } from "@/lib/strings";
 
 type Status = "pending" | "approved" | "rejected" | "cancelled";
@@ -80,6 +80,13 @@ export function VacationRequestsTable({ requests }: Props) {
   const handleApprove = (id: string) => {
     startTransition(async () => {
       const res = await approveVacationRequest(id);
+      if (res.error) setActionError((prev) => ({ ...prev, [id]: res.error! }));
+    });
+  };
+
+  const handleCancel = (id: string) => {
+    startTransition(async () => {
+      const res = await cancelApprovedRequest(id);
       if (res.error) setActionError((prev) => ({ ...prev, [id]: res.error! }));
     });
   };
@@ -257,6 +264,18 @@ export function VacationRequestsTable({ requests }: Props) {
                               {isRejecting ? strings.admin.rejectCancelButton : strings.admin.rejectButton}
                             </Button>
                           </div>
+                        )}
+                        {req.status === "approved" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-400 dark:text-orange-400 dark:border-orange-800 dark:hover:bg-orange-950"
+                            disabled={isPending}
+                            onClick={() => handleCancel(req.id)}
+                          >
+                            <BanIcon className="size-3.5 mr-1" />
+                            {strings.admin.cancelButton}
+                          </Button>
                         )}
                         {req.status === "rejected" && req.rejection_reason && (
                           <span className="text-xs text-muted-foreground italic">

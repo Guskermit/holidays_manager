@@ -108,3 +108,43 @@ export async function rejectVacationRequest(
   revalidatePath("/main/admin/vacation-requests");
   return {};
 }
+
+export async function cancelApprovedRequest(requestId: string): Promise<{ error?: string }> {
+  const { supabase, adminId } = await getAdminEmployee();
+  if (!supabase || !adminId) return { error: "Not authorized" };
+
+  const { data: req } = await supabase
+    .from("vacation_requests")
+    .select("id, status, days_requested, year, employee_id")
+    .eq("id", requestId)
+    .single();
+
+  if (!req) return { error: "Request not found" };
+  if (req.status !== "approved") return { error: "Only approved requests can be cancelled" };
+
+  const { error: updErr } = await supabase
+    .from("vacation_requests")
+    .update({ status: "cancelled", resolved_at: new Date().toISOString() })
+    .eq("id", requestId);
+
+  if (updErr) return { error: updErr.message };
+
+  // Return used days back to balance
+  const { data: bal } = await supabase
+    .from("vacation_balances")
+    .select("used_days")
+    .eq("employee_id", req.employee_id)
+    .eq("year", req.year)
+    .single();
+
+  if (bal) {
+    await supabase
+      .from("vacation_balances")
+      .update({ used_days: Math.max(0, bal.used_days - req.days_requested) })
+      .eq("employee_id", req.employee_id)
+      .eq("year", req.year);
+  }
+
+  revalidatePath("/main/admin/vacation-requests");
+  return {};
+}
