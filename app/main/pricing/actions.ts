@@ -170,6 +170,7 @@ export async function duplicateOpportunity(
 
   if (insertErr || !newOpp) return { error: insertErr?.message ?? "Error desconocido" };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const employees = source.opportunity_employees as any[];
   if (employees.length > 0) {
     const rows = employees.map((e) => ({

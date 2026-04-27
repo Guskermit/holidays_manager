@@ -85,6 +85,7 @@ export default async function PricingPage() {
                     <Badge variant="outline">{opp.margin}%</Badge>
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {(opp.opportunity_employees as any[]).length}
                   </td>
                   <td className="px-4 py-3">

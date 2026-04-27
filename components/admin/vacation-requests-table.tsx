@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { CheckIcon, XIcon, ChevronDownIcon } from "lucide-react";
+import { CheckIcon, XIcon } from "lucide-react";
 import { approveVacationRequest, rejectVacationRequest } from "@/app/main/admin/vacation-requests/actions";
 import { strings } from "@/lib/strings";
 

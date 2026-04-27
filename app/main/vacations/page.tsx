@@ -34,7 +34,6 @@ export default async function VacationsPage() {
     );
   }
 
-  const currentYear = new Date().getFullYear();
   const maxDays = CATEGORY_DAYS[(employee.category as Category) ?? "Staff"] ?? 26;
 
   const { data: requests } = await supabase

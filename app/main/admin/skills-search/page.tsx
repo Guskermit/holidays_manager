@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SkillsSearch, type EmployeeRow, type ProjectItem } from "@/components/admin/skills-search";

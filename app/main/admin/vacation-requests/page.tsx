@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { redirect } from "next/navigation";
 import { VacationRequestsTable } from "@/components/admin/vacation-requests-table";
 import { BackNav } from "@/components/back-nav";

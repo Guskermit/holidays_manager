@@ -1,4 +1,5 @@
 "use server";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
@@ -83,7 +84,7 @@ export async function approveVacationRequest(requestId: string): Promise<{ error
         endDate: req.end_date,
         daysRequested: req.days_requested,
       });
-    } catch (_) {}
+    } catch { }
   }
 
   revalidatePath("/main/admin/vacation-requests");
@@ -150,7 +151,7 @@ export async function rejectVacationRequest(
         daysRequested: req.days_requested,
         reason: reason || undefined,
       });
-    } catch (_) {}
+    } catch { }
   }
 
   revalidatePath("/main/admin/vacation-requests");
