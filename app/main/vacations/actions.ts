@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getCategoryDays } from "@/lib/categories";
+import { notifyVacationRequested } from "@/lib/slack";
 
 export async function requestVacation(
   employeeId: string,
@@ -61,6 +62,19 @@ export async function requestVacation(
   });
 
   if (insertError) return { error: insertError.message };
+
+  // Notify admins via Slack
+  const { data: emp } = await supabase
+    .from("employees")
+    .select("name")
+    .eq("id", employeeId)
+    .single();
+  await notifyVacationRequested({
+    employeeName: emp?.name ?? "Empleado",
+    startDate,
+    endDate,
+    days: daysRequested,
+  });
 
   // Update or create balance
   const { data: balance } = await supabase

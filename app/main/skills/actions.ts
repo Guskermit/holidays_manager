@@ -14,6 +14,16 @@ async function getEmployeeId(supabase: Awaited<ReturnType<typeof createClient>>,
   return data?.id ?? null;
 }
 
+async function touchSkillsUpdatedAt(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  employeeId: string
+) {
+  await supabase
+    .from("employees")
+    .update({ skills_updated_at: new Date().toISOString() })
+    .eq("id", employeeId);
+}
+
 // ── Skills ────────────────────────────────────────────────────────────────────
 
 /**
@@ -59,6 +69,7 @@ export async function addSkill(name: string): Promise<{ skillId?: string; error?
 
   if (linkErr) return { error: linkErr.message };
 
+  await touchSkillsUpdatedAt(supabase, employeeId);
   revalidatePath("/main/skills");
   return { skillId };
 }
@@ -85,6 +96,7 @@ export async function updateSkillLevel(
 
   if (error) return { error: error.message };
 
+  await touchSkillsUpdatedAt(supabase, employeeId);
   revalidatePath("/main/skills");
   return {};
 }
@@ -106,6 +118,7 @@ export async function removeSkill(skillId: string): Promise<{ error?: string }> 
 
   if (error) return { error: error.message };
 
+  await touchSkillsUpdatedAt(supabase, employeeId);
   revalidatePath("/main/skills");
   return {};
 }
@@ -160,6 +173,7 @@ export async function addSpecialization(
 
   if (linkErr) return { error: linkErr.message };
 
+  await touchSkillsUpdatedAt(supabase, employeeId);
   revalidatePath("/main/skills");
   return { specializationId };
 }
@@ -183,6 +197,7 @@ export async function removeSpecialization(
 
   if (error) return { error: error.message };
 
+  await touchSkillsUpdatedAt(supabase, employeeId);
   revalidatePath("/main/skills");
   return {};
 }

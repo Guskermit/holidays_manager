@@ -7,6 +7,7 @@ import {
   AnalyticsDashboard,
   type AnalyticsData,
 } from "@/components/admin/analytics-dashboard";
+import { StaleSkillsNotifier } from "@/components/admin/stale-skills-notifier";
 
 export default async function AdminAnalyticsPage() {
   const supabase = await createClient();
@@ -154,6 +155,16 @@ export default async function AdminAnalyticsPage() {
         </p>
       </div>
       <AnalyticsDashboard data={analyticsData} />
+
+      {/* ── Admin actions ── */}
+      <div className="rounded-xl border p-6 flex flex-col gap-3">
+        <h2 className="font-semibold">Notificaciones Slack</h2>
+        <p className="text-sm text-muted-foreground">
+          Envía un recordatorio a la persona responsable para todos los empleados que llevan más de un
+          año sin actualizar sus skills (o que nunca los han registrado).
+        </p>
+        <StaleSkillsNotifier />
+      </div>
     </div>
   );
 }

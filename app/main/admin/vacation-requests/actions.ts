@@ -1,7 +1,13 @@
 "use server";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import {
+  notifyVacationApproved,
+  notifyVacationRejected,
+  notifyVacationCancelled,
+} from "@/lib/slack";
 
 async function getAdminEmployee() {
   const supabase = await createClient();
@@ -24,7 +30,7 @@ export async function approveVacationRequest(requestId: string): Promise<{ error
 
   const { data: req } = await supabase
     .from("vacation_requests")
-    .select("id, status, days_requested, year, employee_id")
+    .select("id, status, days_requested, year, employee_id, start_date, end_date")
     .eq("id", requestId)
     .single();
 
@@ -57,6 +63,18 @@ export async function approveVacationRequest(requestId: string): Promise<{ error
       .eq("year", req.year);
   }
 
+  const { data: emp } = await supabase
+    .from("employees")
+    .select("name")
+    .eq("id", req.employee_id)
+    .single();
+  await notifyVacationApproved({
+    employeeName: emp?.name ?? "Empleado",
+    startDate: req.start_date,
+    endDate: req.end_date,
+    days: req.days_requested,
+  });
+
   revalidatePath("/main/admin/vacation-requests");
   return {};
 }
@@ -70,7 +88,7 @@ export async function rejectVacationRequest(
 
   const { data: req } = await supabase
     .from("vacation_requests")
-    .select("id, status, days_requested, year, employee_id")
+    .select("id, status, days_requested, year, employee_id, start_date, end_date")
     .eq("id", requestId)
     .single();
 
@@ -105,6 +123,18 @@ export async function rejectVacationRequest(
       .eq("year", req.year);
   }
 
+  const { data: emp } = await supabase
+    .from("employees")
+    .select("name")
+    .eq("id", req.employee_id)
+    .single();
+  await notifyVacationRejected({
+    employeeName: emp?.name ?? "Empleado",
+    startDate: req.start_date,
+    endDate: req.end_date,
+    reason: reason || null,
+  });
+
   revalidatePath("/main/admin/vacation-requests");
   return {};
 }
@@ -115,7 +145,7 @@ export async function cancelApprovedRequest(requestId: string): Promise<{ error?
 
   const { data: req } = await supabase
     .from("vacation_requests")
-    .select("id, status, days_requested, year, employee_id")
+    .select("id, status, days_requested, year, employee_id, start_date, end_date")
     .eq("id", requestId)
     .single();
 
@@ -144,6 +174,18 @@ export async function cancelApprovedRequest(requestId: string): Promise<{ error?
       .eq("employee_id", req.employee_id)
       .eq("year", req.year);
   }
+
+  const { data: emp } = await supabase
+    .from("employees")
+    .select("name")
+    .eq("id", req.employee_id)
+    .single();
+  await notifyVacationCancelled({
+    employeeName: emp?.name ?? "Empleado",
+    startDate: req.start_date,
+    endDate: req.end_date,
+    days: req.days_requested,
+  });
 
   revalidatePath("/main/admin/vacation-requests");
   return {};
