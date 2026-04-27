@@ -45,7 +45,6 @@ const MADRID_EXTRA: string[] = [
   // 2026
   "2026-03-19", // San José (Jueves Santo cae en 2 abr — se recupera)
   "2026-04-02", // Jueves Santo
-  "2026-05-04", // Fiesta de la Comunidad de Madrid (lunes)
   "2026-11-09", // Almudena
 ];
 
