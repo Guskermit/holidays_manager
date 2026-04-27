@@ -1,6 +1,19 @@
 export const CATEGORIES = ["Staff", "Senior", "Manager", "Senior-Manager", "Externo", "Socio"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
+export const PREDEFINED_SPECIALIZATIONS = [
+  "Product Owner",
+  "FrontEnd",
+  "BackEnd",
+  "QA",
+  "APP ANDROID",
+  "APP IOS",
+  "CONTENT",
+  "MANAGEMENT",
+  "MARKETING",
+] as const;
+export type Specialization = (typeof PREDEFINED_SPECIALIZATIONS)[number];
+
 export const CATEGORY_LABELS: Record<Category, string> = {
   Staff: "Staff",
   Senior: "Senior",

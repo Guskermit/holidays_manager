@@ -13,6 +13,7 @@ import {
   removeSpecialization,
 } from "@/app/main/skills/actions";
 import { strings } from "@/lib/strings";
+import { PREDEFINED_SPECIALIZATIONS } from "@/lib/categories";
 
 export type Skill = { id: string; name: string };
 export type MySkill = { skillId: string; level: number };
@@ -45,28 +46,30 @@ export function SkillsEditor({
   // Newly created skills with real IDs returned from server
   const [localNewSkills, setLocalNewSkills] = useState<Skill[]>([]);
 
-  // Specializations
-  const [mySpecIds, setMySpecIds] = useState<Set<string>>(new Set(initialMySpecIds));
-  const [localNewSpecs, setLocalNewSpecs] = useState<Specialization[]>([]);
+  // Specializations: track by name (closed list), map name→id for removals
+  const [mySpecNames, setMySpecNames] = useState<Set<string>>(() => {
+    const nameSet = new Set<string>();
+    for (const spec of allSpecializations) {
+      if (initialMySpecIds.has(spec.id)) nameSet.add(spec.name);
+    }
+    return nameSet;
+  });
+  const [specIdMap, setSpecIdMap] = useState<Map<string, string>>(
+    () => new Map(allSpecializations.map((s) => [s.name, s.id]))
+  );
 
   const [skillInput, setSkillInput] = useState("");
-  const [specInput, setSpecInput] = useState("");
   const [skillError, setSkillError] = useState<string | null>(null);
   const [specError, setSpecError] = useState<string | null>(null);
 
   const [isPending, startTransition] = useTransition();
 
   const skillInputRef = useRef<HTMLInputElement>(null);
-  const specInputRef = useRef<HTMLInputElement>(null);
 
   // Merged pools (server + newly created this session)
   const allPoolSkills: Skill[] = [
     ...allSkills,
     ...localNewSkills.filter((ls) => !allSkills.some((s) => s.id === ls.id)),
-  ];
-  const allPoolSpecs: Specialization[] = [
-    ...allSpecializations,
-    ...localNewSpecs.filter((ls) => !allSpecializations.some((s) => s.id === ls.id)),
   ];
 
   const skillQuery = skillInput.trim().toLowerCase();
@@ -75,13 +78,6 @@ export function SkillsEditor({
     : allPoolSkills;
   const exactSkillMatch = allPoolSkills.find((s) => s.name.toLowerCase() === skillQuery);
   const showCreateSkill = skillQuery.length > 0 && !exactSkillMatch;
-
-  const specQuery = specInput.trim().toLowerCase();
-  const visibleSpecs = specQuery
-    ? allPoolSpecs.filter((s) => s.name.toLowerCase().includes(specQuery))
-    : allPoolSpecs;
-  const exactSpecMatch = allPoolSpecs.find((s) => s.name.toLowerCase() === specQuery);
-  const showCreateSpec = specQuery.length > 0 && !exactSpecMatch;
 
   const getSkillName = (skillId: string) =>
     allPoolSkills.find((s) => s.id === skillId)?.name ?? skillId;
@@ -157,52 +153,32 @@ export function SkillsEditor({
 
   // ── Specialization handlers ─────────────────────────────────────────────────
 
-  const handleToggleSpec = (spec: Specialization) => {
-    if (mySpecIds.has(spec.id)) {
-      setMySpecIds((prev) => { const n = new Set(prev); n.delete(spec.id); return n; });
+  const handleToggleSpec = (name: string) => {
+    if (mySpecNames.has(name)) {
+      const id = specIdMap.get(name);
+      if (!id) return;
+      setMySpecNames((prev) => { const n = new Set(prev); n.delete(name); return n; });
       setSpecError(null);
       startTransition(async () => {
-        const result = await removeSpecialization(spec.id);
+        const result = await removeSpecialization(id);
         if (result.error) {
-          setMySpecIds((prev) => new Set([...prev, spec.id]));
+          setMySpecNames((prev) => new Set([...prev, name]));
           setSpecError(result.error);
         }
       });
     } else {
-      setMySpecIds((prev) => new Set([...prev, spec.id]));
+      setMySpecNames((prev) => new Set([...prev, name]));
       setSpecError(null);
       startTransition(async () => {
-        const result = await addSpecialization(spec.name);
+        const result = await addSpecialization(name);
         if (result.error) {
-          setMySpecIds((prev) => { const n = new Set(prev); n.delete(spec.id); return n; });
+          setMySpecNames((prev) => { const n = new Set(prev); n.delete(name); return n; });
           setSpecError(result.error);
+        } else if (result.specializationId) {
+          setSpecIdMap((prev) => new Map([...prev, [name, result.specializationId!]]));
         }
       });
     }
-  };
-
-  const handleCreateSpec = () => {
-    const name = specInput.trim();
-    if (!name) return;
-    setSpecError(null);
-    startTransition(async () => {
-      const result = await addSpecialization(name);
-      if (result.error) { setSpecError(result.error); return; }
-      const realId = result.specializationId!;
-      if (!allPoolSpecs.some((s) => s.id === realId)) {
-        setLocalNewSpecs((prev) => [...prev, { id: realId, name }]);
-      }
-      setMySpecIds((prev) => new Set([...prev, realId]));
-      setSpecInput("");
-      specInputRef.current?.focus();
-    });
-  };
-
-  const handleSpecKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== "Enter") return;
-    e.preventDefault();
-    if (showCreateSpec) handleCreateSpec();
-    else if (exactSpecMatch && !mySpecIds.has(exactSpecMatch.id)) handleToggleSpec(exactSpecMatch);
   };
 
   const mySkillsArray = [...mySkillsMap.entries()];
@@ -354,59 +330,30 @@ export function SkillsEditor({
 
         {specError && <p className="text-sm text-destructive">{specError}</p>}
 
-        {/* Search + pool */}
-        <div className="flex flex-col gap-3">
-          <div className="flex gap-2">
-            <Input
-              ref={specInputRef}
-              value={specInput}
-              onChange={(e) => { setSpecInput(e.target.value); setSpecError(null); }}
-              onKeyDown={handleSpecKeyDown}
-              placeholder={strings.skills.specializationsInputPlaceholder}
-              aria-label={strings.skills.specializationsInputPlaceholder}
-              disabled={isPending}
-              className="max-w-sm"
-            />
-            {showCreateSpec && (
-              <Button type="button" onClick={handleCreateSpec} disabled={isPending}>
-                <PlusIcon className="size-4 mr-1" />
-                {strings.skills.addButton}
-              </Button>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">{strings.skills.specializationsHint}</p>
-
-          {allPoolSpecs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{strings.skills.specializationsEmpty}</p>
-          ) : visibleSpecs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{strings.skills.noMatchCreate}</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {visibleSpecs.map((spec) => {
-                const isSelected = mySpecIds.has(spec.id);
-                return (
-                  <button
-                    key={spec.id}
-                    type="button"
-                    onClick={() => handleToggleSpec(spec)}
-                    disabled={isPending}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors disabled:opacity-50",
-                      isSelected
-                        ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
-                        : "border-input hover:bg-accent hover:border-primary"
-                    )}
-                  >
-                    {isSelected
-                      ? <XIcon className="size-3.5 shrink-0" />
-                      : <PlusIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                    }
-                    {spec.name}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+        <div className="flex flex-wrap gap-2">
+          {PREDEFINED_SPECIALIZATIONS.map((name) => {
+            const isSelected = mySpecNames.has(name);
+            return (
+              <button
+                key={name}
+                type="button"
+                onClick={() => handleToggleSpec(name)}
+                disabled={isPending}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors disabled:opacity-50",
+                  isSelected
+                    ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
+                    : "border-input hover:bg-accent hover:border-primary"
+                )}
+              >
+                {isSelected
+                  ? <XIcon className="size-3.5 shrink-0" />
+                  : <PlusIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                }
+                {name}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

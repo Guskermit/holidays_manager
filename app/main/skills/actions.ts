@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { PREDEFINED_SPECIALIZATIONS } from "@/lib/categories";
 
 async function getEmployeeId(supabase: Awaited<ReturnType<typeof createClient>>, sub: string) {
   const { data } = await supabase
@@ -120,6 +121,8 @@ export async function addSpecialization(
 ): Promise<{ specializationId?: string; error?: string }> {
   const trimmed = name.trim();
   if (!trimmed) return { error: "Specialization name cannot be empty" };
+  if (!(PREDEFINED_SPECIALIZATIONS as readonly string[]).includes(trimmed))
+    return { error: "Invalid specialization" };
 
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getClaims();
