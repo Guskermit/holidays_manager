@@ -55,6 +55,7 @@ const LEVEL_COLORS = [
 
 export function SkillsSearch({ allSkills, allSpecializations, employees }: Props) {
   const [selectedSkillIds, setSelectedSkillIds] = useState<Set<string>>(new Set());
+  const [minLevel, setMinLevel] = useState<number>(0);
 
   const toggleSkill = (id: string) => {
     setSelectedSkillIds((prev) => {
@@ -64,7 +65,7 @@ export function SkillsSearch({ allSkills, allSpecializations, employees }: Props
     });
   };
 
-  const clearFilters = () => setSelectedSkillIds(new Set());
+  const clearFilters = () => { setSelectedSkillIds(new Set()); setMinLevel(0); };
 
   const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
 
@@ -117,12 +118,14 @@ export function SkillsSearch({ allSkills, allSpecializations, employees }: Props
     URL.revokeObjectURL(url);
   };
 
-  // Filter employees: must have ALL selected skills (show all when none selected)
+  // Filter employees: must have ALL selected skills at >= minLevel (show all when none selected)
   const filteredEmployees =
     selectedSkillIds.size === 0
       ? employees
       : employees.filter((emp) =>
-          [...selectedSkillIds].every((sid) => emp.skills.some((es) => es.skillId === sid))
+          [...selectedSkillIds].every((sid) =>
+            emp.skills.some((es) => es.skillId === sid && es.level >= minLevel)
+          )
         );
 
   return (
@@ -134,7 +137,7 @@ export function SkillsSearch({ allSkills, allSpecializations, employees }: Props
             <span className="text-sm font-semibold">{strings.skills.searchFilterLabel}</span>
             <span className="text-xs text-muted-foreground">{strings.skills.searchFilterHint}</span>
           </div>
-          {selectedSkillIds.size > 0 && (
+          {(selectedSkillIds.size > 0 || minLevel > 0) && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
               <XIcon className="size-3.5 mr-1" />
               {strings.skills.searchClearFilters}
@@ -166,6 +169,39 @@ export function SkillsSearch({ allSkills, allSpecializations, employees }: Props
                 </button>
               );
             })}
+          </div>
+        )}
+
+        {/* Minimum level selector — shown only when skills are selected */}
+        {selectedSkillIds.size > 0 && (
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <span className="text-xs font-medium text-muted-foreground shrink-0">
+              {strings.skills.searchMinLevelLabel}
+            </span>
+            {[0, 1, 2, 3].map((lvl) => (
+              <button
+                key={lvl}
+                type="button"
+                onClick={() => setMinLevel(lvl)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors",
+                  minLevel === lvl
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-input hover:bg-accent"
+                )}
+              >
+                {lvl === 0 ? (
+                  strings.skills.searchMinLevelAny
+                ) : (
+                  <span className="flex items-center gap-1">
+                    <span className={cn("size-4 rounded text-[10px] font-bold flex items-center justify-center shrink-0", LEVEL_COLORS[lvl as 1|2|3])}>
+                      {lvl}
+                    </span>
+                    {strings.skills[`level${lvl}` as "level1"|"level2"|"level3"]}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
         )}
       </div>

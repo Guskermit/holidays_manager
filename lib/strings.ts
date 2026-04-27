@@ -354,6 +354,8 @@ export const strings = {
     searchNoSkillsPool:   "No skills have been registered yet.",
     searchFilterLabel:    "Filter by skills",
     searchFilterHint:     "Click skills to filter. Multiple selections act as AND (employee must have all).",
+    searchMinLevelLabel:  "Minimum level:",
+    searchMinLevelAny:    "Any",
     searchClearFilters:   "Clear filters",
     searchResultsCount:   (n: number) => `${n} employee${n !== 1 ? "s" : ""} found`,
     searchNoResults:      "No employees match the selected skills.",
