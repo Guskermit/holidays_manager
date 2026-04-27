@@ -7,7 +7,6 @@ import {
   getHolidaysForOffice,
   isWeekend,
   isHoliday,
-  isWorkingDay,
   countWorkingDays,
   toDateString,
   OFFICE_LABELS,

@@ -29,7 +29,7 @@ const ROLES = ["employee", "admin"] as const;
 
 export function EmployeeForm({ employee }: Props) {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [isLoading, setIsLoading] = useState(false);
   const [selectedOffice, setSelectedOffice] = useState(employee.office);
   const [selectedRole, setSelectedRole] = useState(employee.role);

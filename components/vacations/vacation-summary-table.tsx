@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+
 import { Button } from "@/components/ui/button";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { strings } from "@/lib/strings";

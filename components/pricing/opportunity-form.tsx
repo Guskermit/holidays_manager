@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangleIcon, PlusIcon, XIcon, TrashIcon } from "lucide-react";
+import { AlertTriangleIcon, PlusIcon, XIcon } from "lucide-react";
 import { strings } from "@/lib/strings";
 import { CATEGORY_LABELS, type Category } from "@/lib/categories";
 import { saveOpportunity } from "@/app/main/pricing/actions";
