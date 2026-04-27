@@ -28,6 +28,7 @@ type Employee = {
   name: string;
   office: Office;
   category: string | null;
+  specializations: string[];
   vacation_requests: VacationRequest[];
 };
 
@@ -64,6 +65,21 @@ export function VacationSummaryTable({ employees, projects }: Props) {
   const [year, setYear]   = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [projectFilter, setProjectFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [specFilter, setSpecFilter] = useState<string>("all");
+
+  /* ── derive unique categories and specializations from employees ── */
+  const allCategories = useMemo(() => {
+    const seen = new Set<string>();
+    employees.forEach(e => { if (e.category) seen.add(e.category); });
+    return [...seen].sort();
+  }, [employees]);
+
+  const allSpecs = useMemo(() => {
+    const seen = new Set<string>();
+    employees.forEach(e => e.specializations.forEach(s => seen.add(s)));
+    return [...seen].sort();
+  }, [employees]);
 
   /* ── month navigation ──────────────────────────────────────── */
   const goBack = () => {
@@ -83,12 +99,22 @@ export function VacationSummaryTable({ employees, projects }: Props) {
 
   /* ── filtered employees ────────────────────────────────────── */
   const visibleEmployees = useMemo(() => {
-    if (projectFilter === "all") return employees;
-    const project = projects.find(p => p.id_engagement === projectFilter);
-    if (!project) return employees;
-    const ids = new Set(project.employee_projects.map(ep => ep.employee_id));
-    return employees.filter(e => ids.has(e.id));
-  }, [employees, projects, projectFilter]);
+    let result = employees;
+    if (projectFilter !== "all") {
+      const project = projects.find(p => p.id_engagement === projectFilter);
+      if (project) {
+        const ids = new Set(project.employee_projects.map(ep => ep.employee_id));
+        result = result.filter(e => ids.has(e.id));
+      }
+    }
+    if (categoryFilter !== "all") {
+      result = result.filter(e => e.category === categoryFilter);
+    }
+    if (specFilter !== "all") {
+      result = result.filter(e => e.specializations.includes(specFilter));
+    }
+    return result;
+  }, [employees, projects, projectFilter, categoryFilter, specFilter]);
 
   /* ── pre-compute day → status map per employee ─────────────── */
   const employeeDayMap = useMemo(() => {
@@ -118,7 +144,7 @@ export function VacationSummaryTable({ employees, projects }: Props) {
   return (
     <div className="flex flex-col gap-6">
 
-      {/* ── Filters ── */}
+      {/* ── Project filter ── */}
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-sm font-medium shrink-0">{strings.vacations.overviewFilterLabel}</span>
         <button
@@ -153,6 +179,74 @@ export function VacationSummaryTable({ employees, projects }: Props) {
           </button>
         ))}
       </div>
+
+      {/* ── Category filter ── */}
+      {allCategories.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium shrink-0">{strings.vacations.overviewFilterCategory}</span>
+          <button
+            type="button"
+            onClick={() => setCategoryFilter("all")}
+            className={cn(
+              "px-3 py-1.5 rounded-full text-sm border transition-colors",
+              categoryFilter === "all"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "border-input hover:bg-accent"
+            )}
+          >
+            {strings.vacations.overviewFilterAllCategories}
+          </button>
+          {allCategories.map(cat => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setCategoryFilter(cat)}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-sm border transition-colors",
+                categoryFilter === cat
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-input hover:bg-accent"
+              )}
+            >
+              {CATEGORY_LABELS[cat as Category] ?? cat}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Specialization filter ── */}
+      {allSpecs.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium shrink-0">{strings.vacations.overviewFilterSpec}</span>
+          <button
+            type="button"
+            onClick={() => setSpecFilter("all")}
+            className={cn(
+              "px-3 py-1.5 rounded-full text-sm border transition-colors",
+              specFilter === "all"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "border-input hover:bg-accent"
+            )}
+          >
+            {strings.vacations.overviewFilterAllSpecs}
+          </button>
+          {allSpecs.map(spec => (
+            <button
+              key={spec}
+              type="button"
+              onClick={() => setSpecFilter(spec)}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-sm border transition-colors",
+                specFilter === spec
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-input hover:bg-accent"
+              )}
+            >
+              {spec}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* project badge */}
       {selectedProject && (
@@ -206,6 +300,9 @@ export function VacationSummaryTable({ employees, projects }: Props) {
                 <th className="text-left font-medium px-2 py-2 min-w-24 border-r text-muted-foreground">
                   {strings.vacations.overviewColCategory}
                 </th>
+                <th className="text-left font-medium px-2 py-2 min-w-32 border-r text-muted-foreground">
+                  {strings.vacations.overviewColSpecs}
+                </th>
                 <th className="text-left font-medium px-2 py-2 min-w-20 border-r text-muted-foreground">
                   {strings.vacations.overviewColOffice}
                 </th>
@@ -242,6 +339,19 @@ export function VacationSummaryTable({ employees, projects }: Props) {
                       {emp.category
                         ? (CATEGORY_LABELS[emp.category as Category] ?? emp.category)
                         : "—"}
+                    </td>
+                    <td className="px-2 py-1.5 border-r">
+                      {emp.specializations.length === 0 ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {emp.specializations.map((s) => (
+                            <span key={s} className="inline-block px-1.5 py-0.5 rounded text-xs bg-muted border border-border whitespace-nowrap">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="px-2 py-1.5 text-muted-foreground border-r whitespace-nowrap">
                       {OFFICE_LABELS[emp.office] ?? emp.office}

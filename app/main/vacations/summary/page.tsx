@@ -5,6 +5,15 @@ import { VacationSummaryTable } from "@/components/vacations/vacation-summary-ta
 import { BackNav } from "@/components/back-nav";
 import { strings } from "@/lib/strings";
 
+function flattenEmployee(emp: any) {
+  return {
+    ...emp,
+    specializations: (emp.employee_specializations ?? [])
+      .map((es: any) => es.specializations?.name)
+      .filter(Boolean) as string[],
+  };
+}
+
 export default async function VacationSummaryPage() {
   const supabase = await createClient();
 
@@ -30,7 +39,7 @@ export default async function VacationSummaryPage() {
     const [empResult, projResult] = await Promise.all([
       supabase
         .from("employees")
-        .select(`id, name, office, category, vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status )`)
+        .select(`id, name, office, category, employee_specializations ( specializations ( name ) ), vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status )`)
         .order("name"),
       supabase
         .from("projects")
@@ -39,7 +48,7 @@ export default async function VacationSummaryPage() {
     ]);
     if (empResult.error) console.error("[summary] employees query error:", empResult.error.message, empResult.error.code, empResult.error.details, empResult.error.hint);
     if (projResult.error) console.error("[summary] projects query error:", projResult.error.message, projResult.error.code);
-    employees = empResult.data ?? [];
+    employees = (empResult.data ?? []).map(flattenEmployee);
     projects = projResult.data ?? [];
   } else {
     // Employee: only see projects they belong to and colleagues in those projects
@@ -72,11 +81,11 @@ export default async function VacationSummaryPage() {
 
       const { data: myEmployees } = await supabase
         .from("employees")
-        .select(`id, name, office, category, vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status )`)
+        .select(`id, name, office, category, employee_specializations ( specializations ( name ) ), vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status )`)
         .in("id", uniqueIds)
         .order("name");
 
-      employees = myEmployees ?? [];
+      employees = (myEmployees ?? []).map(flattenEmployee);
       projects = myProjectsFull ?? [];
     }
   }

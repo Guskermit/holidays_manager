@@ -257,6 +257,11 @@ export const strings = {
     overviewColEmployee:  "Employee",
     overviewColOffice:    "Office",
     overviewColCategory:  "Category",
+    overviewColSpecs:     "Specializations",
+    overviewFilterCategory: "Filter by category:",
+    overviewFilterSpec:     "Filter by specialization:",
+    overviewFilterAllCategories: "All categories",
+    overviewFilterAllSpecs:      "All specializations",
     overviewEmpty:        "No employees to display.",
   },
 
