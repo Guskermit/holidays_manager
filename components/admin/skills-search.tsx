@@ -20,21 +20,40 @@ export type ProjectItem = {
   end_date: string | null;
 };
 
+export type EmployeeSkill = {
+  skillId: string;
+  level: number;
+};
+
 export type EmployeeRow = {
   id: string;
   name: string;
   email: string;
   category: string | null;
-  skillIds: string[];
+  skills: EmployeeSkill[];
+  specializationIds: string[];
   projects: ProjectItem[];
+};
+
+export type SpecializationItem = {
+  id: string;
+  name: string;
 };
 
 type Props = {
   allSkills: SkillItem[];
+  allSpecializations: SpecializationItem[];
   employees: EmployeeRow[];
 };
 
-export function SkillsSearch({ allSkills, employees }: Props) {
+const LEVEL_COLORS = [
+  "bg-zinc-400 text-white dark:bg-zinc-500",
+  "bg-amber-500 text-white",
+  "bg-blue-500 text-white",
+  "bg-emerald-500 text-white",
+] as const;
+
+export function SkillsSearch({ allSkills, allSpecializations, employees }: Props) {
   const [selectedSkillIds, setSelectedSkillIds] = useState<Set<string>>(new Set());
 
   const toggleSkill = (id: string) => {
@@ -56,6 +75,7 @@ export function SkillsSearch({ allSkills, employees }: Props) {
       strings.skills.searchColCategory,
       strings.skills.searchColProjects,
       strings.skills.searchColSkills,
+      strings.skills.searchColSpecializations,
     ];
 
     const rows = filteredEmployees.map((emp) => {
@@ -63,8 +83,15 @@ export function SkillsSearch({ allSkills, employees }: Props) {
         .filter((p) => !p.end_date || new Date(p.end_date) >= new Date())
         .map((p) => p.name)
         .join(", ");
-      const skillNames = allSkills
-        .filter((s) => emp.skillIds.includes(s.id))
+      const skillNames = emp.skills
+        .map((es) => {
+          const skill = allSkills.find((s) => s.id === es.skillId);
+          return skill ? `${skill.name} (${es.level})` : null;
+        })
+        .filter(Boolean)
+        .join(", ");
+      const specNames = allSpecializations
+        .filter((s) => emp.specializationIds.includes(s.id))
         .map((s) => s.name)
         .join(", ");
       const category = emp.category
@@ -76,6 +103,7 @@ export function SkillsSearch({ allSkills, employees }: Props) {
         escapeCsv(category),
         escapeCsv(activeProjects),
         escapeCsv(skillNames),
+        escapeCsv(specNames),
       ].join(",");
     });
 
@@ -94,7 +122,7 @@ export function SkillsSearch({ allSkills, employees }: Props) {
     selectedSkillIds.size === 0
       ? employees
       : employees.filter((emp) =>
-          [...selectedSkillIds].every((sid) => emp.skillIds.includes(sid))
+          [...selectedSkillIds].every((sid) => emp.skills.some((es) => es.skillId === sid))
         );
 
   return (
@@ -168,6 +196,7 @@ export function SkillsSearch({ allSkills, employees }: Props) {
                     <th className="text-left font-medium px-4 py-3">{strings.skills.searchColCategory}</th>
                     <th className="text-left font-medium px-4 py-3">{strings.skills.searchColProjects}</th>
                     <th className="text-left font-medium px-4 py-3">{strings.skills.searchColSkills}</th>
+                    <th className="text-left font-medium px-4 py-3">{strings.skills.searchColSpecializations}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -208,14 +237,34 @@ export function SkillsSearch({ allSkills, employees }: Props) {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-1.5">
-                            {allSkills
-                              .filter((s) => emp.skillIds.includes(s.id))
-                              .map((s) => (
-                                <Badge
-                                  key={s.id}
-                                  variant={selectedSkillIds.has(s.id) ? "default" : "secondary"}
-                                  className="text-xs"
+                            {emp.skills.map((es) => {
+                              const skill = allSkills.find((s) => s.id === es.skillId);
+                              if (!skill) return null;
+                              return (
+                                <span
+                                  key={es.skillId}
+                                  className={cn(
+                                    "inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full text-xs border",
+                                    selectedSkillIds.has(es.skillId)
+                                      ? "border-primary/40 bg-primary/5"
+                                      : "border-border"
+                                  )}
                                 >
+                                  <span className={cn("size-4 rounded text-[10px] font-bold flex items-center justify-center shrink-0", LEVEL_COLORS[es.level as 0|1|2|3] ?? LEVEL_COLORS[1])}>
+                                    {es.level}
+                                  </span>
+                                  {skill.name}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1.5">
+                            {allSpecializations
+                              .filter((s) => emp.specializationIds.includes(s.id))
+                              .map((s) => (
+                                <Badge key={s.id} variant="secondary" className="text-xs">
                                   {s.name}
                                 </Badge>
                               ))}

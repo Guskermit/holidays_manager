@@ -4,10 +4,10 @@
  *
  * Format: "YYYY-MM-DD"
  *
- * Offices supported: madrid | barcelona | valencia | malaga
+ * Offices supported: madrid | barcelona | valencia | malaga | zaragoza
  */
 
-export type Office = "madrid" | "barcelona" | "valencia" | "malaga";
+export type Office = "madrid" | "barcelona" | "valencia" | "malaga" | "zaragoza";
 
 /** National holidays (all offices) */
 const NATIONAL: string[] = [
@@ -77,6 +77,23 @@ const VALENCIA_EXTRA: string[] = [
   "2026-10-09", // Dia de la Comunitat Valenciana
 ];
 
+/** Aragón (Zaragoza) */
+const ZARAGOZA_EXTRA: string[] = [
+  // 2025 — autonómicos Aragón
+  "2025-04-17", // Jueves Santo
+  "2025-04-23", // San Jorge (Día de Aragón)
+  "2025-10-13", // Pilar (12 oct domingo → lunes 13)
+  // 2025 — locales Zaragoza capital
+  "2025-01-27", // Santo Tomás de Aquino (local)
+  // 2026 — autonómicos Aragón
+  "2026-04-02", // Jueves Santo
+  "2026-04-23", // San Jorge (Día de Aragón)
+  "2026-10-12", // El Pilar (ya en nacionales; se mantiene)
+  // 2026 — locales Zaragoza capital
+  "2026-01-27", // Santo Tomás de Aquino (local)
+  "2026-10-13", // Fiesta local Zaragoza (traslado)
+];
+
 /** Andalucía (Málaga) */
 const MALAGA_EXTRA: string[] = [
   // 2025
@@ -95,6 +112,7 @@ const OFFICE_HOLIDAYS: Record<Office, string[]> = {
   barcelona: [...NATIONAL, ...BARCELONA_EXTRA],
   valencia: [...NATIONAL, ...VALENCIA_EXTRA],
   malaga: [...NATIONAL, ...MALAGA_EXTRA],
+  zaragoza: [...NATIONAL, ...ZARAGOZA_EXTRA],
 };
 
 /** Returns a Set of holiday strings "YYYY-MM-DD" for the given office */
@@ -148,4 +166,5 @@ export const OFFICE_LABELS: Record<Office, string> = {
   barcelona: "Barcelona",
   valencia: "Valencia",
   malaga: "Málaga",
+  zaragoza: "Zaragoza",
 };

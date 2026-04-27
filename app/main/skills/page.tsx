@@ -28,30 +28,40 @@ export default async function SkillsPage() {
     );
   }
 
-  // Fetch all skills and this employee's selected skills in parallel
-  const [{ data: allSkills }, { data: myLinks }] = await Promise.all([
+  // Fetch all data in parallel
+  const [
+    { data: allSkills },
+    { data: myLinks },
+    { data: allSpecializations },
+    { data: mySpecLinks },
+  ] = await Promise.all([
     supabase.from("skills").select("id, name").order("name"),
     supabase
       .from("employee_skills")
-      .select("skill_id")
+      .select("skill_id, level")
+      .eq("employee_id", employee.id),
+    supabase.from("specializations").select("id, name").order("name"),
+    supabase
+      .from("employee_specializations")
+      .select("specialization_id")
       .eq("employee_id", employee.id),
   ]);
 
-  const mySkillIds = new Set((myLinks ?? []).map((r) => r.skill_id));
+  const mySkills = (myLinks ?? []).map((r) => ({ skillId: r.skill_id, level: r.level as number }));
+  const mySpecializationIds = new Set((mySpecLinks ?? []).map((r) => r.specialization_id as string));
 
   return (
     <div className="flex flex-col gap-6">
       <BackNav />
       <div>
         <h1 className="text-2xl font-bold">{strings.skills.pageTitle}</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {strings.skills.pageSubtitle}
-        </p>
       </div>
 
       <SkillsEditor
         allSkills={allSkills ?? []}
-        mySkillIds={mySkillIds}
+        mySkills={mySkills}
+        allSpecializations={allSpecializations ?? []}
+        mySpecializationIds={mySpecializationIds}
       />
     </div>
   );

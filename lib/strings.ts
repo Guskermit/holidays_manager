@@ -256,6 +256,7 @@ export const strings = {
     overviewFilterShowing:(n: number, project: string) => `Showing ${n} employee${n !== 1 ? "s" : ""} assigned to ${project}`,
     overviewColEmployee:  "Employee",
     overviewColOffice:    "Office",
+    overviewColCategory:  "Category",
     overviewEmpty:        "No employees to display.",
   },
 
@@ -317,13 +318,27 @@ export const strings = {
     addButton:            "Add",
     noSkills:             "No skills in the pool yet. Be the first to add one!",
     allSkillsLabel:       "All skills",
-    allSkillsHint:        "Click a skill to add or remove it from your profile. Type to search or create a new one.",
+    allSkillsHint:        "Click a skill to add or remove it. Use the level buttons [0][1][2][3] to set your expertise.",
     mySkillsLabel:        "My skills",
     skillAlreadyAdded:    "You have already added this skill.",
     noMatchCreate:        "No skills match your search. Press Enter or click Add to create it.",
     errorLoading:         "Error loading skills. Please try again.",
     errorAdding:          (msg: string) => `Could not add skill: ${msg}`,
     errorRemoving:        (msg: string) => `Could not remove skill: ${msg}`,
+
+    // Expertise levels
+    level0:               "Sin conocimiento",
+    level1:               "Necesita supervisión",
+    level2:               "Autónomo",
+    level3:               "Puede liderar",
+
+    // Specializations
+    specializationsLabel:             "Specializations",
+    specializationsSubtitle:          "Select your areas of specialization. Click to add or remove.",
+    specializationsInputPlaceholder:  "Add a specialization (e.g. Frontend, Data Analytics…)",
+    specializationsHint:              "Click a specialization to add or remove it. Type to search or create a new one.",
+    specializationsEmpty:             "No specializations in the pool yet. Be the first to add one!",
+    searchColSpecializations:         "Specializations",
     dashboardCard:        "Skills",
     dashboardCardDesc:    "Register your professional knowledge and expertise as searchable keywords.",
     dashboardCardLink:    "Go to Skills →",

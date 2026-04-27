@@ -14,6 +14,7 @@ import {
   OFFICE_LABELS,
   type Office,
 } from "@/lib/holidays";
+import { CATEGORY_LABELS, type Category } from "@/lib/categories";
 
 type VacationRequest = {
   id: string;
@@ -26,6 +27,7 @@ type Employee = {
   id: string;
   name: string;
   office: Office;
+  category: string | null;
   vacation_requests: VacationRequest[];
 };
 
@@ -201,6 +203,9 @@ export function VacationSummaryTable({ employees, projects }: Props) {
                 <th className="sticky left-0 z-10 bg-muted/80 backdrop-blur text-left font-medium px-3 py-2 min-w-40 border-r">
                   {strings.vacations.overviewColEmployee}
                 </th>
+                <th className="text-left font-medium px-2 py-2 min-w-24 border-r text-muted-foreground">
+                  {strings.vacations.overviewColCategory}
+                </th>
                 <th className="text-left font-medium px-2 py-2 min-w-20 border-r text-muted-foreground">
                   {strings.vacations.overviewColOffice}
                 </th>
@@ -232,6 +237,11 @@ export function VacationSummaryTable({ employees, projects }: Props) {
                   <tr key={emp.id} className="hover:bg-muted/20">
                     <td className="sticky left-0 z-10 bg-background px-3 py-1.5 font-medium border-r whitespace-nowrap">
                       {emp.name}
+                    </td>
+                    <td className="px-2 py-1.5 text-muted-foreground border-r whitespace-nowrap">
+                      {emp.category
+                        ? (CATEGORY_LABELS[emp.category as Category] ?? emp.category)
+                        : "—"}
                     </td>
                     <td className="px-2 py-1.5 text-muted-foreground border-r whitespace-nowrap">
                       {OFFICE_LABELS[emp.office] ?? emp.office}

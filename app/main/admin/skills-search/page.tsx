@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { SkillsSearch, type EmployeeRow, type ProjectItem } from "@/components/admin/skills-search";
+import { SkillsSearch, type EmployeeRow, type ProjectItem, type SpecializationItem } from "@/components/admin/skills-search";
 import { BackNav } from "@/components/back-nav";
 import { strings } from "@/lib/strings";
 
@@ -23,12 +23,14 @@ export default async function AdminSkillsSearchPage() {
     redirect("/main");
   }
 
-  // Fetch all skills, all employees with their skills + projects in parallel
+  // Fetch all skills, specializations, and employees in parallel
   const [
     { data: allSkills },
+    { data: allSpecializations },
     { data: rawEmployees },
   ] = await Promise.all([
     supabase.from("skills").select("id, name").order("name"),
+    supabase.from("specializations").select("id, name").order("name"),
     supabase
       .from("employees")
       .select(`
@@ -36,7 +38,8 @@ export default async function AdminSkillsSearchPage() {
         name,
         email,
         category,
-        employee_skills ( skill_id ),
+        employee_skills ( skill_id, level ),
+        employee_specializations ( specialization_id ),
         employee_projects (
           projects (
             id_engagement,
@@ -55,7 +58,13 @@ export default async function AdminSkillsSearchPage() {
     name: emp.name,
     email: emp.email,
     category: emp.category ?? null,
-    skillIds: (emp.employee_skills ?? []).map((es: any) => es.skill_id as string),
+    skills: (emp.employee_skills ?? []).map((es: any) => ({
+      skillId: es.skill_id as string,
+      level: (es.level ?? 1) as number,
+    })),
+    specializationIds: (emp.employee_specializations ?? []).map(
+      (es: any) => es.specialization_id as string
+    ),
     projects: (emp.employee_projects ?? [])
       .map((ep: any) => ep.projects)
       .filter(Boolean)
@@ -77,7 +86,7 @@ export default async function AdminSkillsSearchPage() {
         </p>
       </div>
 
-      <SkillsSearch allSkills={allSkills ?? []} employees={employees} />
+      <SkillsSearch allSkills={allSkills ?? []} allSpecializations={(allSpecializations ?? []) as SpecializationItem[]} employees={employees} />
     </div>
   );
 }
