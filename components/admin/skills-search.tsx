@@ -89,15 +89,13 @@ export function SkillsSearch({ allSkills, employees }: Props) {
     URL.revokeObjectURL(url);
   };
 
-  // Filter employees: must have ALL selected skills
+  // Filter employees: must have ALL selected skills (show all when none selected)
   const filteredEmployees =
     selectedSkillIds.size === 0
-      ? []
+      ? employees
       : employees.filter((emp) =>
           [...selectedSkillIds].every((sid) => emp.skillIds.includes(sid))
         );
-
-  const isFiltering = selectedSkillIds.size > 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -145,10 +143,7 @@ export function SkillsSearch({ allSkills, employees }: Props) {
       </div>
 
       {/* Results */}
-      {!isFiltering ? (
-        <p className="text-sm text-muted-foreground">{strings.skills.searchNoFilters}</p>
-      ) : (
-        <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
             {strings.skills.searchResultsCount(filteredEmployees.length)}
           </p>
@@ -234,7 +229,6 @@ export function SkillsSearch({ allSkills, employees }: Props) {
             </div>
           )}
         </div>
-      )}
     </div>
   );
 }
