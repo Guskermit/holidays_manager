@@ -44,15 +44,6 @@ export async function approveVacationRequest(requestId: string): Promise<{ error
 
   if (updErr) return { error: updErr.message };
 
-  // Update balance: pending → used
-  await supabase
-    .from("vacation_balances")
-    .update({
-      used_days: supabase.rpc("coalesce", []) as any, // plain update below
-    })
-    .eq("employee_id", req.employee_id)
-    .eq("year", req.year);
-
   // Use separate increments to avoid RPC dependency
   const { data: bal } = await supabase
     .from("vacation_balances")
