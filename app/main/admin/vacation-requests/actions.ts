@@ -3,7 +3,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { sendVacationApprovedEmail, sendVacationRejectedEmail } from "@/lib/email";
 
 async function getAdminEmployee() {
   const supabase = await createClient();
@@ -24,13 +23,9 @@ export async function approveVacationRequest(requestId: string): Promise<{ error
   const { supabase, adminId } = await getAdminEmployee();
   if (!supabase || !adminId) return { error: "Not authorized" };
 
-  // Fetch the request + employee email
   const { data: req } = await supabase
     .from("vacation_requests")
-    .select(`
-      id, status, days_requested, start_date, end_date, year, employee_id,
-      employees!vacation_requests_employee_id_fkey ( name, email )
-    `)
+    .select("id, status, days_requested, year, employee_id")
     .eq("id", requestId)
     .single();
 
@@ -63,21 +58,6 @@ export async function approveVacationRequest(requestId: string): Promise<{ error
       .eq("year", req.year);
   }
 
-  // Send email (non-blocking — don't fail the action if email fails)
-  const empRaw = Array.isArray(req.employees) ? req.employees[0] : req.employees;
-  const emp = empRaw as { name: string; email: string } | null | undefined;
-  if (emp?.email) {
-    try {
-      await sendVacationApprovedEmail({
-        to: emp.email,
-        employeeName: emp.name,
-        startDate: req.start_date,
-        endDate: req.end_date,
-        daysRequested: req.days_requested,
-      });
-    } catch { }
-  }
-
   revalidatePath("/main/admin/vacation-requests");
   return {};
 }
@@ -91,10 +71,7 @@ export async function rejectVacationRequest(
 
   const { data: req } = await supabase
     .from("vacation_requests")
-    .select(`
-      id, status, days_requested, start_date, end_date, year, employee_id,
-      employees!vacation_requests_employee_id_fkey ( name, email )
-    `)
+    .select("id, status, days_requested, year, employee_id")
     .eq("id", requestId)
     .single();
 
@@ -127,22 +104,6 @@ export async function rejectVacationRequest(
       .update({ pending_days: Math.max(0, bal.pending_days - req.days_requested) })
       .eq("employee_id", req.employee_id)
       .eq("year", req.year);
-  }
-
-  // Send email
-  const empRaw = Array.isArray(req.employees) ? req.employees[0] : req.employees;
-  const emp = empRaw as { name: string; email: string } | null | undefined;
-  if (emp?.email) {
-    try {
-      await sendVacationRejectedEmail({
-        to: emp.email,
-        employeeName: emp.name,
-        startDate: req.start_date,
-        endDate: req.end_date,
-        daysRequested: req.days_requested,
-        reason: reason || undefined,
-      });
-    } catch { }
   }
 
   revalidatePath("/main/admin/vacation-requests");
