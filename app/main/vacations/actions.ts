@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getCategoryDays, type Category } from "@/lib/categories";
+import { getCategoryDays } from "@/lib/categories";
 
 export async function requestVacation(
   employeeId: string,

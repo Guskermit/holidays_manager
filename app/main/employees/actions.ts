@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { getCategoryDays, CATEGORIES, type Category } from "@/lib/categories";
+import { getCategoryDays, CATEGORIES } from "@/lib/categories";
 
 export async function updateEmployee(
   employeeId: string,

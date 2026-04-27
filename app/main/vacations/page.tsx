@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { VacationCalendar } from "@/components/vacations/vacation-calendar";
 import { requestVacation } from "@/app/main/vacations/actions";
 import { type Office } from "@/lib/holidays";
-import { getCategoryDays, type Category } from "@/lib/categories";
+import { getCategoryDays } from "@/lib/categories";
 import Link from "next/link";
 import { LayoutListIcon } from "lucide-react";
 import { BackNav } from "@/components/back-nav";
