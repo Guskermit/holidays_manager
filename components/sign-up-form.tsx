@@ -40,7 +40,7 @@ export function SignUpForm({
     setIsLoading(true);
     setError(null);
 
-    const allowedDomains = ["es.ey.com", "studio.ey.com"];
+    const allowedDomains = ["es.ey.com", "studio.ey.com", "gds.ey.com"];
     const emailDomain = email.split("@")[1]?.toLowerCase();
     if (!allowedDomains.includes(emailDomain)) {
       setError(strings.auth.signUp.errorDomain);

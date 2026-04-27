@@ -1,6 +1,9 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend() {
+  if (!process.env.RESEND_API_KEY) throw new Error("RESEND_API_KEY is not set");
+  return new Resend(process.env.RESEND_API_KEY);
+}
 const FROM = process.env.RESEND_FROM ?? "onboarding@resend.dev";
 
 export async function sendVacationApprovedEmail(opts: {
@@ -10,6 +13,7 @@ export async function sendVacationApprovedEmail(opts: {
   endDate: string;
   daysRequested: number;
 }) {
+  const resend = getResend();
   const { to, employeeName, startDate, endDate, daysRequested } = opts;
   const fmt = (d: string) =>
     new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" });
@@ -39,6 +43,7 @@ export async function sendVacationRejectedEmail(opts: {
   daysRequested: number;
   reason?: string;
 }) {
+  const resend = getResend();
   const { to, employeeName, startDate, endDate, daysRequested, reason } = opts;
   const fmt = (d: string) =>
     new Date(d).toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" });
