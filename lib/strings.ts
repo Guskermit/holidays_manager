@@ -294,6 +294,17 @@ export const strings = {
     rejectCancelButton:   "Cancel",
     rejectPlaceholder:    "Rejection reason (optional)…",
     confirmRejectButton:  "Confirm reject",
+
+    // Vacation settings
+    vacationSettings: {
+      pageTitle:            "Vacation day settings",
+      pageSubtitle:         "Configure the number of vacation days available per employee category each year.",
+      daysSuffix:           "days / year",
+      saveSuccess:          "Settings saved successfully.",
+      dashboardCard:        "Vacation settings",
+      dashboardCardDesc:    "Configure the number of vacation days available per category.",
+      dashboardCardLink:    "Go to Settings →",
+    },
   },
 
   // ── Skills ─────────────────────────────────────────────────

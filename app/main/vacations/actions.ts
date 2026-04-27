@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { CATEGORY_DAYS, type Category } from "@/lib/categories";
+import { getCategoryDays, type Category } from "@/lib/categories";
 
 export async function requestVacation(
   employeeId: string,
@@ -28,7 +28,7 @@ export async function requestVacation(
   }
 
   // Compute category-based maximum days
-  const maxDays = CATEGORY_DAYS[(employee.category as Category) ?? "Staff"] ?? 26;
+  const maxDays = await getCategoryDays(supabase, employee.category);
 
   // Sum all approved + pending days for the year
   const { data: existingRequests } = await supabase

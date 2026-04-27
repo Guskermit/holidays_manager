@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { CATEGORY_DAYS, CATEGORIES, type Category } from "@/lib/categories";
+import { getCategoryDays, CATEGORIES, type Category } from "@/lib/categories";
 
 export async function updateEmployee(
   employeeId: string,
@@ -59,7 +59,7 @@ export async function updateEmployee(
   if (error) return { error: error.message };
 
   // Update vacation balance total_days for current year based on new category
-  const maxDays = CATEGORY_DAYS[category as Category];
+  const maxDays = await getCategoryDays(supabase, category);
   const currentYear = new Date().getFullYear();
   await supabase
     .from("vacation_balances")

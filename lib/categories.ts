@@ -10,7 +10,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   Socio: "Socio",
 };
 
-/** Maximum vacation days per category per year */
+/** Default vacation days per category (used as fallback if DB is unavailable) */
 export const CATEGORY_DAYS: Record<Category, number> = {
   Staff: 26,
   Senior: 26,
@@ -19,6 +19,23 @@ export const CATEGORY_DAYS: Record<Category, number> = {
   Externo: 22,
   Socio: 31,
 };
+
+/**
+ * Reads vacation days for a category from the DB.
+ * Falls back to CATEGORY_DAYS if the DB row is missing.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getCategoryDays(supabase: any, category: string | null): Promise<number> {
+  const cat = (CATEGORIES as readonly string[]).includes(category ?? "")
+    ? (category as Category)
+    : "Staff";
+  const { data } = await supabase
+    .from("category_vacation_days")
+    .select("vacation_days")
+    .eq("category", cat)
+    .single();
+  return data?.vacation_days ?? CATEGORY_DAYS[cat];
+}
 
 export const COMPANIES = [
   "Azertium",
