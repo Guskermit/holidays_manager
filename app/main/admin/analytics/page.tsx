@@ -28,16 +28,18 @@ export default async function AdminAnalyticsPage() {
     { data: projects },
     { data: empSkills },
     { data: vacRequests },
+    { data: allSkillsDB },
   ] = await Promise.all([
     supabase.from("employees").select("id, category"),
     supabase
       .from("projects")
       .select("id_engagement, name, color, end_date, employee_projects(employee_id)")
       .order("name"),
-    supabase.from("employee_skills").select("skill_id, skills(name)"),
+    supabase.from("employee_skills").select("employee_id, skill_id, level, skills(id, name, category)"),
     supabase
       .from("vacation_requests")
       .select("status, days_requested, year, start_date"),
+    supabase.from("skills").select("id, name, category").order("category, name"),
   ]);
 
   const currentYear = new Date().getFullYear();
@@ -83,6 +85,66 @@ export default async function AdminAnalyticsPage() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
     .map(([name, count]) => ({ name, count }));
+
+  // ── Advanced skills analysis ───────────────────────────────────
+  type LevelCounts = [number, number, number, number];
+  interface SkillStats {
+    name: string; category: string; count: number;
+    levelCounts: LevelCounts; levelSum: number;
+  }
+  const skillStatsMap = new Map<string, SkillStats>();
+  const empsByCategory = new Map<string, Set<string>>();
+
+  for (const row of empSkills ?? []) {
+    const skillInfo = (row as any).skills as { id: string; name: string; category: string } | null;
+    if (!skillInfo) continue;
+    const skillId = (row as any).skill_id as string;
+    const empId = (row as any).employee_id as string;
+    const level = Math.min(3, Math.max(0, ((row as any).level as number) ?? 0)) as 0|1|2|3;
+
+    if (!skillStatsMap.has(skillId)) {
+      skillStatsMap.set(skillId, { name: skillInfo.name, category: skillInfo.category, count: 0, levelCounts: [0,0,0,0], levelSum: 0 });
+    }
+    const s = skillStatsMap.get(skillId)!;
+    s.count++;
+    s.levelCounts[level]++;
+    s.levelSum += level;
+
+    if (!empsByCategory.has(skillInfo.category)) empsByCategory.set(skillInfo.category, new Set());
+    empsByCategory.get(skillInfo.category)!.add(empId);
+  }
+
+  const skillsByCategoryDB = new Map<string, { id: string; name: string }[]>();
+  for (const s of (allSkillsDB ?? []) as any[]) {
+    if (!skillsByCategoryDB.has(s.category)) skillsByCategoryDB.set(s.category, []);
+    skillsByCategoryDB.get(s.category)!.push({ id: s.id, name: s.name });
+  }
+
+  const skillsByCategory = [...skillsByCategoryDB.entries()]
+    .map(([category, dbSkills]) => {
+      const activeSkills = dbSkills
+        .map((sk) => {
+          const st = skillStatsMap.get(sk.id);
+          return { name: sk.name, count: st?.count ?? 0, avgLevel: st ? st.levelSum / st.count : 0, levels: (st?.levelCounts ?? [0,0,0,0]) as LevelCounts };
+        })
+        .filter((sk) => sk.count > 0)
+        .sort((a, b) => b.count - a.count);
+
+      const empsInCat = empsByCategory.get(category)?.size ?? 0;
+      let totalLvlSum = 0, totalAssign = 0;
+      for (const sk of activeSkills) { totalLvlSum += sk.avgLevel * sk.count; totalAssign += sk.count; }
+
+      return { category, employeeCount: empsInCat, avgLevel: totalAssign > 0 ? totalLvlSum / totalAssign : 0, totalSkillsInDB: dbSkills.length, skills: activeSkills };
+    })
+    .sort((a, b) => b.employeeCount - a.employeeCount);
+
+  const uncoveredSkills = ((allSkillsDB ?? []) as any[])
+    .filter((s) => !skillStatsMap.has(s.id) || skillStatsMap.get(s.id)!.count === 0)
+    .map((s) => ({ name: s.name as string, category: s.category as string }));
+
+  const allEmpIdsWithSkills = new Set<string>();
+  for (const row of empSkills ?? []) allEmpIdsWithSkills.add((row as any).employee_id as string);
+  const totalWithSkills = allEmpIdsWithSkills.size;
 
   // ── Vacation stats ─────────────────────────────────────────────
   const thisYearReqs: any[] = (vacRequests ?? []).filter(
@@ -143,6 +205,11 @@ export default async function AdminAnalyticsPage() {
     vacationByStatus,
     monthlyApproved,
     year: currentYear,
+    skillsAnalysis: {
+      byCategory: skillsByCategory,
+      uncoveredSkills,
+      totalWithSkills,
+    },
   };
 
   return (

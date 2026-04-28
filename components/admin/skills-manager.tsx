@@ -15,8 +15,6 @@ type Props = {
   categories: string[];
 };
 
-const NEW_CAT_SENTINEL = "__new__";
-
 export function SkillsManager({ skills: initialSkills, categories: initialCategories }: Props) {
   const [skills, setSkills] = useState<Skill[]>(initialSkills);
   const [categories, setCategories] = useState<string[]>(initialCategories);
