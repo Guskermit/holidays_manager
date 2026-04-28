@@ -359,6 +359,8 @@ export const strings = {
     adminNoSkills:       (cat: string) => `No hay skills en ${cat}. Añade la primera.`,
     adminDeleteTitle:    "Eliminar skill",
     adminDashboardLink:  "Gestionar skills →",
+    adminAddCategory:    "Nueva categoría",
+    adminNewCategoryPlaceholder: "Nombre de la categoría…",
     addSkillTitle:       "Add skill",
     removeSkillTitle:    "Remove skill",
 

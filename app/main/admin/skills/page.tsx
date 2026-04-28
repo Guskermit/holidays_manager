@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { BackNav } from "@/components/back-nav";
 import { SkillsManager } from "@/components/admin/skills-manager";
 import { strings } from "@/lib/strings";
+import { SKILL_CATEGORIES } from "@/lib/categories";
 
 export default async function AdminSkillsPage() {
   const supabase = await createClient();
@@ -24,6 +25,13 @@ export default async function AdminSkillsPage() {
     .order("category")
     .order("name");
 
+  // Merge predefined categories with any custom ones already in DB
+  const dbCategories = [...new Set((skills ?? []).map((s) => s.category))];
+  const allCategories = [
+    ...SKILL_CATEGORIES,
+    ...dbCategories.filter((c) => !(SKILL_CATEGORIES as readonly string[]).includes(c)),
+  ];
+
   return (
     <div className="flex flex-col gap-6">
       <BackNav />
@@ -31,7 +39,7 @@ export default async function AdminSkillsPage() {
         <h1 className="text-2xl font-bold">{strings.skills.adminPageTitle}</h1>
         <p className="text-sm text-muted-foreground mt-1">{strings.skills.adminPageSubtitle}</p>
       </div>
-      <SkillsManager skills={skills ?? []} />
+      <SkillsManager skills={skills ?? []} categories={allCategories} />
     </div>
   );
 }

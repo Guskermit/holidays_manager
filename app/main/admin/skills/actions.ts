@@ -2,7 +2,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { SKILL_CATEGORIES } from "@/lib/categories";
 
 async function getAdminClient() {
   const supabase = await createClient();
@@ -21,17 +20,17 @@ export async function createSkill(
   name: string,
   category: string
 ): Promise<{ error?: string }> {
-  const trimmed = name.trim();
-  if (!trimmed) return { error: "Skill name cannot be empty" };
-  if (!(SKILL_CATEGORIES as readonly string[]).includes(category))
-    return { error: "Invalid category" };
+  const trimmedName = name.trim();
+  const trimmedCat = category.trim();
+  if (!trimmedName) return { error: "Skill name cannot be empty" };
+  if (!trimmedCat) return { error: "Category cannot be empty" };
 
   const supabase = await getAdminClient();
   if (!supabase) return { error: "Not authorized" };
 
   const { error } = await supabase
     .from("skills")
-    .insert({ name: trimmed, category });
+    .insert({ name: trimmedName, category: trimmedCat });
 
   if (error) {
     if (error.code === "23505") return { error: "A skill with that name already exists in this category" };
