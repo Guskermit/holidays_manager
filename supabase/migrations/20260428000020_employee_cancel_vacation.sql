@@ -6,6 +6,7 @@
 
 -- Replace the existing employee update policy with a broader one
 drop policy if exists "vacation_requests: update own pending" on public.vacation_requests;
+drop policy if exists "vacation_requests: employee cancel" on public.vacation_requests;
 
 create policy "vacation_requests: employee cancel"
   on public.vacation_requests for update

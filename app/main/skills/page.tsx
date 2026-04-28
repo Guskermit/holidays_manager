@@ -35,7 +35,7 @@ export default async function SkillsPage() {
     { data: allSpecializations },
     { data: mySpecLinks },
   ] = await Promise.all([
-    supabase.from("skills").select("id, name").order("name"),
+    supabase.from("skills").select("id, name, category").order("category").order("name"),
     supabase
       .from("employee_skills")
       .select("skill_id, level")

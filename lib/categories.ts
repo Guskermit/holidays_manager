@@ -59,3 +59,14 @@ export const COMPANIES = [
   "Change the Block",
 ] as const;
 export type Company = (typeof COMPANIES)[number];
+
+/** Ordered list of skill categories */
+export const SKILL_CATEGORIES = [
+  "Frontend",
+  "Backend",
+  "BBDD",
+  "Infra/DevOps",
+  "Arquitectura",
+  "IA/Data",
+] as const;
+export type SkillCategory = (typeof SKILL_CATEGORIES)[number];

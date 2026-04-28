@@ -351,6 +351,17 @@ export const strings = {
     dashboardCardDesc:    "Register your professional knowledge and expertise as searchable keywords.",
     dashboardCardLink:    "Go to Skills →",
 
+    // Admin — manage skills catalogue
+    adminPageTitle:      "Gestión de skills",
+    adminPageSubtitle:   "Añade o elimina skills por categoría. Los empleados podrán seleccionarlas desde su perfil.",
+    adminAddPlaceholder: (cat: string) => `Nueva skill en ${cat}…`,
+    adminAddButton:      "Añadir",
+    adminNoSkills:       (cat: string) => `No hay skills en ${cat}. Añade la primera.`,
+    adminDeleteTitle:    "Eliminar skill",
+    adminDashboardLink:  "Gestionar skills →",
+    addSkillTitle:       "Add skill",
+    removeSkillTitle:    "Remove skill",
+
     // Admin — search employees by skill
     searchPageTitle:      "Search by skills",
     searchPageSubtitle:   "Find employees by one or more skills. Select skills below to filter the results.",

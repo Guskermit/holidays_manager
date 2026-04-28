@@ -27,12 +27,10 @@ async function touchSkillsUpdatedAt(
 // ── Skills ────────────────────────────────────────────────────────────────────
 
 /**
- * Add a skill to the global pool (if new) and assign it to the current
- * employee at level 1. Returns the real skill ID.
+ * Assign an existing skill (by ID) to the current employee at level 1.
  */
-export async function addSkill(name: string): Promise<{ skillId?: string; error?: string }> {
-  const trimmed = name.trim();
-  if (!trimmed) return { error: "Skill name cannot be empty" };
+export async function addSkill(skillId: string): Promise<{ error?: string }> {
+  if (!skillId) return { error: "Skill ID is required" };
 
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getClaims();
@@ -41,24 +39,13 @@ export async function addSkill(name: string): Promise<{ skillId?: string; error?
   const employeeId = await getEmployeeId(supabase, authData.claims.sub);
   if (!employeeId) return { error: "Employee profile not found" };
 
-  let skillId: string;
-  const { data: existing } = await supabase
+  // Verify the skill exists
+  const { data: skill } = await supabase
     .from("skills")
     .select("id")
-    .ilike("name", trimmed)
+    .eq("id", skillId)
     .maybeSingle();
-
-  if (existing) {
-    skillId = existing.id;
-  } else {
-    const { data: inserted, error: insertErr } = await supabase
-      .from("skills")
-      .insert({ name: trimmed })
-      .select("id")
-      .single();
-    if (insertErr || !inserted) return { error: insertErr?.message ?? "Failed to create skill" };
-    skillId = inserted.id;
-  }
+  if (!skill) return { error: "Skill not found" };
 
   const { error: linkErr } = await supabase
     .from("employee_skills")
@@ -71,7 +58,7 @@ export async function addSkill(name: string): Promise<{ skillId?: string; error?
 
   await touchSkillsUpdatedAt(supabase, employeeId);
   revalidatePath("/main/skills");
-  return { skillId };
+  return {};
 }
 
 /** Update the expertise level (0-3) of a skill already assigned to the current employee. */
