@@ -60,6 +60,7 @@ export function ProjectForm({ employees, initialValues }: Props) {
   const [iconPreview, setIconPreview] = useState<string | null>(
     initialValues?.iconUrl ?? null
   );
+  const [employeeSearch, setEmployeeSearch] = useState("");
   const iconInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -237,8 +238,17 @@ export function ProjectForm({ employees, initialValues }: Props) {
         {employees.length === 0 ? (
           <p className="text-sm text-muted-foreground">{strings.projects.formEmployeesEmpty}</p>
         ) : (
+          <>
+          <Input
+            type="search"
+            placeholder={strings.projects.formEmployeesSearch}
+            value={employeeSearch}
+            onChange={(e) => setEmployeeSearch(e.target.value)}
+          />
           <div className="border rounded-md divide-y max-h-64 overflow-y-auto">
-            {employees.map((employee) => (
+            {employees.filter((e) =>
+              `${e.name} ${e.email}`.toLowerCase().includes(employeeSearch.toLowerCase())
+            ).map((employee) => (
               <div
                 key={employee.id}
                 className="flex items-center gap-3 px-4 py-3 hover:bg-accent/50 cursor-pointer"
@@ -256,8 +266,7 @@ export function ProjectForm({ employees, initialValues }: Props) {
                 </div>
               </div>
             ))}
-          </div>
-        )}
+          </div>          </>        )}
         {selectedEmployees.size > 0 && (
           <p className="text-xs text-muted-foreground">
             {strings.projects.formEmployeesCount(selectedEmployees.size)}

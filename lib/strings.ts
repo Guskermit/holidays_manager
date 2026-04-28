@@ -180,6 +180,7 @@ export const strings = {
     formEndLabel:         "End date",
     formEmployeesLabel:   "Assign employees",
     formEmployeesEmpty:   "No employees found.",
+    formEmployeesSearch:  "Search employees…",
     formEmployeesCount:   (n: number) => `${n} employee${n !== 1 ? "s" : ""} selected`,
     submitCreate:         "Create project",
     submitCreating:       "Creating...",

@@ -45,7 +45,7 @@ export function VacationSettingsForm({ currentDays }: Props) {
                 id={cat}
                 name={cat}
                 type="number"
-                min={1}
+                min={0}
                 max={365}
                 required
                 defaultValue={currentDays[cat]}

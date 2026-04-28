@@ -1,4 +1,4 @@
-export const CATEGORIES = ["Staff", "Senior", "Manager", "Senior-Manager", "Externo", "Socio"] as const;
+export const CATEGORIES = ["Staff", "Senior", "Manager", "Senior-Manager", "Externo", "Socio", "Intern"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const PREDEFINED_SPECIALIZATIONS = [
@@ -21,6 +21,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   "Senior-Manager": "Senior Manager",
   Externo: "Externo",
   Socio: "Socio",
+  Intern: "Becario",
 };
 
 /** Default vacation days per category (used as fallback if DB is unavailable) */
@@ -31,6 +32,7 @@ export const CATEGORY_DAYS: Record<Category, number> = {
   "Senior-Manager": 31,
   Externo: 22,
   Socio: 31,
+  Intern: 0,
 };
 
 /**

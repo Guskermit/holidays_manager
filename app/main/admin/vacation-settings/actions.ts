@@ -23,7 +23,7 @@ export async function updateVacationSettings(
   for (const category of CATEGORIES) {
     const raw = formData.get(category) as string;
     const days = parseInt(raw, 10);
-    if (isNaN(days) || days < 1) return { error: `Invalid value for ${category}` };
+    if (isNaN(days) || days < 0) return { error: `Invalid value for ${category}` };
 
     const { error } = await supabase
       .from("category_vacation_days")
