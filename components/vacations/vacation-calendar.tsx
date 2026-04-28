@@ -14,7 +14,7 @@ import {
 } from "@/lib/holidays";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, Trash2Icon } from "lucide-react";
 import { strings } from "@/lib/strings";
 
 type VacationRequest = {
@@ -38,6 +38,7 @@ type Props = {
     daysRequested: number,
     year: number
   ) => Promise<{ error?: string }>;
+  onCancel: (requestId: string) => Promise<{ error?: string }>;
 };
 
 const STATUS_LABELS: Record<VacationRequest["status"], string> = {
@@ -85,6 +86,7 @@ export function VacationCalendar({
   requests,
   maxDays,
   onSubmit,
+  onCancel,
 }: Props) {
   const router = useRouter();
   const currentYear = new Date().getFullYear();
@@ -101,6 +103,8 @@ export function VacationCalendar({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const holidays = useMemo(() => getHolidaysForOffice(office), [office]);
 
@@ -550,6 +554,10 @@ export function VacationCalendar({
           <h2 className="text-base font-semibold">{strings.vacations.requestsTitle}</h2>
         </div>
 
+        {cancelError && (
+          <p className="text-sm text-destructive">{cancelError}</p>
+        )}
+
         {requests.length === 0 ? (
           <p className="text-sm text-muted-foreground">{strings.vacations.requestsEmpty}</p>
         ) : (
@@ -579,10 +587,32 @@ export function VacationCalendar({
                     <th className="text-left font-medium px-4 py-2">{strings.vacations.colDays}</th>
                     <th className="text-left font-medium px-4 py-2">{strings.vacations.colYear}</th>
                     <th className="text-left font-medium px-4 py-2">{strings.vacations.colStatus}</th>
+                    <th className="px-4 py-2" />
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {requests.map((r) => (
+                  {requests.map((r) => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const startDate = new Date(r.start_date + "T00:00:00");
+                    const isCancellable =
+                      r.status === "pending" ||
+                      (r.status === "approved" && startDate > today);
+
+                    const handleCancel = async () => {
+                      if (!confirm(strings.vacations.cancelConfirm)) return;
+                      setCancellingId(r.id);
+                      setCancelError(null);
+                      const result = await onCancel(r.id);
+                      if (result?.error) {
+                        setCancelError(result.error);
+                      } else {
+                        router.refresh();
+                      }
+                      setCancellingId(null);
+                    };
+
+                    return (
                     <tr key={r.id} className={cn("transition-colors", STATUS_ROW_COLOR[r.status])}>
                       <td className="px-4 py-2">
                         {new Date(r.start_date + "T00:00:00").toLocaleDateString("es-ES", {
@@ -601,8 +631,24 @@ export function VacationCalendar({
                           {STATUS_LABELS[r.status]}
                         </Badge>
                       </td>
+                      <td className="px-4 py-2 text-right">
+                        {isCancellable && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="size-7 text-muted-foreground hover:text-destructive"
+                            disabled={cancellingId === r.id}
+                            onClick={handleCancel}
+                            title={strings.vacations.cancelButton}
+                          >
+                            <Trash2Icon className="size-4" />
+                          </Button>
+                        )}
+                      </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

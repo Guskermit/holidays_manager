@@ -244,6 +244,8 @@ export const strings = {
     colDays:              "Days",
     colYear:              "Year",
     colStatus:            "Status",
+    cancelButton:         "Cancel request",
+    cancelConfirm:        "Are you sure you want to cancel this vacation request?",
     statusPending:        "Pending",
     statusApproved:       "Approved",
     statusRejected:       "Rejected",

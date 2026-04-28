@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { VacationCalendar } from "@/components/vacations/vacation-calendar";
-import { requestVacation } from "@/app/main/vacations/actions";
+import { requestVacation, cancelVacationRequest } from "@/app/main/vacations/actions";
 import { type Office } from "@/lib/holidays";
 import { getCategoryDays } from "@/lib/categories";
 import Link from "next/link";
@@ -67,6 +67,7 @@ export default async function VacationsPage() {
         requests={requests ?? []}
         maxDays={maxDays}
         onSubmit={requestVacation}
+        onCancel={cancelVacationRequest}
       />
     </div>
   );
