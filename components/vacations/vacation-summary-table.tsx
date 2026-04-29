@@ -42,6 +42,8 @@ type Project = {
 type Props = {
   employees: Employee[];
   projects: Project[];
+  balances?: Map<string, { totalDays: number; usedDays: number; pendingDays: number }>;
+  year?: number;
 };
 
 const STATUS_COLOR: Record<VacationRequest["status"], string> = {
@@ -60,9 +62,9 @@ const STATUS_LABEL: Record<VacationRequest["status"], string> = {
 
 const MONTH_NAMES = strings.vacations.calendarMonths;
 
-export function VacationSummaryTable({ employees, projects }: Props) {
+export function VacationSummaryTable({ employees, projects, balances, year: propYear }: Props) {
   const today = new Date();
-  const [year, setYear]   = useState(today.getFullYear());
+  const [year, setYear]   = useState(propYear ?? today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -306,6 +308,9 @@ export function VacationSummaryTable({ employees, projects }: Props) {
                 <th className="text-left font-medium px-2 py-2 min-w-20 border-r text-muted-foreground">
                   {strings.vacations.overviewColOffice}
                 </th>
+                <th className="text-center font-medium px-2 py-2 min-w-24 border-r text-muted-foreground whitespace-nowrap">
+                  Días {propYear ?? today.getFullYear()}
+                </th>
                 {days.map(d => {
                   const weekend = isWeekend(d);
                   const ds = toDateString(d);
@@ -355,6 +360,36 @@ export function VacationSummaryTable({ employees, projects }: Props) {
                     </td>
                     <td className="px-2 py-1.5 text-muted-foreground border-r whitespace-nowrap">
                       {OFFICE_LABELS[emp.office] ?? emp.office}
+                    </td>
+                    <td className="px-2 py-1.5 border-r">
+                      {(() => {
+                        const bal = balances?.get(emp.id);
+                        if (!bal) return <span className="text-muted-foreground text-center block">—</span>;
+                        const spent = bal.usedDays + bal.pendingDays;
+                        const pct = bal.totalDays > 0 ? Math.min(100, Math.round((spent / bal.totalDays) * 100)) : 0;
+                        const overLimit = spent > bal.totalDays;
+                        return (
+                          <div className="flex flex-col gap-1 min-w-[72px]">
+                            <div className="flex justify-between items-baseline gap-1">
+                              <span className={cn("text-xs font-semibold tabular-nums", overLimit ? "text-red-500" : "")}>
+                                {spent}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">/ {bal.totalDays}</span>
+                            </div>
+                            <div className="h-1 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className={cn("h-full rounded-full", overLimit ? "bg-red-500" : pct >= 80 ? "bg-amber-500" : "bg-emerald-500")}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            {bal.pendingDays > 0 && (
+                              <span className="text-[10px] text-muted-foreground leading-none">
+                                {bal.usedDays}+{bal.pendingDays}p
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                     {days.map(d => {
                       const ds = toDateString(d);

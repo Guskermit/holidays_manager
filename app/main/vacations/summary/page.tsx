@@ -30,6 +30,7 @@ export default async function VacationSummaryPage() {
     .single();
 
   const isAdmin = currentEmployee?.role === "admin";
+  const currentYear = new Date().getFullYear();
 
   let employees: any[] = [];
   let projects: any[] = [];
@@ -46,8 +47,6 @@ export default async function VacationSummaryPage() {
         .select(`id_engagement, name, color, employee_projects ( employee_id )`)
         .order("name"),
     ]);
-    if (empResult.error) console.error("[summary] employees query error:", empResult.error.message, empResult.error.code, empResult.error.details, empResult.error.hint);
-    if (projResult.error) console.error("[summary] projects query error:", projResult.error.message, projResult.error.code);
     employees = (empResult.data ?? []).map(flattenEmployee);
     projects = projResult.data ?? [];
   } else {
@@ -90,6 +89,25 @@ export default async function VacationSummaryPage() {
     }
   }
 
+  // Fetch vacation balances for current year (RLS: admin sees all, employee sees own)
+  const allEmployeeIds = employees.map((e: any) => e.id);
+  const { data: balancesRaw } = allEmployeeIds.length > 0
+    ? await supabase
+        .from("vacation_balances")
+        .select("employee_id, total_days, used_days, pending_days")
+        .eq("year", currentYear)
+        .in("employee_id", allEmployeeIds)
+    : { data: [] };
+
+  const balances = new Map<string, { totalDays: number; usedDays: number; pendingDays: number }>();
+  for (const b of (balancesRaw ?? []) as any[]) {
+    balances.set(b.employee_id, {
+      totalDays: b.total_days,
+      usedDays: b.used_days,
+      pendingDays: b.pending_days,
+    });
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <BackNav />
@@ -105,6 +123,8 @@ export default async function VacationSummaryPage() {
       <VacationSummaryTable
         employees={employees as any}
         projects={projects}
+        balances={balances}
+        year={currentYear}
       />
     </div>
   );
