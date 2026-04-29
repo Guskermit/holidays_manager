@@ -90,25 +90,41 @@ export default async function VacationSummaryPage() {
   }
 
   // Compute vacation balances from requests (reliable source of truth)
-  // total_days still comes from vacation_balances; used/pending are computed directly.
+  // total_days: prefer vacation_balances row; fall back to category_vacation_days.
   const allEmployeeIds = employees.map((e: any) => e.id);
-  const { data: balancesRaw } = allEmployeeIds.length > 0
-    ? await supabase
-        .from("vacation_balances")
-        .select("employee_id, total_days")
-        .eq("year", currentYear)
-        .in("employee_id", allEmployeeIds)
-    : { data: [] };
+
+  const [balancesResult, categoryDaysResult] = await Promise.all([
+    allEmployeeIds.length > 0
+      ? supabase
+          .from("vacation_balances")
+          .select("employee_id, total_days")
+          .eq("year", currentYear)
+          .in("employee_id", allEmployeeIds)
+      : { data: [] },
+    supabase
+      .from("category_vacation_days")
+      .select("category, vacation_days"),
+  ]);
 
   const totalDaysMap = new Map<string, number>();
-  for (const b of (balancesRaw ?? []) as any[]) {
+  for (const b of ((balancesResult as any).data ?? []) as any[]) {
     totalDaysMap.set(b.employee_id, b.total_days);
+  }
+
+  // category → default days map
+  const categoryDaysMap = new Map<string, number>();
+  for (const row of ((categoryDaysResult as any).data ?? []) as any[]) {
+    categoryDaysMap.set(row.category, row.vacation_days);
   }
 
   const balances = new Map<string, { totalDays: number; usedDays: number; pendingDays: number }>();
   for (const emp of employees as any[]) {
-    const total = totalDaysMap.get(emp.id);
-    if (total === undefined) continue; // no balance row yet → skip
+    // Use balance row if present, otherwise fall back to category default
+    const total =
+      totalDaysMap.get(emp.id) ??
+      categoryDaysMap.get(emp.category ?? "") ??
+      0;
+
     let usedDays = 0;
     let pendingDays = 0;
     for (const req of (emp.vacation_requests ?? []) as any[]) {
