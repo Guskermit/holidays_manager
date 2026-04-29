@@ -151,17 +151,19 @@ export function VacationCalendar({
       const cur = new Date(r.start_date + "T00:00:00");
       const end = new Date(r.end_date + "T00:00:00");
       while (cur <= end) {
-        const ds = toDateString(cur);
-        // approved wins over pending; pending wins over rejected
-        const prev = map.get(ds);
-        if (!prev || r.status === "approved" || (r.status === "pending" && prev === "rejected")) {
-          map.set(ds, r.status);
+        if (!isWeekend(cur) && !isHoliday(cur, holidays)) {
+          const ds = toDateString(cur);
+          // approved wins over pending; pending wins over rejected
+          const prev = map.get(ds);
+          if (!prev || r.status === "approved" || (r.status === "pending" && prev === "rejected")) {
+            map.set(ds, r.status);
+          }
         }
         cur.setDate(cur.getDate() + 1);
       }
     }
     return map;
-  }, [requests]);
+  }, [requests, holidays]);
 
   // For overlap check: only pending/approved block new selections
   const blockedDates = useMemo(() => {

@@ -20,6 +20,8 @@ export async function updateVacationSettings(
 
   if (emp?.role !== "admin") return { error: "Not authorized" };
 
+  const currentYear = new Date().getFullYear();
+
   for (const category of CATEGORIES) {
     const raw = formData.get(category) as string;
     const days = parseInt(raw, 10);
@@ -31,6 +33,21 @@ export async function updateVacationSettings(
       .eq("category", category);
 
     if (error) return { error: error.message };
+
+    // Propagate the new total_days to all existing vacation_balances for this year
+    const { data: affectedEmployees } = await supabase
+      .from("employees")
+      .select("id")
+      .eq("category", category);
+
+    if (affectedEmployees && affectedEmployees.length > 0) {
+      const ids = affectedEmployees.map((e) => e.id);
+      await supabase
+        .from("vacation_balances")
+        .update({ total_days: days })
+        .eq("year", currentYear)
+        .in("employee_id", ids);
+    }
   }
 
   revalidatePath("/main/admin/vacation-settings");

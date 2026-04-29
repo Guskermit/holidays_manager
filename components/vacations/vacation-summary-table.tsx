@@ -123,15 +123,18 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
     const map = new Map<string, Map<string, VacationRequest["status"]>>();
     for (const emp of visibleEmployees) {
       const dayMap = new Map<string, VacationRequest["status"]>();
+      const officeHolidays = getHolidaysForOffice(emp.office);
       for (const req of emp.vacation_requests) {
         if (req.status === "cancelled") continue;
         const cur = new Date(req.start_date + "T00:00:00");
         const end = new Date(req.end_date   + "T00:00:00");
         while (cur <= end) {
-          const ds = toDateString(cur);
-          // approved wins over pending
-          if (!dayMap.has(ds) || req.status === "approved") {
-            dayMap.set(ds, req.status);
+          if (!isWeekend(cur) && !isHoliday(cur, officeHolidays)) {
+            const ds = toDateString(cur);
+            // approved wins over pending
+            if (!dayMap.has(ds) || req.status === "approved") {
+              dayMap.set(ds, req.status);
+            }
           }
           cur.setDate(cur.getDate() + 1);
         }
@@ -366,10 +369,20 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
                         const bal = balances?.get(emp.id);
                         if (!bal) return <span className="text-muted-foreground text-center block">—</span>;
                         const spent = bal.usedDays + bal.pendingDays;
+                        const remaining = bal.totalDays - spent;
                         const pct = bal.totalDays > 0 ? Math.min(100, Math.round((spent / bal.totalDays) * 100)) : 0;
                         const overLimit = spent > bal.totalDays;
+                        const tooltip = [
+                          `Total: ${bal.totalDays} días`,
+                          `Disfrutados: ${bal.usedDays} días`,
+                          bal.pendingDays > 0 ? `Pendientes aprobación: ${bal.pendingDays} días` : null,
+                          `Restantes: ${remaining} días`,
+                        ].filter(Boolean).join("\n");
                         return (
-                          <div className="flex flex-col gap-1 min-w-[72px]">
+                          <div
+                            title={tooltip}
+                            className="flex flex-col gap-1 min-w-[72px] cursor-default"
+                          >
                             <div className="flex justify-between items-baseline gap-1">
                               <span className={cn("text-xs font-semibold tabular-nums", overLimit ? "text-red-500" : "")}>
                                 {spent}

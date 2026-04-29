@@ -40,7 +40,7 @@ export default async function VacationSummaryPage() {
     const [empResult, projResult] = await Promise.all([
       supabase
         .from("employees")
-        .select(`id, name, office, category, employee_specializations ( specializations ( name ) ), vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status )`)
+        .select(`id, name, office, category, employee_specializations ( specializations ( name ) ), vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status, days_requested, year )`)
         .order("name"),
       supabase
         .from("projects")
@@ -80,7 +80,7 @@ export default async function VacationSummaryPage() {
 
       const { data: myEmployees } = await supabase
         .from("employees")
-        .select(`id, name, office, category, employee_specializations ( specializations ( name ) ), vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status )`)
+        .select(`id, name, office, category, employee_specializations ( specializations ( name ) ), vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status, days_requested, year )`)
         .in("id", uniqueIds)
         .order("name");
 
@@ -89,23 +89,34 @@ export default async function VacationSummaryPage() {
     }
   }
 
-  // Fetch vacation balances for current year (RLS: admin sees all, employee sees own)
+  // Compute vacation balances from requests (reliable source of truth)
+  // total_days still comes from vacation_balances; used/pending are computed directly.
   const allEmployeeIds = employees.map((e: any) => e.id);
   const { data: balancesRaw } = allEmployeeIds.length > 0
     ? await supabase
         .from("vacation_balances")
-        .select("employee_id, total_days, used_days, pending_days")
+        .select("employee_id, total_days")
         .eq("year", currentYear)
         .in("employee_id", allEmployeeIds)
     : { data: [] };
 
-  const balances = new Map<string, { totalDays: number; usedDays: number; pendingDays: number }>();
+  const totalDaysMap = new Map<string, number>();
   for (const b of (balancesRaw ?? []) as any[]) {
-    balances.set(b.employee_id, {
-      totalDays: b.total_days,
-      usedDays: b.used_days,
-      pendingDays: b.pending_days,
-    });
+    totalDaysMap.set(b.employee_id, b.total_days);
+  }
+
+  const balances = new Map<string, { totalDays: number; usedDays: number; pendingDays: number }>();
+  for (const emp of employees as any[]) {
+    const total = totalDaysMap.get(emp.id);
+    if (total === undefined) continue; // no balance row yet → skip
+    let usedDays = 0;
+    let pendingDays = 0;
+    for (const req of (emp.vacation_requests ?? []) as any[]) {
+      if (req.year !== currentYear) continue;
+      if (req.status === "approved") usedDays += req.days_requested ?? 0;
+      else if (req.status === "pending") pendingDays += req.days_requested ?? 0;
+    }
+    balances.set(emp.id, { totalDays: total, usedDays, pendingDays });
   }
 
   return (
