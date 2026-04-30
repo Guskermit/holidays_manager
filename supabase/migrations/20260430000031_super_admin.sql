@@ -51,7 +51,3 @@ CREATE POLICY "employees: admin update all"
     AND (role != 'super-admin' OR public.is_super_admin())
   );
 
--- 5. Promote gustavo to super-admin
-UPDATE public.employees
-  SET role = 'super-admin'
-WHERE email = 'gustavo.lopezmartinez@es.ey.com';
