@@ -120,6 +120,8 @@ export const strings = {
     cardOverview:           "Vacation overview",
     cardOverviewDesc:       "Monthly calendar view of the whole team's vacations, filterable by project.",
     cardOverviewLink:       "Go to Overview →",
+    cardTeamOverview:       "Team vacations",
+    cardTeamOverviewDesc:   "Calendar view of your project colleagues' vacations.",
   },
 
   // ── Employees ──────────────────────────────────────────────
@@ -254,6 +256,10 @@ export const strings = {
     overviewTitle:        "Vacation overview",
     overviewSubtitleAdmin:"Monthly view of all employees' vacation requests.",
     overviewSubtitleUser: "Monthly view of your project team's vacation requests.",
+
+    teamTitle:            "Team vacations",
+    teamSubtitle:         "Vacation overview for colleagues assigned to your projects.",
+    teamNoProjects:       "You are not assigned to any projects. Contact an admin to be added to a project.",
     overviewFilterLabel:  "Filter by project:",
     overviewFilterAll:    "All employees",
     overviewFilterShowing:(n: number, project: string) => `Showing ${n} employee${n !== 1 ? "s" : ""} assigned to ${project}`,

@@ -108,15 +108,15 @@ export default async function ProtectedPage() {
           </Link>
 
           <Link
-            href="/main/vacations/summary"
+            href={employee?.role === "admin" ? "/main/vacations/summary" : "/main/vacations/team"}
             className="group flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-teal-500 transition-colors"
           >
             <div className="flex items-center justify-center size-12 rounded-lg bg-teal-500/10 text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-colors">
               <LayoutListIcon className="size-6" />
             </div>
             <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-semibold">{strings.dashboard.cardOverview}</h2>
-              <p className="text-sm text-muted-foreground">{strings.dashboard.cardOverviewDesc}</p>
+              <h2 className="text-lg font-semibold">{employee?.role === "admin" ? strings.dashboard.cardOverview : strings.dashboard.cardTeamOverview}</h2>
+              <p className="text-sm text-muted-foreground">{employee?.role === "admin" ? strings.dashboard.cardOverviewDesc : strings.dashboard.cardTeamOverviewDesc}</p>
             </div>
             <span className="text-sm text-teal-600 font-medium group-hover:underline">{strings.dashboard.cardOverviewLink}</span>
           </Link>

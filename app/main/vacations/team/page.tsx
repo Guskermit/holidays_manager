@@ -14,7 +14,7 @@ function flattenEmployee(emp: any) {
   };
 }
 
-export default async function VacationSummaryPage() {
+export default async function TeamVacationPage() {
   const supabase = await createClient();
 
   const { data: authData, error: authError } = await supabase.auth.getClaims();
@@ -22,37 +22,67 @@ export default async function VacationSummaryPage() {
     redirect("/auth/login");
   }
 
-  // Get current employee + role
   const { data: currentEmployee } = await supabase
     .from("employees")
     .select("id, role")
     .eq("user_id", authData.claims.sub)
     .single();
 
-  if (currentEmployee?.role !== "admin") {
-    redirect("/main");
+  // Admins use the full admin overview
+  if (currentEmployee?.role === "admin") {
+    redirect("/main/vacations/summary");
   }
 
   const currentYear = new Date().getFullYear();
 
-  let employees: any[] = [];
-  let projects: any[] = [];
+  // Get the current employee's project assignments
+  const { data: myAssignments } = await supabase
+    .from("employee_projects")
+    .select("project_id")
+    .eq("employee_id", currentEmployee?.id);
 
-  const [empResult, projResult] = await Promise.all([
-    supabase
-      .from("employees")
-      .select(`id, name, office, category, employee_specializations ( specializations ( name ) ), vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status, days_requested, year )`)
-      .order("name"),
+  const myProjectIds = (myAssignments ?? []).map((a: any) => a.project_id);
+
+  if (myProjectIds.length === 0) {
+    return (
+      <div className="flex flex-col gap-6">
+        <BackNav />
+        <div>
+          <h1 className="text-2xl font-bold">{strings.vacations.teamTitle}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{strings.vacations.teamSubtitle}</p>
+        </div>
+        <p className="text-sm text-muted-foreground">{strings.vacations.teamNoProjects}</p>
+      </div>
+    );
+  }
+
+  // Fetch projects + all their members, and colleague employee data in parallel
+  const [projectsResult, allAssignmentsResult] = await Promise.all([
     supabase
       .from("projects")
       .select(`id_engagement, name, color, employee_projects ( employee_id )`)
+      .in("id_engagement", myProjectIds)
       .order("name"),
+    supabase
+      .from("employee_projects")
+      .select("employee_id")
+      .in("project_id", myProjectIds),
   ]);
-  employees = (empResult.data ?? []).map(flattenEmployee);
-  projects = projResult.data ?? [];
 
-  // Compute vacation balances from requests (reliable source of truth)
-  // total_days: prefer vacation_balances row; fall back to category_vacation_days.
+  const projects = projectsResult.data ?? [];
+  const uniqueColleagueIds = [
+    ...new Set((allAssignmentsResult.data ?? []).map((a: any) => a.employee_id)),
+  ];
+
+  const { data: rawEmployees } = await supabase
+    .from("employees")
+    .select(
+      `id, name, office, category, employee_specializations ( specializations ( name ) ), vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status, days_requested, year )`
+    )
+    .in("id", uniqueColleagueIds)
+    .order("name");
+
+  const employees = (rawEmployees ?? []).map(flattenEmployee);
   const allEmployeeIds = employees.map((e: any) => e.id);
 
   const [balancesResult, categoryDaysResult] = await Promise.all([
@@ -63,9 +93,7 @@ export default async function VacationSummaryPage() {
           .eq("year", currentYear)
           .in("employee_id", allEmployeeIds)
       : { data: [] },
-    supabase
-      .from("category_vacation_days")
-      .select("category, vacation_days"),
+    supabase.from("category_vacation_days").select("category, vacation_days"),
   ]);
 
   const totalDaysMap = new Map<string, number>();
@@ -73,7 +101,6 @@ export default async function VacationSummaryPage() {
     totalDaysMap.set(b.employee_id, b.total_days);
   }
 
-  // category → default days map
   const categoryDaysMap = new Map<string, number>();
   for (const row of ((categoryDaysResult as any).data ?? []) as any[]) {
     categoryDaysMap.set(row.category, row.vacation_days);
@@ -81,7 +108,6 @@ export default async function VacationSummaryPage() {
 
   const balances = new Map<string, { totalDays: number; usedDays: number; pendingDays: number }>();
   for (const emp of employees as any[]) {
-    // Use balance row if present, otherwise fall back to category default
     const total =
       totalDaysMap.get(emp.id) ??
       categoryDaysMap.get(emp.category ?? "") ??
@@ -101,10 +127,8 @@ export default async function VacationSummaryPage() {
     <div className="flex flex-col gap-6">
       <BackNav />
       <div>
-        <h1 className="text-2xl font-bold">{strings.vacations.overviewTitle}</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {strings.vacations.overviewSubtitleAdmin}
-        </p>
+        <h1 className="text-2xl font-bold">{strings.vacations.teamTitle}</h1>
+        <p className="text-sm text-muted-foreground mt-1">{strings.vacations.teamSubtitle}</p>
       </div>
 
       <VacationSummaryTable
