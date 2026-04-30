@@ -29,15 +29,15 @@ export default async function TeamVacationPage() {
     .eq("user_id", authData.claims.sub)
     .single();
 
-  // Admins use the full admin overview
-  if (realEmployee?.role === "admin" || realEmployee?.role === "super-admin") {
-    redirect("/main/vacations/summary");
-  }
-
-  const { effectiveId } = await getEffectiveEmployee(supabase, {
+  const { effectiveId, effectiveRole } = await getEffectiveEmployee(supabase, {
     id: realEmployee?.id ?? "",
     role: realEmployee?.role ?? "employee",
   });
+
+  // Admins use the full admin overview
+  if (effectiveRole === "admin" || effectiveRole === "super-admin") {
+    redirect("/main/vacations/summary");
+  }
 
   const currentYear = new Date().getFullYear();
 

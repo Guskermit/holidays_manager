@@ -21,7 +21,7 @@ export default async function AdminAnalyticsPage() {
     .eq("user_id", authData.claims.sub)
     .single();
 
-  if (currentEmployee?.role !== "admin") redirect("/main");
+  if (currentEmployee?.role !== "admin" && currentEmployee?.role !== "super-admin") redirect("/main");
 
   const [
     { data: employees },

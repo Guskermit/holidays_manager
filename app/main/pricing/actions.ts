@@ -35,7 +35,7 @@ export async function saveOpportunity(
     .eq("user_id", authData.claims.sub)
     .single();
 
-  if (emp?.role !== "admin") return { error: "Sin permisos" };
+  if (emp?.role !== "admin" && emp?.role !== "super-admin") return { error: "Sin permisos" };
 
   let opportunityId = input.id;
 
@@ -114,7 +114,7 @@ export async function deleteOpportunity(
     .eq("user_id", authData.claims.sub)
     .single();
 
-  if (emp?.role !== "admin") return { error: "Sin permisos" };
+  if (emp?.role !== "admin" && emp?.role !== "super-admin") return { error: "Sin permisos" };
 
   const { error } = await supabase
     .from("opportunities")
@@ -141,7 +141,7 @@ export async function duplicateOpportunity(
     .eq("user_id", authData.claims.sub)
     .single();
 
-  if (emp?.role !== "admin") return { error: "Sin permisos" };
+  if (emp?.role !== "admin" && emp?.role !== "super-admin") return { error: "Sin permisos" };
 
   const { data: source, error: fetchErr } = await supabase
     .from("opportunities")

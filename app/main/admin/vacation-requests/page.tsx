@@ -19,7 +19,7 @@ export default async function AdminVacationRequestsPage() {
     .eq("user_id", authData.claims.sub)
     .single();
 
-  if (currentEmployee?.role !== "admin") {
+  if (currentEmployee?.role !== "admin" && currentEmployee?.role !== "super-admin") {
     redirect("/main");
   }
 

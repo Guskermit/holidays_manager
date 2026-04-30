@@ -24,7 +24,7 @@ export default async function VacationsPage() {
     .eq("user_id", authData.claims.sub)
     .single();
 
-  const { effectiveId, isImpersonating } = await getEffectiveEmployee(supabase, {
+  const { effectiveId, effectiveRole, isImpersonating } = await getEffectiveEmployee(supabase, {
     id: realEmployee?.id ?? "",
     role: realEmployee?.role ?? "employee",
   });
@@ -62,13 +62,15 @@ export default async function VacationsPage() {
             {strings.vacations.greeting(employee.name)}
           </p>
         </div>
-        <Link
-          href="/main/vacations/summary"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <LayoutListIcon className="size-4" />
-          {strings.vacations.teamOverviewLink}
-        </Link>
+        {(effectiveRole === "admin" || effectiveRole === "super-admin") && (
+          <Link
+            href="/main/vacations/summary"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <LayoutListIcon className="size-4" />
+            {strings.vacations.teamOverviewLink}
+          </Link>
+        )}
       </div>
 
       <VacationCalendar

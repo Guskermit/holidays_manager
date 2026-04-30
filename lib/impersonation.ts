@@ -20,27 +20,28 @@ export async function getEffectiveEmployee(
   realEmployee: { id: string; role: string }
 ): Promise<{
   effectiveId: string;
+  effectiveRole: string;
   isImpersonating: boolean;
   impersonatedName: string | null;
 }> {
   if (realEmployee.role !== "super-admin") {
-    return { effectiveId: realEmployee.id, isImpersonating: false, impersonatedName: null };
+    return { effectiveId: realEmployee.id, effectiveRole: realEmployee.role, isImpersonating: false, impersonatedName: null };
   }
 
   const impersonatedId = await getImpersonatedEmployeeId();
   if (!impersonatedId) {
-    return { effectiveId: realEmployee.id, isImpersonating: false, impersonatedName: null };
+    return { effectiveId: realEmployee.id, effectiveRole: realEmployee.role, isImpersonating: false, impersonatedName: null };
   }
 
   const { data } = await supabase
     .from("employees")
-    .select("id, name")
+    .select("id, name, role")
     .eq("id", impersonatedId)
     .single();
 
   if (!data) {
-    return { effectiveId: realEmployee.id, isImpersonating: false, impersonatedName: null };
+    return { effectiveId: realEmployee.id, effectiveRole: realEmployee.role, isImpersonating: false, impersonatedName: null };
   }
 
-  return { effectiveId: data.id, isImpersonating: true, impersonatedName: data.name };
+  return { effectiveId: data.id, effectiveRole: data.role, isImpersonating: true, impersonatedName: data.name };
 }

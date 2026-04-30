@@ -12,7 +12,7 @@ async function getAdminClient() {
     .select("role")
     .eq("user_id", authData.claims.sub)
     .single();
-  if (emp?.role !== "admin") return null;
+  if (emp?.role !== "admin" && emp?.role !== "super-admin") return null;
   return supabase;
 }
 

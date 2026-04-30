@@ -20,7 +20,7 @@ async function getAdminEmployee() {
     .eq("user_id", authData.claims.sub)
     .single();
 
-  if (emp?.role !== "admin") return { supabase: null, adminId: null };
+  if (emp?.role !== "admin" && emp?.role !== "super-admin") return { supabase: null, adminId: null };
   return { supabase, adminId: emp.id };
 }
 

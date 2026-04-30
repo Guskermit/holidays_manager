@@ -23,7 +23,7 @@ export default async function EditProjectPage({
     .eq("user_id", authData.claims.sub)
     .single();
 
-  if (emp?.role !== "admin") {
+  if (emp?.role !== "admin" && emp?.role !== "super-admin") {
     redirect("/main");
   }
 

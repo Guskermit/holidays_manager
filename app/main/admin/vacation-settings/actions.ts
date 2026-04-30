@@ -18,7 +18,7 @@ export async function updateVacationSettings(
     .eq("user_id", authData.claims.sub)
     .single();
 
-  if (emp?.role !== "admin") return { error: "Not authorized" };
+  if (emp?.role !== "admin" && emp?.role !== "super-admin") return { error: "Not authorized" };
 
   const currentYear = new Date().getFullYear();
 

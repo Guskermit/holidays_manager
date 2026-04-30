@@ -25,7 +25,7 @@ export async function sendStaleSkillsNotifications(): Promise<StaleSkillsResult>
     .eq("user_id", authData.claims.sub)
     .single();
 
-  if (currentEmployee?.role !== "admin") return { error: "Not authorized" };
+  if (currentEmployee?.role !== "admin" && currentEmployee?.role !== "super-admin") return { error: "Not authorized" };
 
   const { data: employees, error: empError } = await supabase
     .from("employees")
