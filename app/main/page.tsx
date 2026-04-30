@@ -55,7 +55,7 @@ export default async function ProtectedPage() {
     ? await supabase.from("employees").select("id, name, role").order("name")
     : { data: null };
 
-  const isAdmin = isAdmin || employee?.role === "super-admin";
+  const isAdmin = employee?.role === "admin" || employee?.role === "super-admin";
 
   return (
     <div className="flex flex-col gap-10">
