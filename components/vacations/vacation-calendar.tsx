@@ -31,14 +31,15 @@ type Props = {
   office: Office;
   requests: VacationRequest[];
   maxDays: number;
-  onSubmit: (
+  readOnly?: boolean;
+  onSubmit?: (
     employeeId: string,
     startDate: string,
     endDate: string,
     daysRequested: number,
     year: number
   ) => Promise<{ error?: string }>;
-  onCancel: (requestId: string) => Promise<{ error?: string }>;
+  onCancel?: (requestId: string) => Promise<{ error?: string }>;
 };
 
 const STATUS_LABELS: Record<VacationRequest["status"], string> = {
@@ -85,6 +86,7 @@ export function VacationCalendar({
   office,
   requests,
   maxDays,
+  readOnly = false,
   onSubmit,
   onCancel,
 }: Props) {
@@ -210,6 +212,7 @@ export function VacationCalendar({
   };
 
   const handleDayClick = (date: Date) => {
+    if (readOnly) return;
     if (
       isWeekend(date) ||
       isHoliday(date, holidays) ||
@@ -253,7 +256,7 @@ export function VacationCalendar({
       .reduce((s, r) => s + r.days_requested, 0));
 
   const handleSubmit = async () => {
-    if (!selStart) return;
+    if (!selStart || !onSubmit) return;
     if (hasOverlap) {
       setSubmitError(strings.vacations.errorOverlapSubmit);
       return;
@@ -451,7 +454,7 @@ export function VacationCalendar({
       </div>
 
       {/* Selection summary + submit */}
-      {(rangeStart || daysSelected > 0) && (
+      {!readOnly && onSubmit && (rangeStart || daysSelected > 0) && (
         <div className="rounded-lg border p-4 flex flex-col gap-3 bg-muted/20">
           <p className="text-sm font-medium">{strings.vacations.selectionTitle}</p>
           <div className="flex flex-wrap gap-6 text-sm">
@@ -602,6 +605,7 @@ export function VacationCalendar({
                       (r.status === "approved" && startDate > today);
 
                     const handleCancel = async () => {
+                      if (!onCancel) return;
                       if (!confirm(strings.vacations.cancelConfirm)) return;
                       setCancellingId(r.id);
                       setCancelError(null);
@@ -634,7 +638,7 @@ export function VacationCalendar({
                         </Badge>
                       </td>
                       <td className="px-4 py-2 text-right">
-                        {isCancellable && (
+                        {isCancellable && !readOnly && onCancel && (
                           <Button
                             type="button"
                             size="icon"
