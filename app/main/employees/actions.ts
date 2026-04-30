@@ -20,8 +20,19 @@ export async function updateEmployee(
     .eq("user_id", authData.claims.sub)
     .single();
 
-  if (caller?.role !== "admin") {
+  if (caller?.role !== "admin" && caller?.role !== "super-admin") {
     return { error: "Not authorized" };
+  }
+
+  // Fetch the target employee to check if they're a super-admin
+  const { data: targetEmployee } = await supabase
+    .from("employees")
+    .select("role")
+    .eq("id", employeeId)
+    .single();
+
+  if (targetEmployee?.role === "super-admin" && caller?.role !== "super-admin") {
+    return { error: "Super-admin employees can only be modified by other super-admins" };
   }
 
   const name        = (formData.get("name")         as string)?.trim();

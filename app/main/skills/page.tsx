@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SkillsEditor } from "@/components/skills/skills-editor";
 import { BackNav } from "@/components/back-nav";
 import { strings } from "@/lib/strings";
+import { getEffectiveEmployee } from "@/lib/impersonation";
 
 export default async function SkillsPage() {
   const supabase = await createClient();
@@ -13,11 +14,20 @@ export default async function SkillsPage() {
   }
 
   // Resolve current employee
-  const { data: employee } = await supabase
+  const { data: realEmployee } = await supabase
     .from("employees")
-    .select("id, name")
+    .select("id, name, role")
     .eq("user_id", authData.claims.sub)
     .single();
+
+  const { effectiveId, isImpersonating } = await getEffectiveEmployee(supabase, {
+    id: realEmployee?.id ?? "",
+    role: realEmployee?.role ?? "employee",
+  });
+
+  const { data: employee } = isImpersonating
+    ? await supabase.from("employees").select("id, name").eq("id", effectiveId).single()
+    : { data: realEmployee };
 
   if (!employee) {
     return (

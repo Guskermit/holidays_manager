@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { VacationSummaryTable } from "@/components/vacations/vacation-summary-table";
 import { BackNav } from "@/components/back-nav";
 import { strings } from "@/lib/strings";
+import { getEffectiveEmployee } from "@/lib/impersonation";
 
 function flattenEmployee(emp: any) {
   return {
@@ -22,16 +23,21 @@ export default async function TeamVacationPage() {
     redirect("/auth/login");
   }
 
-  const { data: currentEmployee } = await supabase
+  const { data: realEmployee } = await supabase
     .from("employees")
     .select("id, role")
     .eq("user_id", authData.claims.sub)
     .single();
 
   // Admins use the full admin overview
-  if (currentEmployee?.role === "admin") {
+  if (realEmployee?.role === "admin" || realEmployee?.role === "super-admin") {
     redirect("/main/vacations/summary");
   }
+
+  const { effectiveId } = await getEffectiveEmployee(supabase, {
+    id: realEmployee?.id ?? "",
+    role: realEmployee?.role ?? "employee",
+  });
 
   const currentYear = new Date().getFullYear();
 
@@ -39,7 +45,7 @@ export default async function TeamVacationPage() {
   const { data: myAssignments } = await supabase
     .from("employee_projects")
     .select("project_id")
-    .eq("employee_id", currentEmployee?.id);
+    .eq("employee_id", effectiveId);
 
   const myProjectIds = (myAssignments ?? []).map((a: any) => a.project_id);
 

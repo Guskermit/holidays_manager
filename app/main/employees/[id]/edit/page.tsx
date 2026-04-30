@@ -23,7 +23,7 @@ export default async function EditEmployeePage({
     .eq("user_id", authData.claims.sub)
     .single();
 
-  if (currentEmployee?.role !== "admin") {
+  if (currentEmployee?.role !== "admin" && currentEmployee?.role !== "super-admin") {
     redirect("/main");
   }
 
@@ -35,6 +35,11 @@ export default async function EditEmployeePage({
 
   if (empError) console.error("[edit employee] query error:", empError.message, empError.code);
   if (!employee) notFound();
+
+  // Prevent regular admins from editing super-admins
+  if (employee.role === "super-admin" && currentEmployee?.role !== "super-admin") {
+    redirect("/main/employees");
+  }
 
   return (
     <div className="flex flex-col gap-6">

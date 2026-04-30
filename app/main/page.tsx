@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { FolderKanbanIcon, CalendarDaysIcon, LayoutListIcon, CheckCircle2Icon, ClockIcon, SunIcon, UsersIcon, ClipboardListIcon, BrainIcon, SearchIcon, TrendingUpIcon, SettingsIcon, BarChart2Icon, BookOpenIcon } from "lucide-react";
 import { strings } from "@/lib/strings";
+import { getEffectiveEmployee } from "@/lib/impersonation";
+import { ImpersonationSelector } from "@/components/impersonation-selector";
 
 export default async function ProtectedPage() {
   const supabase = await createClient();
@@ -20,13 +22,26 @@ export default async function ProtectedPage() {
     .eq("user_id", data.claims.sub)
     .single();
 
-  const displayName = employee?.name ?? data.claims.email ?? "there";
+  // Resolve effective employee (impersonation support for super-admins)
+  const { effectiveId, isImpersonating } = await getEffectiveEmployee(supabase, {
+    id: employee?.id ?? "",
+    role: employee?.role ?? "employee",
+  });
 
-  const { data: balance } = employee
+  // Fetch effective employee's data (may be impersonated)
+  const { data: effectiveEmployee } = effectiveId !== employee?.id
+    ? await supabase.from("employees").select("id, name, role").eq("id", effectiveId).single()
+    : { data: employee };
+
+  const displayName = isImpersonating
+    ? (effectiveEmployee?.name ?? "")
+    : (employee?.name ?? data.claims.email ?? "there");
+
+  const { data: balance } = effectiveId
     ? await supabase
         .from("vacation_balances")
         .select("total_days, used_days, pending_days")
-        .eq("employee_id", employee.id)
+        .eq("employee_id", effectiveId)
         .eq("year", currentYear)
         .single()
     : { data: null };
@@ -35,8 +50,23 @@ export default async function ProtectedPage() {
     ? balance.total_days - balance.used_days - balance.pending_days
     : null;
 
+  // For super-admin selector: fetch all employees
+  const { data: allEmployees } = employee?.role === "super-admin"
+    ? await supabase.from("employees").select("id, name, role").order("name")
+    : { data: null };
+
+  const isAdmin = isAdmin || employee?.role === "super-admin";
+
   return (
     <div className="flex flex-col gap-10">
+      {/* Super-admin impersonation selector */}
+      {employee?.role === "super-admin" && allEmployees && (
+        <ImpersonationSelector
+          employees={allEmployees.filter((e) => e.id !== employee.id)}
+          currentImpersonatedId={isImpersonating ? effectiveId : null}
+        />
+      )}
+
       {/* Hero */}
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">
@@ -108,20 +138,20 @@ export default async function ProtectedPage() {
           </Link>
 
           <Link
-            href={employee?.role === "admin" ? "/main/vacations/summary" : "/main/vacations/team"}
+            href={isAdmin ? "/main/vacations/summary" : "/main/vacations/team"}
             className="group flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-teal-500 transition-colors"
           >
             <div className="flex items-center justify-center size-12 rounded-lg bg-teal-500/10 text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-colors">
               <LayoutListIcon className="size-6" />
             </div>
             <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-semibold">{employee?.role === "admin" ? strings.dashboard.cardOverview : strings.dashboard.cardTeamOverview}</h2>
-              <p className="text-sm text-muted-foreground">{employee?.role === "admin" ? strings.dashboard.cardOverviewDesc : strings.dashboard.cardTeamOverviewDesc}</p>
+              <h2 className="text-lg font-semibold">{isAdmin ? strings.dashboard.cardOverview : strings.dashboard.cardTeamOverview}</h2>
+              <p className="text-sm text-muted-foreground">{isAdmin ? strings.dashboard.cardOverviewDesc : strings.dashboard.cardTeamOverviewDesc}</p>
             </div>
             <span className="text-sm text-teal-600 font-medium group-hover:underline">{strings.dashboard.cardOverviewLink}</span>
           </Link>
 
-          {employee?.role === "admin" && (
+          {isAdmin && (
             <Link
               href="/main/admin/vacation-requests"
               className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-teal-500 transition-colors"
@@ -160,7 +190,7 @@ export default async function ProtectedPage() {
             <span className="text-sm text-amber-600 font-medium group-hover:underline">{strings.skills.dashboardCardLink}</span>
           </Link>
 
-          {employee?.role === "admin" && (
+          {isAdmin && (
             <Link
               href="/main/admin/skills-search"
               className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-amber-500 transition-colors"
@@ -180,7 +210,7 @@ export default async function ProtectedPage() {
       </div>
 
       {/* ── Administración (admin only) ─────────────────── */}
-      {employee?.role === "admin" && (
+      {isAdmin && (
         <div className="flex flex-col gap-4">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
             Administración

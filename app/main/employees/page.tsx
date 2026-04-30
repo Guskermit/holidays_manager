@@ -22,7 +22,7 @@ export default async function EmployeesPage() {
     .eq("user_id", authData.claims.sub)
     .single();
 
-  if (currentEmployee?.role !== "admin") {
+  if (currentEmployee?.role !== "admin" && currentEmployee?.role !== "super-admin") {
     redirect("/main");
   }
 
@@ -77,11 +77,14 @@ export default async function EmployeesPage() {
                     })}
                   </td>
                   <td className="px-4 py-3">
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href={`/main/employees/${emp.id}/edit`}>
-                        <PencilIcon className="size-4" />
-                      </Link>
-                    </Button>
+                    {/* Regular admins cannot edit super-admin employees */}
+                    {(emp.role !== "super-admin" || currentEmployee?.role === "super-admin") && (
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/main/employees/${emp.id}/edit`}>
+                          <PencilIcon className="size-4" />
+                        </Link>
+                      </Button>
+                    )}
                   </td>
                 </tr>
               ))}

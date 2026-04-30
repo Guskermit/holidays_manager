@@ -8,6 +8,7 @@ import Link from "next/link";
 import { LayoutListIcon } from "lucide-react";
 import { BackNav } from "@/components/back-nav";
 import { strings } from "@/lib/strings";
+import { getEffectiveEmployee } from "@/lib/impersonation";
 
 export default async function VacationsPage() {
   const supabase = await createClient();
@@ -17,11 +18,20 @@ export default async function VacationsPage() {
     redirect("/auth/login");
   }
 
-  const { data: employee } = await supabase
+  const { data: realEmployee } = await supabase
     .from("employees")
-    .select("id, name, office, category")
+    .select("id, name, office, category, role")
     .eq("user_id", authData.claims.sub)
     .single();
+
+  const { effectiveId, isImpersonating } = await getEffectiveEmployee(supabase, {
+    id: realEmployee?.id ?? "",
+    role: realEmployee?.role ?? "employee",
+  });
+
+  const { data: employee } = isImpersonating
+    ? await supabase.from("employees").select("id, name, office, category").eq("id", effectiveId).single()
+    : { data: realEmployee };
 
   if (!employee) {
     return (
@@ -66,8 +76,9 @@ export default async function VacationsPage() {
         office={(employee.office as Office) ?? "madrid"}
         requests={requests ?? []}
         maxDays={maxDays}
-        onSubmit={requestVacation}
-        onCancel={cancelVacationRequest}
+        onSubmit={isImpersonating ? undefined : requestVacation}
+        onCancel={isImpersonating ? undefined : cancelVacationRequest}
+        readOnly={isImpersonating}
       />
     </div>
   );
