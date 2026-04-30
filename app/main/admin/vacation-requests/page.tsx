@@ -36,7 +36,7 @@ export default async function AdminVacationRequestsPage() {
       rejection_reason,
       employees!vacation_requests_employee_id_fkey ( id, name, email )
     `)
-    .order("created_at", { ascending: false });
+        .order("start_date", { ascending: true });
 
   if (reqError) {
     return (

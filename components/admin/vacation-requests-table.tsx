@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { CheckIcon, XIcon, BanIcon } from "lucide-react";
+import { CheckIcon, XIcon, BanIcon, ArrowUpDownIcon, ArrowUpIcon, ArrowDownIcon } from "lucide-react";
 import { approveVacationRequest, rejectVacationRequest, cancelApprovedRequest } from "@/app/main/admin/vacation-requests/actions";
 import { strings } from "@/lib/strings";
 
@@ -56,6 +56,22 @@ export function VacationRequestsTable({ requests }: Props) {
   const [actionError, setActionError] = useState<Record<string, string>>({});
   const [isPending, startTransition] = useTransition();
 
+  type SortCol = "employee" | "start_date" | "end_date" | "created_at";
+  const [sortCol, setSortCol] = useState<SortCol>("start_date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const toggleSort = (col: SortCol) => {
+    if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortCol(col); setSortDir("asc"); }
+  };
+
+  const SortIcon = ({ col }: { col: SortCol }) => {
+    if (sortCol !== col) return <ArrowUpDownIcon className="size-3 ml-1 opacity-40 inline" />;
+    return sortDir === "asc"
+      ? <ArrowUpIcon className="size-3 ml-1 inline" />
+      : <ArrowDownIcon className="size-3 ml-1 inline" />;
+  };
+
   // Derive unique projects from requests
   const projects = useMemo(() => {
     const map = new Map<string, { name: string; color: string | null }>();
@@ -76,6 +92,24 @@ export function VacationRequestsTable({ requests }: Props) {
       return true;
     });
   }, [requests, statusFilter, projectFilter, search]);
+
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      let valA: string;
+      let valB: string;
+      if (sortCol === "employee") {
+        valA = a.employees?.name ?? "";
+        valB = b.employees?.name ?? "";
+      } else if (sortCol === "start_date") {
+        valA = a.start_date; valB = b.start_date;
+      } else if (sortCol === "end_date") {
+        valA = a.end_date; valB = b.end_date;
+      } else {
+        valA = a.created_at; valB = b.created_at;
+      }
+      return sortDir === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    });
+  }, [filtered, sortCol, sortDir]);
 
   const handleApprove = (id: string) => {
     startTransition(async () => {
@@ -188,18 +222,34 @@ export function VacationRequestsTable({ requests }: Props) {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/50 border-b">
-                <th className="text-left font-medium px-4 py-3">{strings.admin.colEmployee}</th>
+                <th className="text-left font-medium px-4 py-3">
+                  <button type="button" onClick={() => toggleSort("employee")} className="flex items-center hover:text-foreground">
+                    {strings.admin.colEmployee}<SortIcon col="employee" />
+                  </button>
+                </th>
                 <th className="text-left font-medium px-4 py-3">{strings.admin.colProject}</th>
-                <th className="text-left font-medium px-4 py-3">{strings.admin.colFrom}</th>
-                <th className="text-left font-medium px-4 py-3">{strings.admin.colTo}</th>
+                <th className="text-left font-medium px-4 py-3">
+                  <button type="button" onClick={() => toggleSort("start_date")} className="flex items-center hover:text-foreground">
+                    {strings.admin.colFrom}<SortIcon col="start_date" />
+                  </button>
+                </th>
+                <th className="text-left font-medium px-4 py-3">
+                  <button type="button" onClick={() => toggleSort("end_date")} className="flex items-center hover:text-foreground">
+                    {strings.admin.colTo}<SortIcon col="end_date" />
+                  </button>
+                </th>
                 <th className="text-left font-medium px-4 py-3">{strings.admin.colDays}</th>
-                <th className="text-left font-medium px-4 py-3">{strings.admin.colRequested}</th>
+                <th className="text-left font-medium px-4 py-3">
+                  <button type="button" onClick={() => toggleSort("created_at")} className="flex items-center hover:text-foreground">
+                    {strings.admin.colRequested}<SortIcon col="created_at" />
+                  </button>
+                </th>
                 <th className="text-left font-medium px-4 py-3">{strings.admin.colStatus}</th>
                 <th className="text-left font-medium px-4 py-3 w-48">{strings.admin.colActions}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {filtered.map((req) => {
+              {sorted.map((req) => {
                 const isRejecting = rejectingId === req.id;
                 const err = actionError[req.id];
                 return (
