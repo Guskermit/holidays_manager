@@ -75,6 +75,39 @@ export default async function AdminAnalyticsPage() {
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
+  // ── Employees per project broken down by category ──────────────
+  const empCategoryMap = new Map<string, string>();
+  for (const emp of employees ?? []) {
+    empCategoryMap.set((emp as any).id, (emp as any).category ?? "Sin categoría");
+  }
+
+  const projectCategoryStats = activeProjects
+    .map((p) => {
+      const catCount = new Map<string, number>();
+      for (const ep of ((p.employee_projects as any[]) ?? [])) {
+        const cat = empCategoryMap.get(ep.employee_id) ?? "Sin categoría";
+        catCount.set(cat, (catCount.get(cat) ?? 0) + 1);
+      }
+      const categories = [...catCount.entries()]
+        .map(([category, count]) => ({
+          category,
+          label: CATEGORY_LABELS[category as Category] ?? category,
+          count,
+        }))
+        .sort((a, b) => b.count - a.count);
+      return {
+        projectName: p.name as string,
+        color: (p.color as string | null) ?? "#6366f1",
+        categories,
+      };
+    })
+    .filter((p) => p.categories.length > 0)
+    .sort((a, b) => {
+      const ta = a.categories.reduce((s, c) => s + c.count, 0);
+      const tb = b.categories.reduce((s, c) => s + c.count, 0);
+      return tb - ta;
+    });
+
   // ── Top skills ─────────────────────────────────────────────────
   const skillCount = new Map<string, number>();
   for (const es of empSkills ?? []) {
@@ -201,6 +234,7 @@ export default async function AdminAnalyticsPage() {
     },
     categoryStats,
     projectStats,
+    projectCategoryStats,
     topSkills,
     vacationByStatus,
     monthlyApproved,

@@ -27,6 +27,11 @@ export type AnalyticsData = {
   };
   categoryStats: { label: string; count: number }[];
   projectStats: { name: string; color: string; count: number }[];
+  projectCategoryStats: {
+    projectName: string;
+    color: string;
+    categories: { category: string; label: string; count: number }[];
+  }[];
   topSkills: { name: string; count: number }[];
   vacationByStatus: { status: string; label: string; count: number; days: number }[];
   monthlyApproved: { label: string; count: number }[];
@@ -50,6 +55,16 @@ const PALETTE = [
   "#10b981", "#3b82f6", "#14b8a6", "#f97316",
   "#84cc16", "#06b6d4",
 ];
+
+const CATEGORY_COLORS: Record<string, string> = {
+  Staff:            "#6366f1",
+  Senior:           "#3b82f6",
+  Manager:          "#10b981",
+  "Senior-Manager": "#f59e0b",
+  Externo:          "#9ca3af",
+  Socio:            "#ec4899",
+  Intern:           "#84cc16",
+};
 
 const LEVEL_STYLES = [
   { bg: "bg-zinc-400 dark:bg-zinc-500", text: "text-white", color: "#9ca3af" },
@@ -323,11 +338,72 @@ function HBar({
   );
 }
 
+function ProjectCategoryChart({
+  items,
+}: {
+  items: { projectName: string; color: string; categories: { category: string; label: string; count: number }[] }[];
+}) {
+  const allCats = [...new Set(items.flatMap((p) => p.categories.map((c) => c.category)))];
+  const labelOf = new Map(items.flatMap((p) => p.categories.map((c) => [c.category, c.label])));
+
+  if (items.length === 0) {
+    return <p className="text-sm text-muted-foreground">Sin proyectos activos</p>;
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Legend */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+        {allCats.map((cat, i) => {
+          const color = CATEGORY_COLORS[cat] ?? PALETTE[i % PALETTE.length];
+          return (
+            <span key={cat} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="inline-block size-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+              {labelOf.get(cat) ?? cat}
+            </span>
+          );
+        })}
+      </div>
+      {/* Rows */}
+      <div className="flex flex-col gap-3">
+        {items.map((project) => {
+          const total = project.categories.reduce((s, c) => s + c.count, 0);
+          return (
+            <div key={project.projectName} className="flex items-center gap-2.5">
+              <span
+                className="w-32 text-xs text-muted-foreground shrink-0 truncate text-right"
+                title={project.projectName}
+              >
+                {project.projectName}
+              </span>
+              <div className="flex-1 flex rounded-full overflow-hidden h-5 bg-muted">
+                {project.categories.map((c) => {
+                  const color = CATEGORY_COLORS[c.category] ?? PALETTE[allCats.indexOf(c.category) % PALETTE.length];
+                  const pct = total > 0 ? (c.count / total) * 100 : 0;
+                  return (
+                    <div
+                      key={c.category}
+                      title={`${c.label}: ${c.count}`}
+                      style={{ width: `${pct}%`, backgroundColor: color, minWidth: pct > 0 ? 3 : 0 }}
+                    />
+                  );
+                })}
+              </div>
+              <span className="text-xs font-medium w-6 shrink-0 text-right">{total}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function AnalyticsDashboard({ data }: { data: AnalyticsData }) {
   const {
     kpis,
     categoryStats,
     projectStats,
+    projectCategoryStats,
     topSkills,
     vacationByStatus,
     monthlyApproved,
@@ -432,7 +508,12 @@ export function AnalyticsDashboard({ data }: { data: AnalyticsData }) {
         </ChartCard>
       </div>
 
-      {/* ── Row 3: Distribución mensual ── */}
+      {/* ── Row 3: Categorías por proyecto ── */}
+      <ChartCard title="Empleados por categoría en proyectos activos">
+        <ProjectCategoryChart items={projectCategoryStats} />
+      </ChartCard>
+
+      {/* ── Row 4: Distribución mensual ── */}
       <ChartCard title={`Distribución mensual de vacaciones aprobadas ${year}`}>
         {monthlyApproved.every((m) => m.count === 0) ? (
           <p className="text-sm text-muted-foreground">Sin vacaciones aprobadas este año</p>
@@ -445,7 +526,7 @@ export function AnalyticsDashboard({ data }: { data: AnalyticsData }) {
         )}
       </ChartCard>
 
-      {/* ── Row 4: Advanced skills analysis ── */}
+      {/* ── Row 5: Advanced skills analysis ── */}
       <div className="flex flex-col gap-4">
         <div>
           <h2 className="text-base font-semibold">Análisis de skills del equipo</h2>

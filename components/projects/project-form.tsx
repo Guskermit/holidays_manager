@@ -252,7 +252,13 @@ export function ProjectForm({ employees, initialValues }: Props) {
               <div
                 key={employee.id}
                 className="flex items-center gap-3 px-4 py-3 hover:bg-accent/50 cursor-pointer"
-                onClick={() => toggleEmployee(employee.id)}
+                onClick={(e) => {
+                  // Ignore the synthetic click fired by Radix's hidden BubbleInput
+                  // when the controlled `checked` prop changes — it bubbles up and
+                  // would double-toggle the employee if not filtered out here.
+                  if ((e.target as HTMLElement).tagName === "INPUT") return;
+                  toggleEmployee(employee.id);
+                }}
               >
                 <Checkbox
                   id={`emp-${employee.id}`}
