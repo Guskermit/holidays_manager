@@ -57,14 +57,33 @@ const PALETTE = [
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Staff:            "#6366f1",
-  Senior:           "#3b82f6",
-  Manager:          "#10b981",
-  "Senior-Manager": "#f59e0b",
-  Externo:          "#9ca3af",
-  Socio:            "#ec4899",
-  Intern:           "#84cc16",
+  Externo:          "#ef4444", // rojo
+  Intern:           "#16a34a", // verde (Becario)
+  Staff:            "#60a5fa", // azul claro
+  Senior:           "#f97316", // naranja
+  Manager:          "#374151", // gris oscuro
+  "Senior-Manager": "#1d4ed8", // azul fuerte
+  Socio:            "#6b7280", // gris
 };
+
+/** Pyramid order used to render categories from base to top */
+const CATEGORY_ORDER: string[] = [
+  "Externo",
+  "Intern",
+  "Staff",
+  "Senior",
+  "Manager",
+  "Senior-Manager",
+  "Socio",
+];
+
+function sortByCategoryOrder<T extends { category: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    const ia = CATEGORY_ORDER.indexOf(a.category);
+    const ib = CATEGORY_ORDER.indexOf(b.category);
+    return (ia === -1 ? CATEGORY_ORDER.length : ia) - (ib === -1 ? CATEGORY_ORDER.length : ib);
+  });
+}
 
 const LEVEL_STYLES = [
   { bg: "bg-zinc-400 dark:bg-zinc-500", text: "text-white", color: "#9ca3af" },
@@ -343,7 +362,12 @@ function ProjectCategoryChart({
 }: {
   items: { projectName: string; color: string; categories: { category: string; label: string; count: number }[] }[];
 }) {
-  const allCats = [...new Set(items.flatMap((p) => p.categories.map((c) => c.category)))];
+  const allCatsRaw = [...new Set(items.flatMap((p) => p.categories.map((c) => c.category)))];
+  const allCats = allCatsRaw.sort((a, b) => {
+    const ia = CATEGORY_ORDER.indexOf(a);
+    const ib = CATEGORY_ORDER.indexOf(b);
+    return (ia === -1 ? CATEGORY_ORDER.length : ia) - (ib === -1 ? CATEGORY_ORDER.length : ib);
+  });
   const labelOf = new Map(items.flatMap((p) => p.categories.map((c) => [c.category, c.label])));
 
   if (items.length === 0) {
@@ -366,33 +390,49 @@ function ProjectCategoryChart({
       </div>
       {/* Rows */}
       <div className="flex flex-col gap-3">
-        {items.map((project) => {
-          const total = project.categories.reduce((s, c) => s + c.count, 0);
-          return (
-            <div key={project.projectName} className="flex items-center gap-2.5">
-              <span
-                className="w-32 text-xs text-muted-foreground shrink-0 truncate text-right"
-                title={project.projectName}
-              >
-                {project.projectName}
-              </span>
-              <div className="flex-1 flex rounded-full overflow-hidden h-5 bg-muted">
-                {project.categories.map((c) => {
-                  const color = CATEGORY_COLORS[c.category] ?? PALETTE[allCats.indexOf(c.category) % PALETTE.length];
-                  const pct = total > 0 ? (c.count / total) * 100 : 0;
-                  return (
-                    <div
-                      key={c.category}
-                      title={`${c.label}: ${c.count}`}
-                      style={{ width: `${pct}%`, backgroundColor: color, minWidth: pct > 0 ? 3 : 0 }}
-                    />
-                  );
-                })}
-              </div>
-              <span className="text-xs font-medium w-6 shrink-0 text-right">{total}</span>
-            </div>
+        {(() => {
+          const maxTotal = Math.max(
+            ...items.map((p) => p.categories.reduce((s, c) => s + c.count, 0)),
+            1
           );
-        })}
+          return items.map((project) => {
+            const total = project.categories.reduce((s, c) => s + c.count, 0);
+            const orderedCategories = sortByCategoryOrder(project.categories);
+            const widthPct = (total / maxTotal) * 100;
+            return (
+              <div key={project.projectName} className="flex items-center gap-2.5">
+                <span
+                  className="w-32 text-xs text-muted-foreground shrink-0 truncate text-right"
+                  title={project.projectName}
+                >
+                  {project.projectName}
+                </span>
+                <div className="flex-1 h-5">
+                  <div
+                    className="flex rounded-full overflow-hidden h-5 bg-muted"
+                    style={{ width: `${widthPct}%` }}
+                  >
+                    {orderedCategories.map((c) => {
+                      const color = CATEGORY_COLORS[c.category] ?? PALETTE[allCats.indexOf(c.category) % PALETTE.length];
+                      const pct = total > 0 ? (c.count / total) * 100 : 0;
+                      return (
+                        <div
+                          key={c.category}
+                          title={`${c.label}: ${c.count}`}
+                          className="flex items-center justify-center text-[10px] font-bold text-white leading-none overflow-hidden"
+                          style={{ width: `${pct}%`, backgroundColor: color, minWidth: pct > 0 ? 3 : 0 }}
+                        >
+                          {c.count > 0 ? c.count : ""}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <span className="text-xs font-medium w-6 shrink-0 text-right">{total}</span>
+              </div>
+            );
+          });
+        })()}
       </div>
     </div>
   );
