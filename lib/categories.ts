@@ -57,6 +57,7 @@ export const COMPANIES = [
   "Winning-Results",
   "RedCommerce",
   "Change the Block",
+  "Plain Concepts",
 ] as const;
 export type Company = (typeof COMPANIES)[number];
 
