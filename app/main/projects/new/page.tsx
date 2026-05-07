@@ -30,20 +30,21 @@ export default async function NewProjectPage() {
     .select("id, name, email, employee_projects(projects(id_engagement, name, color, end_date))")
     .order("name");
 
+  type ProjectRef = { id_engagement: string; name: string; color: string | null; end_date: string | null };
   type EmpRow = {
     id: string;
     name: string;
     email: string;
-    employee_projects: { projects: { id_engagement: string; name: string; color: string | null; end_date: string | null } | null }[];
+    employee_projects: { projects: ProjectRef | ProjectRef[] | null }[];
   };
 
-  const employeesWithProjects = ((employees ?? []) as EmpRow[]).map((emp) => ({
+  const employeesWithProjects = ((employees ?? []) as unknown as EmpRow[]).map((emp) => ({
     id: emp.id,
     name: emp.name,
     email: emp.email,
     activeProjects: (emp.employee_projects ?? [])
-      .map((ep) => ep.projects)
-      .filter((p): p is NonNullable<typeof p> => p !== null && (!p.end_date || new Date(p.end_date) >= today))
+      .flatMap((ep) => (Array.isArray(ep.projects) ? ep.projects : ep.projects ? [ep.projects] : []))
+      .filter((p): p is ProjectRef => p !== null && (!p.end_date || new Date(p.end_date) >= today))
       .map((p) => ({ name: p.name, color: p.color ?? "#6366f1" }))
       .sort((a, b) => a.name.localeCompare(b.name)),
   }));
