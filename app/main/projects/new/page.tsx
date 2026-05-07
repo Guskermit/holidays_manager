@@ -22,10 +22,24 @@ export default async function NewProjectPage() {
     redirect("/main");
   }
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const { data: employees } = await supabase
     .from("employees")
-    .select("id, name, email")
+    .select("id, name, email, employee_projects(projects(id_engagement, name, color, end_date))")
     .order("name");
+
+  const employeesWithProjects = (employees ?? []).map((emp: any) => ({
+    id: emp.id as string,
+    name: emp.name as string,
+    email: emp.email as string,
+    activeProjects: ((emp.employee_projects ?? []) as any[])
+      .map((ep: any) => ep.projects)
+      .filter((p: any) => p && (!p.end_date || new Date(p.end_date) >= today))
+      .map((p: any) => ({ name: p.name as string, color: (p.color ?? "#6366f1") as string }))
+      .sort((a: any, b: any) => a.name.localeCompare(b.name)),
+  }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -37,7 +51,7 @@ export default async function NewProjectPage() {
         </p>
       </div>
 
-      <ProjectForm employees={employees ?? []} />
+      <ProjectForm employees={employeesWithProjects} />
     </div>
   );
 }

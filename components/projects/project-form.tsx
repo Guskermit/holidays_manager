@@ -29,6 +29,7 @@ type Employee = {
   id: string;
   name: string;
   email: string;
+  activeProjects?: { name: string; color: string }[];
 };
 
 type InitialValues = {
@@ -266,9 +267,22 @@ export function ProjectForm({ employees, initialValues }: Props) {
                   onCheckedChange={() => toggleEmployee(employee.id)}
                   onClick={(e) => e.stopPropagation()}
                 />
-                <div className="flex flex-col">
+                <div className="flex-1 flex flex-col min-w-0">
                   <span className="text-sm font-medium">{employee.name}</span>
                   <span className="text-xs text-muted-foreground">{employee.email}</span>
+                  {employee.activeProjects && employee.activeProjects.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {employee.activeProjects.map((p) => (
+                        <span
+                          key={p.name}
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium text-white leading-none"
+                          style={{ backgroundColor: p.color }}
+                        >
+                          {p.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

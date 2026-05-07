@@ -146,6 +146,27 @@ export default async function AdminAnalyticsPage() {
       return tb - ta;
     });
 
+  // ── Employees without any active project ───────────────────────
+  const empIdsInActiveProjects = new Set<string>();
+  for (const p of activeProjects) {
+    for (const ep of ((p.employee_projects as any[]) ?? [])) {
+      empIdsInActiveProjects.add(ep.employee_id as string);
+    }
+  }
+  const employeesWithoutProject = ((employees ?? []) as any[])
+    .filter((emp) => !empIdsInActiveProjects.has(emp.id as string))
+    .map((emp) => ({
+      name: emp.name as string,
+      category: (emp.category ?? "Sin categoría") as string,
+      label: CATEGORY_LABELS[(emp.category as Category)] ?? (emp.category ?? "Sin categoría"),
+    }))
+    .sort((a, b) => {
+      const ia = PROJ_CATEGORY_ORDER.indexOf(a.category);
+      const ib = PROJ_CATEGORY_ORDER.indexOf(b.category);
+      const catCmp = (ia === -1 ? PROJ_CATEGORY_ORDER.length : ia) - (ib === -1 ? PROJ_CATEGORY_ORDER.length : ib);
+      return catCmp !== 0 ? catCmp : a.name.localeCompare(b.name);
+    });
+
   // ── Top skills ─────────────────────────────────────────────────
   const skillCount = new Map<string, number>();
   for (const es of empSkills ?? []) {
@@ -274,6 +295,7 @@ export default async function AdminAnalyticsPage() {
     projectStats,
     projectCategoryStats,
     projectEmployeesByCategory,
+    employeesWithoutProject,
     topSkills,
     vacationByStatus,
     monthlyApproved,

@@ -37,6 +37,7 @@ export type AnalyticsData = {
     color: string;
     categories: { category: string; label: string; employees: string[] }[];
   }[];
+  employeesWithoutProject: { name: string; category: string; label: string }[];
   topSkills: { name: string; count: number }[];
   vacationByStatus: { status: string; label: string; count: number; days: number }[];
   monthlyApproved: { label: string; count: number }[];
@@ -544,6 +545,7 @@ export function AnalyticsDashboard({ data }: { data: AnalyticsData }) {
     projectStats,
     projectCategoryStats,
     projectEmployeesByCategory,
+    employeesWithoutProject,
     topSkills,
     vacationByStatus,
     monthlyApproved,
@@ -659,6 +661,49 @@ export function AnalyticsDashboard({ data }: { data: AnalyticsData }) {
           Listado de empleados asignados a cada proyecto activo, agrupados por categoría.
         </p>
         <ProjectEmployeeTable items={projectEmployeesByCategory} />
+      </ChartCard>
+
+      {/* ── Row 3c: Empleados sin proyecto ── */}
+      <ChartCard title={`Empleados sin proyecto activo (${employeesWithoutProject.length})`}>
+        {employeesWithoutProject.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Todos los empleados están asignados a al menos un proyecto activo.</p>
+        ) : (
+          (() => {
+            const grouped = new Map<string, { label: string; employees: string[] }>();
+            for (const emp of employeesWithoutProject) {
+              if (!grouped.has(emp.category)) grouped.set(emp.category, { label: emp.label, employees: [] });
+              grouped.get(emp.category)!.employees.push(emp.name);
+            }
+            return (
+              <div className="flex flex-col gap-4">
+                {[...grouped.entries()].map(([cat, { label, employees }]) => (
+                  <div key={cat} className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="inline-block size-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: CATEGORY_COLORS[cat] ?? "#9ca3af" }}
+                      />
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        {label}
+                      </span>
+                      <span className="text-xs text-muted-foreground">({employees.length})</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 pl-4">
+                      {employees.map((name) => (
+                        <span
+                          key={name}
+                          className="px-2.5 py-1 rounded-full bg-muted text-xs font-medium"
+                        >
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()
+        )}
       </ChartCard>
 
       {/* ── Row 4: Distribución mensual ── */}

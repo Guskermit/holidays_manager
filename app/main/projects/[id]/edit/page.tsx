@@ -27,6 +27,9 @@ export default async function EditProjectPage({
     redirect("/main");
   }
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const [{ data: project }, { data: employees }] = await Promise.all([
     supabase
       .from("projects")
@@ -43,7 +46,10 @@ export default async function EditProjectPage({
       )
       .eq("id_engagement", id)
       .single(),
-    supabase.from("employees").select("id, name, email").order("name"),
+    supabase
+      .from("employees")
+      .select("id, name, email, employee_projects(projects(id_engagement, name, color, end_date))")
+      .order("name"),
   ]);
 
   if (!project) notFound();
@@ -60,6 +66,23 @@ export default async function EditProjectPage({
     ),
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const employeesWithProjects = ((employees ?? []) as any[]).map((emp: any) => ({
+    id: emp.id as string,
+    name: emp.name as string,
+    email: emp.email as string,
+    activeProjects: ((emp.employee_projects ?? []) as any[])
+      .map((ep: any) => ep.projects)
+      .filter(
+        (p: any) =>
+          p &&
+          p.id_engagement !== id &&
+          (!p.end_date || new Date(p.end_date) >= today)
+      )
+      .map((p: any) => ({ name: p.name as string, color: (p.color ?? "#6366f1") as string }))
+      .sort((a: any, b: any) => a.name.localeCompare(b.name)),
+  }));
+
   return (
     <div className="flex flex-col gap-6">
       <BackNav />
@@ -70,7 +93,7 @@ export default async function EditProjectPage({
         </p>
       </div>
 
-      <ProjectForm employees={employees ?? []} initialValues={initialValues} />
+      <ProjectForm employees={employeesWithProjects} initialValues={initialValues} />
     </div>
   );
 }
