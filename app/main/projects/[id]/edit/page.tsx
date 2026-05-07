@@ -66,21 +66,27 @@ export default async function EditProjectPage({
     ),
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const employeesWithProjects = ((employees ?? []) as any[]).map((emp: any) => ({
-    id: emp.id as string,
-    name: emp.name as string,
-    email: emp.email as string,
-    activeProjects: ((emp.employee_projects ?? []) as any[])
-      .map((ep: any) => ep.projects)
+  type EmpRow = {
+    id: string;
+    name: string;
+    email: string;
+    employee_projects: { projects: { id_engagement: string; name: string; color: string | null; end_date: string | null } | null }[];
+  };
+
+  const employeesWithProjects = ((employees ?? []) as EmpRow[]).map((emp) => ({
+    id: emp.id,
+    name: emp.name,
+    email: emp.email,
+    activeProjects: (emp.employee_projects ?? [])
+      .map((ep) => ep.projects)
       .filter(
-        (p: any) =>
-          p &&
+        (p): p is NonNullable<typeof p> =>
+          p !== null &&
           p.id_engagement !== id &&
           (!p.end_date || new Date(p.end_date) >= today)
       )
-      .map((p: any) => ({ name: p.name as string, color: (p.color ?? "#6366f1") as string }))
-      .sort((a: any, b: any) => a.name.localeCompare(b.name)),
+      .map((p) => ({ name: p.name, color: p.color ?? "#6366f1" }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
   }));
 
   return (
