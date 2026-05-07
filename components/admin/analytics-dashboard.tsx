@@ -32,6 +32,11 @@ export type AnalyticsData = {
     color: string;
     categories: { category: string; label: string; count: number }[];
   }[];
+  projectEmployeesByCategory: {
+    projectName: string;
+    color: string;
+    categories: { category: string; label: string; employees: string[] }[];
+  }[];
   topSkills: { name: string; count: number }[];
   vacationByStatus: { status: string; label: string; count: number; days: number }[];
   monthlyApproved: { label: string; count: number }[];
@@ -438,12 +443,107 @@ function ProjectCategoryChart({
   );
 }
 
+function ProjectEmployeeTable({
+  items,
+}: {
+  items: { projectName: string; color: string; categories: { category: string; label: string; employees: string[] }[] }[];
+}) {
+  const [openProjects, setOpenProjects] = useState<Set<string>>(() => new Set(items.map((p) => p.projectName)));
+
+  function toggle(name: string) {
+    setOpenProjects((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }
+
+  if (items.length === 0) {
+    return <p className="text-sm text-muted-foreground">Sin proyectos activos con empleados asignados</p>;
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {items.map((project) => {
+        const total = project.categories.reduce((s, c) => s + c.employees.length, 0);
+        const isOpen = openProjects.has(project.projectName);
+        return (
+          <div key={project.projectName} className="rounded-lg border bg-card overflow-hidden">
+            {/* Project header */}
+            <button
+              type="button"
+              onClick={() => toggle(project.projectName)}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+            >
+              <span
+                className="inline-block size-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: project.color }}
+              />
+              <span className="font-semibold text-sm flex-1">{project.projectName}</span>
+              <span className="text-xs text-muted-foreground mr-2">{total} empleado{total !== 1 ? 's' : ''}</span>
+              <span className="text-muted-foreground text-xs">{isOpen ? '▲' : '▼'}</span>
+            </button>
+            {/* Table */}
+            {isOpen && (
+              <div className="border-t">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-muted/40">
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-36">Categoría</th>
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Empleados</th>
+                      <th className="text-right px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-12">#</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {project.categories.map((cat) => (
+                      <tr key={cat.category} className="border-t border-muted/60">
+                        <td className="px-4 py-2.5 align-top">
+                          <span
+                            className="inline-flex items-center gap-1.5 text-xs font-medium whitespace-nowrap"
+                          >
+                            <span
+                              className="inline-block size-2 rounded-full shrink-0"
+                              style={{ backgroundColor: CATEGORY_COLORS[cat.category] ?? "#9ca3af" }}
+                            />
+                            {cat.label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex flex-wrap gap-1">
+                            {cat.employees.map((name) => (
+                              <span
+                                key={name}
+                                className="px-2 py-0.5 rounded-full bg-muted text-xs font-medium"
+                              >
+                                {name}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5 text-right text-xs font-semibold text-muted-foreground align-top">
+                          {cat.employees.length}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function AnalyticsDashboard({ data }: { data: AnalyticsData }) {
   const {
     kpis,
     categoryStats,
     projectStats,
     projectCategoryStats,
+    projectEmployeesByCategory,
     topSkills,
     vacationByStatus,
     monthlyApproved,
@@ -551,6 +651,14 @@ export function AnalyticsDashboard({ data }: { data: AnalyticsData }) {
       {/* ── Row 3: Categorías por proyecto ── */}
       <ChartCard title="Empleados por categoría en proyectos activos">
         <ProjectCategoryChart items={projectCategoryStats} />
+      </ChartCard>
+
+      {/* ── Row 3b: Tabla de empleados por proyecto y categoría ── */}
+      <ChartCard title="Empleados por proyecto y categoría">
+        <p className="text-xs text-muted-foreground -mt-2 mb-1">
+          Listado de empleados asignados a cada proyecto activo, agrupados por categoría.
+        </p>
+        <ProjectEmployeeTable items={projectEmployeesByCategory} />
       </ChartCard>
 
       {/* ── Row 4: Distribución mensual ── */}

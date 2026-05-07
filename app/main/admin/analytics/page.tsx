@@ -30,7 +30,7 @@ export default async function AdminAnalyticsPage() {
     { data: vacRequests },
     { data: allSkillsDB },
   ] = await Promise.all([
-    supabase.from("employees").select("id, category"),
+    supabase.from("employees").select("id, name, category"),
     supabase
       .from("projects")
       .select("id_engagement, name, color, end_date, employee_projects(employee_id)")
@@ -77,9 +77,13 @@ export default async function AdminAnalyticsPage() {
 
   // ── Employees per project broken down by category ──────────────
   const empCategoryMap = new Map<string, string>();
+  const empNameMap = new Map<string, string>();
   for (const emp of employees ?? []) {
     empCategoryMap.set((emp as any).id, (emp as any).category ?? "Sin categoría");
+    empNameMap.set((emp as any).id, (emp as any).name ?? "");
   }
+
+  const PROJ_CATEGORY_ORDER = ["Externo", "Intern", "Staff", "Senior", "Manager", "Senior-Manager", "Socio"];
 
   const projectCategoryStats = activeProjects
     .map((p) => {
@@ -105,6 +109,40 @@ export default async function AdminAnalyticsPage() {
     .sort((a, b) => {
       const ta = a.categories.reduce((s, c) => s + c.count, 0);
       const tb = b.categories.reduce((s, c) => s + c.count, 0);
+      return tb - ta;
+    });
+
+  // ── Employees by project grouped by category (with names) ─────
+  const projectEmployeesByCategory = activeProjects
+    .map((p) => {
+      const catMap = new Map<string, string[]>();
+      for (const ep of ((p.employee_projects as any[]) ?? [])) {
+        const cat = empCategoryMap.get(ep.employee_id) ?? "Sin categoría";
+        const name = empNameMap.get(ep.employee_id) ?? "";
+        if (!catMap.has(cat)) catMap.set(cat, []);
+        if (name) catMap.get(cat)!.push(name);
+      }
+      const categories = [...catMap.entries()]
+        .map(([category, employeeNames]) => ({
+          category,
+          label: CATEGORY_LABELS[category as Category] ?? category,
+          employees: employeeNames.sort(),
+        }))
+        .sort((a, b) => {
+          const ia = PROJ_CATEGORY_ORDER.indexOf(a.category);
+          const ib = PROJ_CATEGORY_ORDER.indexOf(b.category);
+          return (ia === -1 ? PROJ_CATEGORY_ORDER.length : ia) - (ib === -1 ? PROJ_CATEGORY_ORDER.length : ib);
+        });
+      return {
+        projectName: p.name as string,
+        color: (p.color as string | null) ?? "#6366f1",
+        categories,
+      };
+    })
+    .filter((p) => p.categories.length > 0)
+    .sort((a, b) => {
+      const ta = a.categories.reduce((s, c) => s + c.employees.length, 0);
+      const tb = b.categories.reduce((s, c) => s + c.employees.length, 0);
       return tb - ta;
     });
 
@@ -235,6 +273,7 @@ export default async function AdminAnalyticsPage() {
     categoryStats,
     projectStats,
     projectCategoryStats,
+    projectEmployeesByCategory,
     topSkills,
     vacationByStatus,
     monthlyApproved,
