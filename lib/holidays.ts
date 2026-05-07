@@ -33,6 +33,28 @@ const NATIONAL: string[] = [
   "2026-12-06", // Día de la Constitución
   "2026-12-08", // Inmaculada Concepción
   "2026-12-25", // Navidad
+  // 2027
+  "2027-01-01", // Año Nuevo
+  "2027-01-06", // Reyes Magos
+  "2027-03-26", // Viernes Santo
+  "2027-05-01", // Día del Trabajo
+  "2027-08-15", // Asunción de la Virgen
+  "2027-10-12", // Fiesta Nacional de España
+  "2027-11-01", // Todos los Santos
+  "2027-12-06", // Día de la Constitución
+  "2027-12-08", // Inmaculada Concepción
+  "2027-12-25", // Navidad
+  // 2028
+  "2028-01-01", // Año Nuevo
+  "2028-01-06", // Reyes Magos
+  "2028-04-14", // Viernes Santo
+  "2028-05-01", // Día del Trabajo
+  "2028-08-15", // Asunción de la Virgen
+  "2028-10-12", // Fiesta Nacional de España
+  "2028-11-01", // Todos los Santos
+  "2028-12-06", // Día de la Constitución
+  "2028-12-08", // Inmaculada Concepción
+  "2028-12-25", // Navidad
 ];
 
 /** Community of Madrid (national + autonómicos + locales Madrid capital) */
@@ -46,6 +68,14 @@ const MADRID_EXTRA: string[] = [
   "2026-03-19", // San José (Jueves Santo cae en 2 abr — se recupera)
   "2026-04-02", // Jueves Santo
   "2026-11-09", // Almudena
+  // 2027
+  "2027-03-25", // Jueves Santo
+  "2027-05-03", // Fiesta de la Comunidad de Madrid (2 may cae domingo → lunes 3)
+  "2027-11-09", // Almudena
+  // 2028
+  "2028-04-13", // Jueves Santo
+  "2028-05-02", // Fiesta de la Comunidad de Madrid
+  "2028-11-09", // Almudena
 ];
 
 /** Cataluña (Barcelona) */
@@ -62,6 +92,18 @@ const BARCELONA_EXTRA: string[] = [
   "2026-09-11", // Diada Nacional de Catalunya
   "2026-09-24", // La Mercè
   "2026-12-26", // San Esteban
+  // 2027
+  "2027-03-29", // Lunes de Pascua
+  "2027-06-24", // San Juan
+  "2027-09-11", // Diada Nacional de Catalunya
+  "2027-09-24", // La Mercè
+  "2027-12-26", // San Esteban
+  // 2028
+  "2028-04-17", // Lunes de Pascua
+  "2028-06-24", // San Juan
+  "2028-09-11", // Diada Nacional de Catalunya
+  "2028-09-24", // La Mercè
+  "2028-12-26", // San Esteban
 ];
 
 /** Comunitat Valenciana (Valencia) */
@@ -75,6 +117,14 @@ const VALENCIA_EXTRA: string[] = [
   "2026-03-19", // San José
   "2026-04-06", // Lunes de Pascua
   "2026-10-09", // Dia de la Comunitat Valenciana
+  // 2027
+  "2027-03-19", // San José
+  "2027-03-29", // Lunes de Pascua
+  "2027-10-09", // Dia de la Comunitat Valenciana
+  // 2028
+  "2028-03-19", // San José
+  "2028-04-17", // Lunes de Pascua
+  "2028-10-09", // Dia de la Comunitat Valenciana
 ];
 
 /** Aragón (Zaragoza) */
@@ -92,6 +142,18 @@ const ZARAGOZA_EXTRA: string[] = [
   // 2026 — locales Zaragoza capital
   "2026-01-27", // Santo Tomás de Aquino (local)
   "2026-10-13", // Fiesta local Zaragoza (traslado)
+  // 2027 — autonómicos Aragón
+  "2027-03-25", // Jueves Santo
+  "2027-04-23", // San Jorge (Día de Aragón)
+  "2027-10-12", // El Pilar (ya en nacionales; se mantiene)
+  // 2027 — locales Zaragoza capital
+  "2027-01-27", // Santo Tomás de Aquino (local)
+  // 2028 — autonómicos Aragón
+  "2028-04-13", // Jueves Santo
+  "2028-04-23", // San Jorge (Día de Aragón)
+  "2028-10-12", // El Pilar (ya en nacionales; se mantiene)
+  // 2028 — locales Zaragoza capital
+  "2028-01-27", // Santo Tomás de Aquino (local)
 ];
 
 /** Andalucía (Málaga) */
@@ -105,6 +167,15 @@ const MALAGA_EXTRA: string[] = [
   "2026-03-02", // traslado Día de Andalucía
   "2026-04-02", // Jueves Santo
   "2026-08-17", // Feria de Málaga
+  // 2027
+  "2027-02-28", // Día de Andalucía (domingo → lunes 1 mar)
+  "2027-03-01", // traslado Día de Andalucía
+  "2027-03-25", // Jueves Santo
+  "2027-08-23", // Feria de Málaga (lunes feria)
+  // 2028
+  "2028-02-28", // Día de Andalucía
+  "2028-04-13", // Jueves Santo
+  "2028-08-19", // Feria de Málaga (lunes feria)
 ];
 
 const OFFICE_HOLIDAYS: Record<Office, string[]> = {
