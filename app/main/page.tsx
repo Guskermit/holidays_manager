@@ -57,6 +57,13 @@ export default async function ProtectedPage() {
 
   const isAdmin = effectiveEmployee?.role === "admin" || effectiveEmployee?.role === "super-admin";
 
+  const { count: pendingApprovalsCount } = isAdmin
+    ? await supabase
+        .from("employees")
+        .select("id", { count: "exact", head: true })
+        .eq("approved", false)
+    : { count: null };
+
   return (
     <div className="flex flex-col gap-10">
       {/* Super-admin impersonation selector */}
@@ -216,6 +223,26 @@ export default async function ProtectedPage() {
             Administración
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Link
+              href="/main/admin/employee-approvals"
+              className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-violet-500 transition-colors"
+            >
+              <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-600">{strings.dashboard.adminBadge}</span>
+              {(pendingApprovalsCount ?? 0) > 0 && (
+                <span className="absolute top-3 left-3 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-500 text-white">
+                  {pendingApprovalsCount}
+                </span>
+              )}
+              <div className="flex items-center justify-center size-12 rounded-lg bg-violet-500/10 text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition-colors">
+                <UsersIcon className="size-6" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <h2 className="text-lg font-semibold">{strings.admin.approvalsTitle}</h2>
+                <p className="text-sm text-muted-foreground">{strings.admin.approvalsSubtitle}</p>
+              </div>
+              <span className="text-sm text-violet-600 font-medium group-hover:underline">Ver solicitudes →</span>
+            </Link>
+
             <Link
               href="/main/projects"
               className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-violet-500 transition-colors"

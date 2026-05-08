@@ -59,6 +59,25 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // If user is logged in, check that their account has been approved by an admin.
+  // Allow access to /auth/* routes so they can log out or see the pending page.
+  if (
+    user &&
+    !request.nextUrl.pathname.startsWith("/auth")
+  ) {
+    const { data: employee } = await supabase
+      .from("employees")
+      .select("approved")
+      .eq("user_id", user.sub)
+      .single();
+
+    if (employee && employee.approved === false) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/auth/pending-approval";
+      return NextResponse.redirect(url);
+    }
+  }
+
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
   // If you're creating a new response object with NextResponse.next() make sure to:
   // 1. Pass the request in it, like so:

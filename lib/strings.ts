@@ -87,7 +87,12 @@ export const strings = {
     signUpSuccess: {
       title:       "Thank you for signing up!",
       description: "Check your email to confirm",
-      body:        "You've successfully signed up. Please check your email to confirm your account before signing in.",
+      body:        "You've successfully signed up. Please check your email to confirm your account. Once verified, an administrator will review and approve your access before you can sign in.",
+    },
+    pendingApproval: {
+      title:       "Account pending approval",
+      description: "An administrator must approve your account",
+      body:        "Your account has been created and your email has been verified. An administrator will review and approve your access shortly. You will be able to sign in once your account is approved.",
     },
     error: {
       title:       "Sorry, something went wrong.",
@@ -276,6 +281,8 @@ export const strings = {
 
   // ── Admin ──────────────────────────────────────────────────
   admin: {
+    approvalsTitle:       "Pending account approvals",
+    approvalsSubtitle:    "Review and approve new employee accounts before they can access the application.",
     requestsTitle:        "Vacation requests",
     requestsCountPending: (n: number) => `${n} request${n !== 1 ? "s" : ""} pending approval.`,
     requestsAllReviewed:  "All requests have been reviewed.",
