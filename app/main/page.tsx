@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { FolderKanbanIcon, CalendarDaysIcon, LayoutListIcon, CheckCircle2Icon, ClockIcon, SunIcon, UsersIcon, ClipboardListIcon, BrainIcon, SearchIcon, TrendingUpIcon, SettingsIcon, BarChart2Icon, BookOpenIcon } from "lucide-react";
+import { FolderKanbanIcon, CalendarDaysIcon, LayoutListIcon, CheckCircle2Icon, ClockIcon, SunIcon, UsersIcon, ClipboardListIcon, BrainIcon, SearchIcon, TrendingUpIcon, SettingsIcon, BarChart2Icon, BookOpenIcon, TimerIcon } from "lucide-react";
 import { strings } from "@/lib/strings";
 import { getEffectiveEmployee } from "@/lib/impersonation";
 import { ImpersonationSelector } from "@/components/impersonation-selector";
@@ -63,6 +63,30 @@ export default async function ProtectedPage() {
         .select("id", { count: "exact", head: true })
         .eq("approved", false)
     : { count: null };
+
+  // Check if the effective employee is in a Minor project
+  const { data: effectiveProjects } = effectiveId
+    ? await supabase
+        .from("employee_projects")
+        .select("project_id")
+        .eq("employee_id", effectiveId)
+    : { data: null };
+
+  const effectiveProjectIds = (effectiveProjects ?? []).map((ep) => ep.project_id);
+
+  let isMinorMember = false;
+  let isMinorAdmin  = false;
+  if (effectiveProjectIds.length > 0) {
+    const { data: minorProject } = await supabase
+      .from("projects")
+      .select("id_engagement")
+      .in("id_engagement", effectiveProjectIds)
+      .eq("is_minor", true)
+      .maybeSingle();
+
+    isMinorMember = !!minorProject;
+    isMinorAdmin  = isMinorMember && isAdmin;
+  }
 
   return (
     <div className="flex flex-col gap-10">
@@ -215,6 +239,64 @@ export default async function ProtectedPage() {
           )}
         </div>
       </div>
+
+      {/* ── Minor ───────────────────────────────────────── */}
+      {isMinorMember && (
+        <div className="flex flex-col gap-4">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            Minor
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Link
+              href="/main/minor"
+              className="group flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-orange-500 transition-colors"
+            >
+              <div className="flex items-center justify-center size-12 rounded-lg bg-orange-500/10 text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                <TimerIcon className="size-6" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <h2 className="text-lg font-semibold">{strings.minor.dashboardCard}</h2>
+                <p className="text-sm text-muted-foreground">{strings.minor.dashboardCardDesc}</p>
+              </div>
+              <span className="text-sm text-orange-600 font-medium group-hover:underline">{strings.minor.dashboardCardLink}</span>
+            </Link>
+
+            {isMinorAdmin && (
+              <Link
+                href="/main/admin/minor"
+                className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-orange-500 transition-colors"
+              >
+                <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-600">{strings.dashboard.adminBadge}</span>
+                <div className="flex items-center justify-center size-12 rounded-lg bg-orange-500/10 text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                  <FolderKanbanIcon className="size-6" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <h2 className="text-lg font-semibold">{strings.minor.adminDashboardCard}</h2>
+                  <p className="text-sm text-muted-foreground">{strings.minor.adminDashboardCardDesc}</p>
+                </div>
+                <span className="text-sm text-orange-600 font-medium group-hover:underline">{strings.minor.adminDashboardCardLink}</span>
+              </Link>
+            )}
+
+            {isMinorAdmin && (
+              <Link
+                href="/main/admin/minor/hours"
+                className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-orange-500 transition-colors"
+              >
+                <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-600">{strings.dashboard.adminBadge}</span>
+                <div className="flex items-center justify-center size-12 rounded-lg bg-orange-500/10 text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                  <BarChart2Icon className="size-6" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <h2 className="text-lg font-semibold">{strings.minor.adminHoursDashboardCard}</h2>
+                  <p className="text-sm text-muted-foreground">{strings.minor.adminHoursDashboardCardDesc}</p>
+                </div>
+                <span className="text-sm text-orange-600 font-medium group-hover:underline">{strings.minor.adminHoursDashboardCardLink}</span>
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Administración (admin only) ─────────────────── */}
       {isAdmin && (

@@ -11,6 +11,7 @@ export async function createProject(formData: FormData) {
   const startDate = formData.get("start_date") as string;
   const endDate = (formData.get("end_date") as string) || null;
   const color = (formData.get("color") as string) || "#6366f1";
+  const isMinor = formData.get("is_minor") === "true";
   const employeeIds = formData.getAll("employee_ids") as string[];
 
   // Upload icon if provided
@@ -37,6 +38,7 @@ export async function createProject(formData: FormData) {
     end_date: endDate,
     color,
     icon_url: iconUrl,
+    is_minor: isMinor,
   });
 
   if (projectError) {
@@ -71,6 +73,7 @@ export async function updateProject(
   const startDate = formData.get("start_date") as string;
   const endDate = (formData.get("end_date") as string) || null;
   const color = (formData.get("color") as string) || "#6366f1";
+  const isMinor = formData.get("is_minor") === "true";
   const employeeIds = formData.getAll("employee_ids") as string[];
 
   // Upload new icon if provided
@@ -92,7 +95,7 @@ export async function updateProject(
 
   const { error: projectError } = await supabase
     .from("projects")
-    .update({ name, start_date: startDate, end_date: endDate, color, icon_url: iconUrl })
+    .update({ name, start_date: startDate, end_date: endDate, color, icon_url: iconUrl, is_minor: isMinor })
     .eq("id_engagement", idEngagement);
 
   if (projectError) {

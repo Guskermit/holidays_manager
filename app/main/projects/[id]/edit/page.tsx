@@ -41,6 +41,7 @@ export default async function EditProjectPage({
         end_date,
         color,
         icon_url,
+        is_minor,
         employee_projects ( employee_id )
       `
       )
@@ -61,6 +62,7 @@ export default async function EditProjectPage({
     endDate: project.end_date ?? "",
     color: project.color ?? "#6366f1",
     iconUrl: project.icon_url ?? null,
+    isMinor: (project as { is_minor?: boolean }).is_minor ?? false,
     assignedEmployeeIds: project.employee_projects.map(
       (ep: { employee_id: string }) => ep.employee_id
     ),

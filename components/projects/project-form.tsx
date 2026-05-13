@@ -40,6 +40,7 @@ type InitialValues = {
   color: string;
   iconUrl: string | null;
   assignedEmployeeIds: string[];
+  isMinor: boolean;
 };
 
 type Props = {
@@ -62,6 +63,7 @@ export function ProjectForm({ employees, initialValues }: Props) {
     initialValues?.iconUrl ?? null
   );
   const [employeeSearch, setEmployeeSearch] = useState("");
+  const [isMinor, setIsMinor] = useState(initialValues?.isMinor ?? false);
   const iconInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -231,6 +233,20 @@ export function ProjectForm({ employees, initialValues }: Props) {
             defaultValue={initialValues?.endDate}
           />
         </div>
+      </div>
+
+      {/* Minor project flag */}
+      <div className="flex items-center gap-3">
+        <Checkbox
+          id="is_minor"
+          checked={isMinor}
+          onCheckedChange={(v) => setIsMinor(!!v)}
+        />
+        <div>
+          <Label htmlFor="is_minor" className="cursor-pointer">{strings.projects.formIsMinorLabel}</Label>
+          <p className="text-xs text-muted-foreground">{strings.projects.formIsMinorHint}</p>
+        </div>
+        <input type="hidden" name="is_minor" value={isMinor ? "true" : "false"} />
       </div>
 
       {/* Employee assignment */}

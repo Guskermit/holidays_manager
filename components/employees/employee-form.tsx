@@ -21,6 +21,7 @@ type Props = {
     category: string;
     company: string | null;
     cost_per_hour: number | null;
+    weekly_hours: number | null;
   };
 };
 
@@ -191,6 +192,23 @@ export function EmployeeForm({ employee }: Props) {
           className="max-w-[200px]"
         />
         <p className="text-xs text-muted-foreground">{strings.employees.formCostPerHourHint}</p>
+      </div>
+
+      {/* Weekly hours (Minor project) */}
+      <div className="grid gap-2">
+        <Label htmlFor="weekly_hours">{strings.employees.formWeeklyHoursLabel}</Label>
+        <Input
+          id="weekly_hours"
+          name="weekly_hours"
+          type="number"
+          min="1"
+          max="168"
+          step="1"
+          placeholder="42"
+          defaultValue={employee.weekly_hours ?? 42}
+          className="max-w-[200px]"
+        />
+        <p className="text-xs text-muted-foreground">{strings.employees.formWeeklyHoursHint}</p>
       </div>
 
       <div className="flex gap-3">

@@ -42,6 +42,8 @@ export async function updateEmployee(
   const company     = (formData.get("company")      as string | null)?.trim() || null;
   const costRaw     = (formData.get("cost_per_hour") as string)?.trim();
   const costPerHour = costRaw !== "" && costRaw != null ? parseFloat(costRaw) : null;
+  const weeklyHoursRaw = (formData.get("weekly_hours") as string)?.trim();
+  const weeklyHours = weeklyHoursRaw !== "" && weeklyHoursRaw != null ? parseInt(weeklyHoursRaw, 10) : 42;
 
   if (!name || !office || !role || !category) {
     return { error: "All fields are required" };
@@ -64,6 +66,7 @@ export async function updateEmployee(
       category,
       company: category === "Externo" ? company : null,
       cost_per_hour: costPerHour,
+      weekly_hours: weeklyHours,
     })
     .eq("id", employeeId);
 

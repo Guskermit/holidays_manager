@@ -122,6 +122,32 @@ export async function notifyVacationCancelled(params: {
 }
 
 /**
+ * Notify admins about employees who haven't completed their Minor hours for the week.
+ * Goes to the admin webhook.
+ */
+export async function notifyMinorIncompleteHours(params: {
+  weekStart: string;
+  incompleteEmployees: { name: string; email: string; hoursLogged: number; hoursTarget: number }[];
+}): Promise<void> {
+  const { weekStart, incompleteEmployees } = params;
+  if (incompleteEmployees.length === 0) return;
+
+  const weekLabel = fmtDate(weekStart);
+  const lines = incompleteEmployees.map(
+    (e) =>
+      `• *${e.name}* (${e.email}) — ${e.hoursLogged}h de ${e.hoursTarget}h`
+  );
+
+  const header = `⏰ *Semana del ${weekLabel}: ${incompleteEmployees.length} empleado${incompleteEmployees.length !== 1 ? "s" : ""} sin horas Minor completas:*`;
+  const text = [header, ...lines].join("\n");
+
+  await post(WEBHOOK_ADMIN, text, [
+    { type: "section", text: { type: "mrkdwn", text: header } },
+    { type: "section", text: { type: "mrkdwn", text: lines.join("\n") } },
+  ]);
+}
+
+/**
  * Notify admins about employees whose skills profile is stale (>1 year) or empty.
  * Goes to the admin webhook.
  */
