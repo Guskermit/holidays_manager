@@ -332,6 +332,15 @@ export const strings = {
       dashboardCardDesc:    "Configure the number of vacation days available per category.",
       dashboardCardLink:    "Go to Settings →",
     },
+
+    // Holidays management
+    holidays: {
+      pageTitle:            "Festivos",
+      pageSubtitle:         "Gestiona los festivos nacionales y por centro de trabajo.",
+      dashboardCard:        "Festivos",
+      dashboardCardDesc:    "Gestiona los festivos nacionales y por centro de trabajo.",
+      dashboardCardLink:    "Gestionar →",
+    },
   },
 
   // ── Skills ─────────────────────────────────────────────────

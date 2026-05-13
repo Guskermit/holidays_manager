@@ -187,9 +187,32 @@ const OFFICE_HOLIDAYS: Record<Office, string[]> = {
   zaragoza: [...NATIONAL, ...ZARAGOZA_EXTRA],
 };
 
-/** Returns a Set of holiday strings "YYYY-MM-DD" for the given office */
+/** Returns a Set of holiday strings "YYYY-MM-DD" for the given office (hardcoded fallback) */
 export function getHolidaysForOffice(office: Office): Set<string> {
   return new Set(OFFICE_HOLIDAYS[office]);
+}
+
+/**
+ * Returns a Set of holiday strings "YYYY-MM-DD" for the given office,
+ * reading from the `public_holidays` DB table (national + office-specific).
+ * Falls back to the hardcoded list if the DB returns nothing.
+ *
+ * Must be called server-side (uses Supabase server client).
+ */
+export async function getHolidaysForOfficeFromDB(
+  office: Office,
+  supabase: import("@supabase/supabase-js").SupabaseClient
+): Promise<Set<string>> {
+  const { data } = await supabase
+    .from("public_holidays")
+    .select("date")
+    .in("scope", ["national", office]);
+
+  if (!data || data.length === 0) {
+    // Fallback to hardcoded list
+    return getHolidaysForOffice(office);
+  }
+  return new Set(data.map((r: { date: string }) => r.date));
 }
 
 /** True if the given date is a weekend */
