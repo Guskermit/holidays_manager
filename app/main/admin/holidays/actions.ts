@@ -81,10 +81,6 @@ export async function deleteHoliday(id: string) {
 // No API key required. Returns national (Spain) holidays only.
 // Regional/local holidays must be managed manually.
 
-const NAGER_SCOPE_MAP: Record<string, Scope> = {
-  national: "national",
-};
-
 export async function importHolidaysFromApi(year: number, scope: Scope) {
   const { supabase, error: authErr } = await requireAdmin();
   if (!supabase) return { error: authErr, imported: 0 };
