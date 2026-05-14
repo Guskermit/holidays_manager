@@ -39,11 +39,20 @@ type Project = {
   employee_projects: { employee_id: string }[];
 };
 
+type Team = {
+  id: string;
+  name: string;
+  project_id: string;
+};
+
 type Props = {
   employees: Employee[];
   projects: Project[];
   balances?: Map<string, { totalDays: number; usedDays: number; pendingDays: number }>;
   year?: number;
+  teams?: Team[];
+  // key: `${employeeId}:${projectId}` → teamId | null
+  teamAssignments?: Map<string, string | null>;
 };
 
 const STATUS_COLOR: Record<VacationRequest["status"], string> = {
@@ -62,11 +71,12 @@ const STATUS_LABEL: Record<VacationRequest["status"], string> = {
 
 const MONTH_NAMES = strings.vacations.calendarMonths;
 
-export function VacationSummaryTable({ employees, projects, balances, year: propYear }: Props) {
+export function VacationSummaryTable({ employees, projects, balances, year: propYear, teams = [], teamAssignments }: Props) {
   const today = new Date();
   const [year, setYear]   = useState(propYear ?? today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [projectFilter, setProjectFilter] = useState<string>("all");
+  const [teamFilter, setTeamFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [specFilter, setSpecFilter] = useState<string>("all");
 
@@ -99,6 +109,12 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
     return Array.from({ length: count }, (_, i) => new Date(year, month, i + 1));
   }, [year, month]);
 
+  /* ── teams for the selected project ──────────────────────── */
+  const projectTeams = useMemo(() => {
+    if (projectFilter === "all") return [];
+    return teams.filter((t) => t.project_id === projectFilter);
+  }, [teams, projectFilter]);
+
   /* ── filtered employees ────────────────────────────────────── */
   const visibleEmployees = useMemo(() => {
     let result = employees;
@@ -109,6 +125,12 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
         result = result.filter(e => ids.has(e.id));
       }
     }
+    if (teamFilter !== "all" && teamAssignments) {
+      result = result.filter((e) => {
+        const key = `${e.id}:${projectFilter}`;
+        return teamAssignments.get(key) === teamFilter;
+      });
+    }
     if (categoryFilter !== "all") {
       result = result.filter(e => e.category === categoryFilter);
     }
@@ -116,7 +138,7 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
       result = result.filter(e => e.specializations.includes(specFilter));
     }
     return result;
-  }, [employees, projects, projectFilter, categoryFilter, specFilter]);
+  }, [employees, projects, projectFilter, teamFilter, teamAssignments, categoryFilter, specFilter]);
 
   /* ── pre-compute day → status map per employee ─────────────── */
   const employeeDayMap = useMemo(() => {
@@ -168,7 +190,7 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
           <button
             key={p.id_engagement}
             type="button"
-            onClick={() => setProjectFilter(p.id_engagement)}
+            onClick={() => { setProjectFilter(p.id_engagement); setTeamFilter("all"); }}
             className={cn(
               "px-3 py-1.5 rounded-full text-sm border transition-colors flex items-center gap-1.5",
               projectFilter === p.id_engagement
@@ -184,6 +206,40 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
           </button>
         ))}
       </div>
+
+      {/* ── Team filter (only when a project with teams is selected) ── */}
+      {projectTeams.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium shrink-0">Equipo</span>
+          <button
+            type="button"
+            onClick={() => setTeamFilter("all")}
+            className={cn(
+              "px-3 py-1.5 rounded-full text-sm border transition-colors",
+              teamFilter === "all"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "border-input hover:bg-accent"
+            )}
+          >
+            Todos
+          </button>
+          {projectTeams.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTeamFilter(t.id)}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-sm border transition-colors",
+                teamFilter === t.id
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-input hover:bg-accent"
+              )}
+            >
+              {t.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Category filter ── */}
       {allCategories.length > 0 && (

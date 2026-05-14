@@ -37,19 +37,25 @@ export default async function VacationSummaryPage() {
 
   let employees: any[] = [];
   let projects: any[] = [];
+  let teams: any[] = [];
 
-  const [empResult, projResult] = await Promise.all([
+  const [empResult, projResult, teamsResult] = await Promise.all([
     supabase
       .from("employees")
       .select(`id, name, office, category, employee_specializations ( specializations ( name ) ), vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status, days_requested, year )`)
       .order("name"),
     supabase
       .from("projects")
-      .select(`id_engagement, name, color, employee_projects ( employee_id )`)
+      .select(`id_engagement, name, color, employee_projects ( employee_id, team_id )`)
+      .order("name"),
+    supabase
+      .from("project_teams")
+      .select("id, name, project_id")
       .order("name"),
   ]);
   employees = (empResult.data ?? []).map(flattenEmployee);
   projects = projResult.data ?? [];
+  teams = teamsResult.data ?? [];
 
   // Compute vacation balances from requests (reliable source of truth)
   // total_days: prefer vacation_balances row; fall back to category_vacation_days.
@@ -97,6 +103,14 @@ export default async function VacationSummaryPage() {
     balances.set(emp.id, { totalDays: total, usedDays, pendingDays });
   }
 
+  // Build teamAssignments map: `${employeeId}:${projectId}` → teamId | null
+  const teamAssignments = new Map<string, string | null>();
+  for (const proj of projects as any[]) {
+    for (const ep of (proj.employee_projects ?? []) as any[]) {
+      teamAssignments.set(`${ep.employee_id}:${proj.id_engagement}`, ep.team_id ?? null);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <BackNav />
@@ -112,6 +126,8 @@ export default async function VacationSummaryPage() {
         projects={projects}
         balances={balances}
         year={currentYear}
+        teams={teams}
+        teamAssignments={teamAssignments}
       />
     </div>
   );

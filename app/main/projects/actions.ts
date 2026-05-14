@@ -129,3 +129,76 @@ export async function updateProject(
 
   redirect("/main/projects");
 }
+
+// ── Team CRUD ──────────────────────────────────────────────────────────────────
+
+async function requireAdmin() {
+  const supabase = await createClient();
+  const { data: authData } = await supabase.auth.getClaims();
+  if (!authData?.claims) return { supabase: null, error: "Unauthorized" };
+  const { data: emp } = await supabase
+    .from("employees")
+    .select("role")
+    .eq("user_id", authData.claims.sub)
+    .single();
+  if (emp?.role !== "admin" && emp?.role !== "super-admin") return { supabase: null, error: "Forbidden" };
+  return { supabase, error: null };
+}
+
+export async function createTeam(projectId: string, name: string) {
+  const { supabase, error: authErr } = await requireAdmin();
+  if (!supabase) return { error: authErr, team: null };
+
+  const { data, error } = await supabase
+    .from("project_teams")
+    .insert({ project_id: projectId, name: name.trim() })
+    .select("id, name")
+    .single();
+
+  if (error) return { error: error.message, team: null };
+  return { error: null, team: data as { id: string; name: string } };
+}
+
+export async function updateTeam(teamId: string, name: string) {
+  const { supabase, error: authErr } = await requireAdmin();
+  if (!supabase) return { error: authErr };
+
+  const { error } = await supabase
+    .from("project_teams")
+    .update({ name: name.trim() })
+    .eq("id", teamId);
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
+export async function deleteTeam(teamId: string) {
+  const { supabase, error: authErr } = await requireAdmin();
+  if (!supabase) return { error: authErr };
+
+  const { error } = await supabase
+    .from("project_teams")
+    .delete()
+    .eq("id", teamId);
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
+export async function assignEmployeeTeam(
+  employeeId: string,
+  projectId: string,
+  teamId: string | null
+) {
+  const { supabase, error: authErr } = await requireAdmin();
+  if (!supabase) return { error: authErr };
+
+  const { error } = await supabase
+    .from("employee_projects")
+    .update({ team_id: teamId })
+    .eq("employee_id", employeeId)
+    .eq("project_id", projectId);
+
+  if (error) return { error: error.message };
+  return { error: null };
+}

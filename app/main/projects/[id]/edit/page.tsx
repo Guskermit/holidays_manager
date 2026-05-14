@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { ProjectForm } from "@/components/projects/project-form";
+import { TeamsManager } from "@/components/projects/teams-manager";
 import { BackNav } from "@/components/back-nav";
 import { strings } from "@/lib/strings";
 
@@ -30,7 +31,7 @@ export default async function EditProjectPage({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [{ data: project }, { data: employees }] = await Promise.all([
+  const [{ data: project }, { data: employees }, { data: teamsData }] = await Promise.all([
     supabase
       .from("projects")
       .select(
@@ -42,7 +43,7 @@ export default async function EditProjectPage({
         color,
         icon_url,
         is_minor,
-        employee_projects ( employee_id )
+        employee_projects ( employee_id, team_id )
       `
       )
       .eq("id_engagement", id)
@@ -50,6 +51,11 @@ export default async function EditProjectPage({
     supabase
       .from("employees")
       .select("id, name, email, employee_projects(projects(id_engagement, name, color, end_date))")
+      .order("name"),
+    supabase
+      .from("project_teams")
+      .select("id, name")
+      .eq("project_id", id)
       .order("name"),
   ]);
 
@@ -64,9 +70,16 @@ export default async function EditProjectPage({
     iconUrl: project.icon_url ?? null,
     isMinor: (project as { is_minor?: boolean }).is_minor ?? false,
     assignedEmployeeIds: project.employee_projects.map(
-      (ep: { employee_id: string }) => ep.employee_id
+      (ep: { employee_id: string; team_id: string | null }) => ep.employee_id
     ),
   };
+
+  // Build employee → teamId map for this project
+  const employeeTeamMap = new Map<string, string | null>(
+    project.employee_projects.map(
+      (ep: { employee_id: string; team_id: string | null }) => [ep.employee_id, ep.team_id]
+    )
+  );
 
   type ProjectRef = { id_engagement: string; name: string; color: string | null; end_date: string | null };
   type EmpRow = {
@@ -93,7 +106,7 @@ export default async function EditProjectPage({
   }));
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <BackNav />
       <div>
         <h1 className="text-2xl font-bold">{strings.projects.editTitle}</h1>
@@ -103,6 +116,24 @@ export default async function EditProjectPage({
       </div>
 
       <ProjectForm employees={employeesWithProjects} initialValues={initialValues} />
+
+      <div className="border-t pt-6">
+        <h2 className="text-lg font-semibold mb-1">Equipos</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Organiza los miembros del proyecto en subgrupos (equipos).
+        </p>
+        <TeamsManager
+          projectId={id}
+          initialTeams={teamsData ?? []}
+          employees={employeesWithProjects
+            .filter((e) => initialValues.assignedEmployeeIds.includes(e.id))
+            .map((e) => ({
+              id: e.id,
+              name: e.name,
+              teamId: employeeTeamMap.get(e.id) ?? null,
+            }))}
+        />
+      </div>
     </div>
   );
 }
