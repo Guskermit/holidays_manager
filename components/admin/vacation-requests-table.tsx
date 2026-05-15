@@ -87,7 +87,9 @@ export function VacationRequestsTable({ requests }: Props) {
       if (projectFilter !== "all" && r.project_name !== projectFilter) return false;
       if (search.trim()) {
         const q = search.trim().toLowerCase();
-        if (!r.employees?.name.toLowerCase().includes(q)) return false;
+        const name  = r.employees?.name.toLowerCase()  ?? "";
+        const email = r.employees?.email.toLowerCase() ?? "";
+        if (!name.includes(q) && !email.includes(q)) return false;
       }
       return true;
     });
