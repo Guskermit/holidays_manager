@@ -100,7 +100,7 @@ INSERT INTO public_holidays (date, name, scope) VALUES
   ('2026-02-28', 'Día de Andalucía', 'malaga'),
   ('2026-03-02', 'Traslado Día de Andalucía', 'malaga'),
   ('2026-04-02', 'Jueves Santo', 'malaga'),
-  ('2026-08-17', 'Feria de Málaga', 'malaga')
+  ('2026-08-19', 'Feria de Málaga', 'malaga')
 ON CONFLICT (date, scope) DO NOTHING;
 
 -- ZARAGOZA

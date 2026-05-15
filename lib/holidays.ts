@@ -167,7 +167,7 @@ const MALAGA_EXTRA: string[] = [
   "2026-02-28", // Día de Andalucía (sábado → lunes 2 mar)
   "2026-03-02", // traslado Día de Andalucía
   "2026-04-02", // Jueves Santo
-  "2026-08-17", // Feria de Málaga
+  "2026-08-19", // Feria de Málaga
   // 2027
   "2027-02-28", // Día de Andalucía (domingo → lunes 1 mar)
   "2027-03-01", // traslado Día de Andalucía

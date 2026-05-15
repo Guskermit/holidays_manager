@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, ArrowUpIcon, ArrowDownIcon, ArrowUpDownIcon } from "lucide-react";
 import { strings } from "@/lib/strings";
 import {
   getHolidaysForOffice,
@@ -79,6 +79,20 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
   const [teamFilter, setTeamFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [specFilter, setSpecFilter] = useState<string>("all");
+  const [sortCol, setSortCol] = useState<"name" | "category">("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const toggleSort = (col: "name" | "category") => {
+    if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortCol(col); setSortDir("asc"); }
+  };
+
+  const SortIcon = ({ col }: { col: "name" | "category" }) => {
+    if (sortCol !== col) return <ArrowUpDownIcon className="size-3 ml-1 opacity-40 inline" />;
+    return sortDir === "asc"
+      ? <ArrowUpIcon className="size-3 ml-1 inline" />
+      : <ArrowDownIcon className="size-3 ml-1 inline" />;
+  };
 
   /* ── derive unique categories and specializations from employees ── */
   const allCategories = useMemo(() => {
@@ -137,8 +151,22 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
     if (specFilter !== "all") {
       result = result.filter(e => e.specializations.includes(specFilter));
     }
+    // Sort
+    result = [...result].sort((a, b) => {
+      let valA: string;
+      let valB: string;
+      if (sortCol === "category") {
+        valA = (CATEGORY_LABELS[a.category as Category] ?? a.category ?? "");
+        valB = (CATEGORY_LABELS[b.category as Category] ?? b.category ?? "");
+      } else {
+        valA = a.name;
+        valB = b.name;
+      }
+      const cmp = valA.localeCompare(valB, "es");
+      return sortDir === "asc" ? cmp : -cmp;
+    });
     return result;
-  }, [employees, projects, projectFilter, teamFilter, teamAssignments, categoryFilter, specFilter]);
+  }, [employees, projects, projectFilter, teamFilter, teamAssignments, categoryFilter, specFilter, sortCol, sortDir]);
 
   /* ── pre-compute day → status map per employee ─────────────── */
   const employeeDayMap = useMemo(() => {
@@ -358,8 +386,12 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
                 <th className="sticky left-0 z-10 bg-muted/80 backdrop-blur text-left font-medium px-3 py-2 min-w-40 border-r">
                   {strings.vacations.overviewColEmployee}
                 </th>
-                <th className="text-left font-medium px-2 py-2 min-w-24 border-r text-muted-foreground">
+                <th
+                  className="text-left font-medium px-2 py-2 min-w-24 border-r text-muted-foreground cursor-pointer hover:text-foreground select-none whitespace-nowrap"
+                  onClick={() => toggleSort("category")}
+                >
                   {strings.vacations.overviewColCategory}
+                  <SortIcon col="category" />
                 </th>
                 <th className="text-left font-medium px-2 py-2 min-w-32 border-r text-muted-foreground">
                   {strings.vacations.overviewColSpecs}
