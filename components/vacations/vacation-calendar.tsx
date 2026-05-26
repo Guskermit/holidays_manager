@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-  getHolidaysForOffice,
   isWeekend,
   isHoliday,
   countWorkingDays,
@@ -111,8 +110,8 @@ export function VacationCalendar({
   const [cancelError, setCancelError] = useState<string | null>(null);
 
   const holidays = useMemo(
-    () => holidaysProp ? new Set(holidaysProp) : getHolidaysForOffice(office),
-    [holidaysProp, office]
+    () => holidaysProp ? new Set(holidaysProp) : new Set<string>(),
+    [holidaysProp]
   );
 
   // Months to display: current startPage and next

@@ -65,6 +65,11 @@ $$;
 
 -- ── 5. RLS policies: minor_subprojects ───────────────────────────────────────
 
+DROP POLICY IF EXISTS "minor_subprojects_select" ON minor_subprojects;
+DROP POLICY IF EXISTS "minor_subprojects_insert" ON minor_subprojects;
+DROP POLICY IF EXISTS "minor_subprojects_update" ON minor_subprojects;
+DROP POLICY IF EXISTS "minor_subprojects_delete" ON minor_subprojects;
+
 -- Minor members and all admins can read subprojects
 CREATE POLICY "minor_subprojects_select" ON minor_subprojects
   FOR SELECT TO authenticated
@@ -84,6 +89,11 @@ CREATE POLICY "minor_subprojects_delete" ON minor_subprojects
   USING (is_minor_admin());
 
 -- ── 6. RLS policies: minor_hours ─────────────────────────────────────────────
+
+DROP POLICY IF EXISTS "minor_hours_select" ON minor_hours;
+DROP POLICY IF EXISTS "minor_hours_insert" ON minor_hours;
+DROP POLICY IF EXISTS "minor_hours_update" ON minor_hours;
+DROP POLICY IF EXISTS "minor_hours_delete" ON minor_hours;
 
 -- Employees see their own rows; minor admins see all
 CREATE POLICY "minor_hours_select" ON minor_hours

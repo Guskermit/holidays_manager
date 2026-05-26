@@ -1,6 +1,6 @@
 -- Public holidays table
 -- scope = 'national' | 'madrid' | 'barcelona' | 'valencia' | 'malaga' | 'zaragoza'
-CREATE TABLE public_holidays (
+CREATE TABLE IF NOT EXISTS public_holidays (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   date       date NOT NULL,
   name       text NOT NULL,
@@ -14,6 +14,7 @@ CREATE TABLE public_holidays (
 -- Only admins can write; everyone authenticated can read
 ALTER TABLE public_holidays ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "admins_all" ON public_holidays;
 CREATE POLICY "admins_all" ON public_holidays
   FOR ALL
   USING (
@@ -24,6 +25,7 @@ CREATE POLICY "admins_all" ON public_holidays
     )
   );
 
+DROP POLICY IF EXISTS "authenticated_read" ON public_holidays;
 CREATE POLICY "authenticated_read" ON public_holidays
   FOR SELECT
   USING (auth.uid() IS NOT NULL);
