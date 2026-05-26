@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { VacationCalendar } from "@/components/vacations/vacation-calendar";
 import { requestVacation, cancelVacationRequest } from "@/app/main/vacations/actions";
-import { type Office } from "@/lib/holidays";
+import { type Office, getHolidaysForOfficeFromDB } from "@/lib/holidays";
 import { getCategoryDays } from "@/lib/categories";
 import Link from "next/link";
 import { LayoutListIcon } from "lucide-react";
@@ -46,11 +46,15 @@ export default async function VacationsPage() {
 
   const maxDays = await getCategoryDays(supabase, employee.category);
 
-  const { data: requests } = await supabase
-    .from("vacation_requests")
-    .select("id, start_date, end_date, days_requested, status, year")
-    .eq("employee_id", employee.id)
-    .order("start_date", { ascending: false });
+  const [{ data: requests }, holidaysSet] = await Promise.all([
+    supabase
+      .from("vacation_requests")
+      .select("id, start_date, end_date, days_requested, status, year")
+      .eq("employee_id", employee.id)
+      .order("start_date", { ascending: false }),
+    getHolidaysForOfficeFromDB((employee.office as Office) ?? "madrid", supabase),
+  ]);
+  const holidays = [...holidaysSet];
 
   return (
     <div className="flex flex-col gap-6">
@@ -76,6 +80,7 @@ export default async function VacationsPage() {
       <VacationCalendar
         employeeId={employee.id}
         office={(employee.office as Office) ?? "madrid"}
+        holidays={holidays}
         requests={requests ?? []}
         maxDays={maxDays}
         onSubmit={isImpersonating ? undefined : requestVacation}

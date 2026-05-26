@@ -5,6 +5,7 @@ import { VacationSummaryTable } from "@/components/vacations/vacation-summary-ta
 import { BackNav } from "@/components/back-nav";
 import { strings } from "@/lib/strings";
 import { getEffectiveEmployee } from "@/lib/impersonation";
+import { getAllOfficeHolidaysFromDB } from "@/lib/holidays";
 
 function flattenEmployee(emp: any) {
   return {
@@ -102,6 +103,8 @@ export default async function TeamVacationPage() {
     supabase.from("category_vacation_days").select("category, vacation_days"),
   ]);
 
+  const holidaysByOffice = await getAllOfficeHolidaysFromDB(supabase);
+
   const totalDaysMap = new Map<string, number>();
   for (const b of ((balancesResult as any).data ?? []) as any[]) {
     totalDaysMap.set(b.employee_id, b.total_days);
@@ -142,6 +145,7 @@ export default async function TeamVacationPage() {
         projects={projects}
         balances={balances}
         year={currentYear}
+        holidaysByOffice={holidaysByOffice}
       />
     </div>
   );

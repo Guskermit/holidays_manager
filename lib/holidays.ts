@@ -7,7 +7,7 @@
  * Offices supported: madrid | barcelona | valencia | malaga | zaragoza
  */
 
-export type Office = "madrid" | "barcelona" | "valencia" | "malaga" | "zaragoza";
+export type Office = "madrid" | "barcelona" | "valencia" | "malaga" | "zaragoza" | "sevilla";
 
 /** National holidays (all offices) */
 const NATIONAL: string[] = [
@@ -157,6 +157,32 @@ const ZARAGOZA_EXTRA: string[] = [
   "2028-01-27", // Santo Tomás de Aquino (local)
 ];
 
+/** Andalucía (Sevilla) */
+const SEVILLA_EXTRA: string[] = [
+  // 2025
+  "2025-02-28", // Día de Andalucía
+  "2025-04-17", // Jueves Santo
+  "2025-04-18", // Viernes de Feria (local Sevilla — viernes Feria de Abril)
+  "2025-11-17", // San Clemente (patrón Sevilla, traslado)
+  // 2026
+  "2026-02-28", // Día de Andalucía (sábado → lunes 2 mar)
+  "2026-03-02", // traslado Día de Andalucía
+  "2026-04-02", // Jueves Santo
+  "2026-04-03", // Viernes de Feria (local Sevilla)
+  "2026-11-23", // San Clemente (local Sevilla)
+  // 2027
+  "2027-02-28", // Día de Andalucía (domingo → lunes 1 mar)
+  "2027-03-01", // traslado Día de Andalucía
+  "2027-03-25", // Jueves Santo
+  "2027-04-16", // Viernes de Feria (local Sevilla)
+  "2027-11-23", // San Clemente (local Sevilla)
+  // 2028
+  "2028-02-28", // Día de Andalucía
+  "2028-04-13", // Jueves Santo
+  "2028-04-28", // Viernes de Feria (local Sevilla)
+  "2028-11-23", // San Clemente (local Sevilla)
+];
+
 /** Andalucía (Málaga) */
 const MALAGA_EXTRA: string[] = [
   // 2025
@@ -185,6 +211,7 @@ const OFFICE_HOLIDAYS: Record<Office, string[]> = {
   valencia: [...NATIONAL, ...VALENCIA_EXTRA],
   malaga: [...NATIONAL, ...MALAGA_EXTRA],
   zaragoza: [...NATIONAL, ...ZARAGOZA_EXTRA],
+  sevilla: [...NATIONAL, ...SEVILLA_EXTRA],
 };
 
 /** Returns a Set of holiday strings "YYYY-MM-DD" for the given office (hardcoded fallback) */
@@ -213,6 +240,42 @@ export async function getHolidaysForOfficeFromDB(
     return getHolidaysForOffice(office);
   }
   return new Set(data.map((r: { date: string }) => r.date));
+}
+
+/**
+ * Returns a Record<office, string[]> with all holiday dates per office,
+ * fetched in a single DB query. Falls back to hardcoded lists per office
+ * if the DB returns nothing.
+ *
+ * Must be called server-side (uses Supabase server client).
+ */
+export async function getAllOfficeHolidaysFromDB(
+  supabase: import("@supabase/supabase-js").SupabaseClient
+): Promise<Record<string, string[]>> {
+  const OFFICES: Office[] = ["madrid", "barcelona", "valencia", "malaga", "zaragoza"];
+  const { data } = await supabase
+    .from("public_holidays")
+    .select("date, scope");
+
+  if (!data || data.length === 0) {
+    // Fallback: build from hardcoded lists
+    return Object.fromEntries(
+      OFFICES.map((o) => [o, [...OFFICE_HOLIDAYS[o]]])
+    );
+  }
+
+  const national = data
+    .filter((r: { date: string; scope: string }) => r.scope === "national")
+    .map((r: { date: string }) => r.date);
+
+  const result: Record<string, string[]> = {};
+  for (const office of OFFICES) {
+    const specific = data
+      .filter((r: { date: string; scope: string }) => r.scope === office)
+      .map((r: { date: string }) => r.date);
+    result[office] = [...national, ...specific];
+  }
+  return result;
 }
 
 /** True if the given date is a weekend */
@@ -262,4 +325,5 @@ export const OFFICE_LABELS: Record<Office, string> = {
   valencia: "Valencia",
   malaga: "Málaga",
   zaragoza: "Zaragoza",
+  sevilla: "Sevilla",
 };

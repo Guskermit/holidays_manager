@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { VacationSummaryTable } from "@/components/vacations/vacation-summary-table";
 import { BackNav } from "@/components/back-nav";
 import { strings } from "@/lib/strings";
+import { getAllOfficeHolidaysFromDB } from "@/lib/holidays";
 
 function flattenEmployee(emp: any) {
   return {
@@ -56,6 +57,8 @@ export default async function VacationSummaryPage() {
   employees = (empResult.data ?? []).map(flattenEmployee);
   projects = projResult.data ?? [];
   teams = teamsResult.data ?? [];
+
+  const holidaysByOffice = await getAllOfficeHolidaysFromDB(supabase);
 
   // Compute vacation balances from requests (reliable source of truth)
   // total_days: prefer vacation_balances row; fall back to category_vacation_days.
@@ -128,6 +131,7 @@ export default async function VacationSummaryPage() {
         year={currentYear}
         teams={teams}
         teamAssignments={teamAssignments}
+        holidaysByOffice={holidaysByOffice}
       />
     </div>
   );

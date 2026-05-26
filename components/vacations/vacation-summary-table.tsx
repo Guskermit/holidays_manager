@@ -53,6 +53,8 @@ type Props = {
   teams?: Team[];
   // key: `${employeeId}:${projectId}` → teamId | null
   teamAssignments?: Map<string, string | null>;
+  /** Pre-fetched holidays from DB keyed by office name */
+  holidaysByOffice?: Record<string, string[]>;
 };
 
 const STATUS_COLOR: Record<VacationRequest["status"], string> = {
@@ -71,7 +73,7 @@ const STATUS_LABEL: Record<VacationRequest["status"], string> = {
 
 const MONTH_NAMES = strings.vacations.calendarMonths;
 
-export function VacationSummaryTable({ employees, projects, balances, year: propYear, teams = [], teamAssignments }: Props) {
+export function VacationSummaryTable({ employees, projects, balances, year: propYear, teams = [], teamAssignments, holidaysByOffice }: Props) {
   const today = new Date();
   const [year, setYear]   = useState(propYear ?? today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -173,7 +175,9 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
     const map = new Map<string, Map<string, VacationRequest["status"]>>();
     for (const emp of visibleEmployees) {
       const dayMap = new Map<string, VacationRequest["status"]>();
-      const officeHolidays = getHolidaysForOffice(emp.office);
+      const officeHolidays = holidaysByOffice?.[emp.office]
+        ? new Set(holidaysByOffice[emp.office])
+        : getHolidaysForOffice(emp.office);
       for (const req of emp.vacation_requests) {
         if (req.status === "cancelled") continue;
         const cur = new Date(req.start_date + "T00:00:00");
@@ -425,7 +429,9 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
             <tbody className="divide-y">
               {visibleEmployees.map(emp => {
                 const dayMap = employeeDayMap.get(emp.id) ?? new Map();
-                const officeHolidays = getHolidaysForOffice(emp.office);
+                const officeHolidays = holidaysByOffice?.[emp.office]
+                  ? new Set(holidaysByOffice[emp.office])
+                  : getHolidaysForOffice(emp.office);
                 return (
                   <tr key={emp.id} className="hover:bg-muted/20">
                     <td className="sticky left-0 z-10 bg-background px-3 py-1.5 font-medium border-r whitespace-nowrap">

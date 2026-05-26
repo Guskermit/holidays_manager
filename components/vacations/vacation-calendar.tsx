@@ -29,6 +29,7 @@ type VacationRequest = {
 type Props = {
   employeeId: string;
   office: Office;
+  holidays?: string[];
   requests: VacationRequest[];
   maxDays: number;
   readOnly?: boolean;
@@ -84,6 +85,7 @@ function buildMonth(year: number, month: number): (Date | null)[] {
 export function VacationCalendar({
   employeeId,
   office,
+  holidays: holidaysProp,
   requests,
   maxDays,
   readOnly = false,
@@ -108,7 +110,10 @@ export function VacationCalendar({
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
 
-  const holidays = useMemo(() => getHolidaysForOffice(office), [office]);
+  const holidays = useMemo(
+    () => holidaysProp ? new Set(holidaysProp) : getHolidaysForOffice(office),
+    [holidaysProp, office]
+  );
 
   // Months to display: current startPage and next
   const months = useMemo(() => {
