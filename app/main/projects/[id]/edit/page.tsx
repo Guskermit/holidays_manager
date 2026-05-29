@@ -43,7 +43,7 @@ export default async function EditProjectPage({
         color,
         icon_url,
         is_minor,
-        employee_projects ( employee_id, team_id )
+        employee_projects ( employee_id, employee_project_teams ( team_id ) )
       `
       )
       .eq("id_engagement", id)
@@ -70,15 +70,19 @@ export default async function EditProjectPage({
     iconUrl: project.icon_url ?? null,
     isMinor: (project as { is_minor?: boolean }).is_minor ?? false,
     assignedEmployeeIds: project.employee_projects.map(
-      (ep: { employee_id: string; team_id: string | null }) => ep.employee_id
+      (ep: { employee_id: string }) => ep.employee_id
     ),
   };
 
-  // Build employee → teamId map for this project
-  const employeeTeamMap = new Map<string, string | null>(
-    project.employee_projects.map(
-      (ep: { employee_id: string; team_id: string | null }) => [ep.employee_id, ep.team_id]
-    )
+  // Build employee → teamIds map for this project
+  const employeeTeamMap = new Map<string, string[]>(
+    project.employee_projects.map((ep: {
+      employee_id: string;
+      employee_project_teams?: { team_id: string }[];
+    }) => [
+      ep.employee_id,
+      (ep.employee_project_teams ?? []).map((item) => item.team_id),
+    ])
   );
 
   type ProjectRef = { id_engagement: string; name: string; color: string | null; end_date: string | null };
@@ -130,7 +134,7 @@ export default async function EditProjectPage({
             .map((e) => ({
               id: e.id,
               name: e.name,
-              teamId: employeeTeamMap.get(e.id) ?? null,
+              teamIds: employeeTeamMap.get(e.id) ?? [],
             }))}
         />
       </div>

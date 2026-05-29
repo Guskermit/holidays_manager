@@ -22,7 +22,7 @@ type Team = {
 type ProjectEmployee = {
   id: string;
   name: string;
-  teamId: string | null;
+  teamIds: string[];
 };
 
 type Props = {
@@ -91,22 +91,22 @@ export function TeamsManager({ projectId, initialTeams, employees: initialEmploy
       const res = await deleteTeam(id);
       if (res.error) { setError(res.error); return; }
       setTeams((prev) => prev.filter((t) => t.id !== id));
-      // Clear assignments that belonged to this team
+      // Remove the deleted team from each employee assignment list
       setEmployees((prev) =>
-        prev.map((e) => (e.teamId === id ? { ...e, teamId: null } : e))
+        prev.map((e) => ({ ...e, teamIds: e.teamIds.filter((teamId) => teamId !== id) }))
       );
       setError(null);
     });
   };
 
-  // ── Assign employee to team ────────────────────────────────────────────────
+  // ── Assign employee to teams ───────────────────────────────────────────────
 
-  const handleAssign = (employeeId: string, teamId: string | null) => {
+  const handleAssign = (employeeId: string, teamIds: string[]) => {
     startTransition(async () => {
-      const res = await assignEmployeeTeam(employeeId, projectId, teamId);
+      const res = await assignEmployeeTeam(employeeId, projectId, teamIds);
       if (res.error) { setError(res.error); return; }
       setEmployees((prev) =>
-        prev.map((e) => (e.id === employeeId ? { ...e, teamId } : e))
+        prev.map((e) => (e.id === employeeId ? { ...e, teamIds } : e))
       );
       setError(null);
     });
@@ -158,7 +158,7 @@ export function TeamsManager({ projectId, initialTeams, employees: initialEmploy
               <div key={team.id} className="flex items-center gap-2 px-3 py-2 rounded-md border hover:bg-muted/30">
                 <span className="flex-1 text-sm font-medium">{team.name}</span>
                 <span className="text-xs text-muted-foreground mr-2">
-                  {employees.filter((e) => e.teamId === team.id).length} miembro(s)
+                  {employees.filter((e) => e.teamIds.includes(team.id)).length} miembro(s)
                 </span>
                 <Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-foreground" onClick={() => startEdit(team)}>
                   <PencilIcon className="size-3.5" />
@@ -204,7 +204,7 @@ export function TeamsManager({ projectId, initialTeams, employees: initialEmploy
               <thead>
                 <tr className="bg-muted/50 border-b">
                   <th className="text-left font-medium px-4 py-2.5">Empleado</th>
-                  <th className="text-left font-medium px-4 py-2.5 w-56">Equipo</th>
+                  <th className="text-left font-medium px-4 py-2.5">Equipos</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -212,23 +212,32 @@ export function TeamsManager({ projectId, initialTeams, employees: initialEmploy
                   <tr key={emp.id} className="hover:bg-muted/20">
                     <td className="px-4 py-2.5">{emp.name}</td>
                     <td className="px-3 py-2">
-                      <select
-                        value={emp.teamId ?? ""}
-                        onChange={(e) => handleAssign(emp.id, e.target.value || null)}
-                        className={cn(
-                          "w-full h-8 rounded-md border border-input bg-background px-2 text-sm",
-                          "focus:outline-none focus:ring-1 focus:ring-ring",
-                          !emp.teamId && "text-muted-foreground"
-                        )}
-                        disabled={teams.length === 0}
-                      >
-                        <option value="">— Sin equipo —</option>
-                        {teams.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name}
-                          </option>
-                        ))}
-                      </select>
+                      {teams.length === 0 ? (
+                        <span className="text-sm text-muted-foreground">— Sin equipos creados —</span>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                          {teams.map((t) => {
+                            const checked = emp.teamIds.includes(t.id);
+                            return (
+                              <label key={t.id} className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => {
+                                    if (checked) {
+                                      handleAssign(emp.id, emp.teamIds.filter((id) => id !== t.id));
+                                      return;
+                                    }
+                                    handleAssign(emp.id, [...emp.teamIds, t.id]);
+                                  }}
+                                  className={cn("h-4 w-4 rounded border-input", "accent-primary")}
+                                />
+                                <span>{t.name}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

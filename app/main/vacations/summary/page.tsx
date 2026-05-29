@@ -47,7 +47,7 @@ export default async function VacationSummaryPage() {
       .order("name"),
     supabase
       .from("projects")
-      .select(`id_engagement, name, color, employee_projects ( employee_id, team_id )`)
+      .select(`id_engagement, name, color, employee_projects ( employee_id, employee_project_teams ( team_id ) )`)
       .order("name"),
     supabase
       .from("project_teams")
@@ -106,11 +106,14 @@ export default async function VacationSummaryPage() {
     balances.set(emp.id, { totalDays: total, usedDays, pendingDays });
   }
 
-  // Build teamAssignments map: `${employeeId}:${projectId}` → teamId | null
-  const teamAssignments = new Map<string, string | null>();
+  // Build teamAssignments map: `${employeeId}:${projectId}` → teamIds[]
+  const teamAssignments = new Map<string, string[]>();
   for (const proj of projects as any[]) {
     for (const ep of (proj.employee_projects ?? []) as any[]) {
-      teamAssignments.set(`${ep.employee_id}:${proj.id_engagement}`, ep.team_id ?? null);
+      teamAssignments.set(
+        `${ep.employee_id}:${proj.id_engagement}`,
+        (ep.employee_project_teams ?? []).map((item: { team_id: string }) => item.team_id)
+      );
     }
   }
 

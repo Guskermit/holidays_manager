@@ -188,16 +188,63 @@ export async function deleteTeam(teamId: string) {
 export async function assignEmployeeTeam(
   employeeId: string,
   projectId: string,
-  teamId: string | null
+  teamIds: string[]
 ) {
   const { supabase, error: authErr } = await requireAdmin();
   if (!supabase) return { error: authErr };
 
+  const normalizedTeamIds = Array.from(new Set(teamIds.filter(Boolean)));
+
+  // Ensure requested teams exist and belong to the project being edited.
+  if (normalizedTeamIds.length > 0) {
+    const { data: validTeams, error: validTeamsError } = await supabase
+      .from("project_teams")
+      .select("id")
+      .eq("project_id", projectId)
+      .in("id", normalizedTeamIds);
+
+    if (validTeamsError) return { error: validTeamsError.message };
+    if ((validTeams ?? []).length !== normalizedTeamIds.length) {
+      return { error: "Algunos equipos no pertenecen al proyecto." };
+    }
+  }
+
+  const { data: employeeProject, error: employeeProjectError } = await supabase
+    .from("employee_projects")
+    .select("id")
+    .eq("employee_id", employeeId)
+    .eq("project_id", projectId)
+    .single();
+
+  if (employeeProjectError || !employeeProject) {
+    return { error: employeeProjectError?.message ?? "No existe la asignación del empleado al proyecto." };
+  }
+
+  const { error: clearError } = await supabase
+    .from("employee_project_teams")
+    .delete()
+    .eq("employee_project_id", employeeProject.id);
+
+  if (clearError) return { error: clearError.message };
+
+  if (normalizedTeamIds.length > 0) {
+    const rows = normalizedTeamIds.map((teamId) => ({
+      employee_project_id: employeeProject.id,
+      team_id: teamId,
+    }));
+
+    const { error: insertError } = await supabase
+      .from("employee_project_teams")
+      .insert(rows);
+
+    if (insertError) return { error: insertError.message };
+  }
+
+  // Keep legacy column synchronized while old reads still exist.
   const { error } = await supabase
     .from("employee_projects")
-    .update({ team_id: teamId })
-    .eq("employee_id", employeeId)
-    .eq("project_id", projectId);
+    .update({ team_id: normalizedTeamIds[0] ?? null })
+    .eq("id", employeeProject.id);
 
   if (error) return { error: error.message };
   return { error: null };

@@ -35,7 +35,10 @@ type Project = {
   id_engagement: string;
   name: string;
   color: string | null;
-  employee_projects: { employee_id: string }[];
+  employee_projects: {
+    employee_id: string;
+    employee_project_teams?: { team_id: string }[];
+  }[];
 };
 
 type Team = {
@@ -50,8 +53,8 @@ type Props = {
   balances?: Map<string, { totalDays: number; usedDays: number; pendingDays: number }>;
   year?: number;
   teams?: Team[];
-  // key: `${employeeId}:${projectId}` → teamId | null
-  teamAssignments?: Map<string, string | null>;
+  // key: `${employeeId}:${projectId}` → teamIds[]
+  teamAssignments?: Map<string, string[]>;
   /** Pre-fetched holidays from DB keyed by office name */
   holidaysByOffice?: Record<string, string[]>;
 };
@@ -143,7 +146,7 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
     if (teamFilter !== "all" && teamAssignments) {
       result = result.filter((e) => {
         const key = `${e.id}:${projectFilter}`;
-        return teamAssignments.get(key) === teamFilter;
+        return (teamAssignments.get(key) ?? []).includes(teamFilter);
       });
     }
     if (categoryFilter !== "all") {
