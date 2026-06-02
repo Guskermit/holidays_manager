@@ -54,7 +54,7 @@ type Props = {
   year?: number;
   teams?: Team[];
   // key: `${employeeId}:${projectId}` → teamIds[]
-  teamAssignments?: Map<string, string[]>;
+  teamAssignments?: Record<string, string[]>;
   /** Pre-fetched holidays from DB keyed by office name */
   holidaysByOffice?: Record<string, string[]>;
 };
@@ -146,7 +146,7 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
     if (teamFilter !== "all" && teamAssignments) {
       result = result.filter((e) => {
         const key = `${e.id}:${projectFilter}`;
-        return (teamAssignments.get(key) ?? []).includes(teamFilter);
+        return (teamAssignments[key] ?? []).includes(teamFilter);
       });
     }
     if (categoryFilter !== "all") {

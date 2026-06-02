@@ -106,14 +106,13 @@ export default async function VacationSummaryPage() {
     balances.set(emp.id, { totalDays: total, usedDays, pendingDays });
   }
 
-  // Build teamAssignments map: `${employeeId}:${projectId}` → teamIds[]
-  const teamAssignments = new Map<string, string[]>();
+  // Build teamAssignments record: `${employeeId}:${projectId}` → teamIds[]
+  // Using a plain Record (not Map) for safe RSC serialization across server→client boundary.
+  const teamAssignments: Record<string, string[]> = {};
   for (const proj of projects as any[]) {
     for (const ep of (proj.employee_projects ?? []) as any[]) {
-      teamAssignments.set(
-        `${ep.employee_id}:${proj.id_engagement}`,
-        (ep.employee_project_teams ?? []).map((item: { team_id: string }) => item.team_id)
-      );
+      teamAssignments[`${ep.employee_id}:${proj.id_engagement}`] =
+        (ep.employee_project_teams ?? []).map((item: { team_id: string }) => item.team_id);
     }
   }
 
