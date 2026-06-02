@@ -102,25 +102,45 @@ export async function updateProject(
     return { error: projectError.message };
   }
 
-  // Replace employee assignments: delete all then re-insert
-  const { error: deleteError } = await supabase
+  // Update employee assignments without wiping team assignments:
+  // Only delete removed employees (CASCADE would destroy their employee_project_teams)
+  // and insert newly added ones. Existing records are left untouched.
+  const { data: currentAssignments, error: fetchError } = await supabase
     .from("employee_projects")
-    .delete()
+    .select("employee_id")
     .eq("project_id", idEngagement);
 
-  if (deleteError) {
-    return { error: deleteError.message };
+  if (fetchError) {
+    return { error: fetchError.message };
   }
 
-  if (employeeIds.length > 0) {
-    const assignments = employeeIds.map((employeeId) => ({
+  const currentIds = new Set((currentAssignments ?? []).map((a) => a.employee_id));
+  const newIds = new Set(employeeIds);
+
+  const toRemove = [...currentIds].filter((id) => !newIds.has(id));
+  const toAdd = [...newIds].filter((id) => !currentIds.has(id));
+
+  if (toRemove.length > 0) {
+    const { error: deleteError } = await supabase
+      .from("employee_projects")
+      .delete()
+      .eq("project_id", idEngagement)
+      .in("employee_id", toRemove);
+
+    if (deleteError) {
+      return { error: deleteError.message };
+    }
+  }
+
+  if (toAdd.length > 0) {
+    const assignments = toAdd.map((employeeId) => ({
       employee_id: employeeId,
       project_id: idEngagement,
     }));
 
     const { error: assignError } = await supabase
       .from("employee_projects")
-      .upsert(assignments, { onConflict: "employee_id,project_id", ignoreDuplicates: true });
+      .insert(assignments);
 
     if (assignError) {
       return { error: assignError.message };
