@@ -45,6 +45,10 @@ function monthIndexFromWeekStart(weekStart: string): number {
   return month - 1;
 }
 
+function isNonImputableSubproject(name: string): boolean {
+  return name.toUpperCase().includes("NO IMPUTABLE");
+}
+
 export default async function MinorMonthlySummaryAdminPage({
   searchParams,
 }: {
@@ -152,7 +156,9 @@ export default async function MinorMonthlySummaryAdminPage({
     })
     .sort((a, b) => b.totalYearHours - a.totalYearHours);
 
-  const quarterTotals = summaryRows.reduce(
+  const quarterTotals = summaryRows
+    .filter((row) => !isNonImputableSubproject(row.subprojectName))
+    .reduce(
     (totals, row) => {
       for (let i = 0; i < 4; i += 1) totals[i] += row.quarterlyHours[i];
       return totals;
@@ -233,7 +239,7 @@ export default async function MinorMonthlySummaryAdminPage({
                   {row.quarterlyHours.map((quarterHours, idx) => (
                     <td key={`${row.subprojectId}-q${idx + 1}`} className="px-3 py-3 text-center tabular-nums font-medium">
                       {quarterHours > 0 ? (quarterHours % 1 === 0 ? quarterHours : quarterHours.toFixed(1)) : "—"}
-                      {quarterTotals[idx] > 0 && (
+                      {!isNonImputableSubproject(row.subprojectName) && quarterTotals[idx] > 0 && (
                         (() => {
                           const sharePct = (quarterHours / quarterTotals[idx]) * 100;
                           const over21 = (sharePct / 100) * 21;
