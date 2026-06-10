@@ -466,6 +466,17 @@ export const strings = {
     adminHoursSlackSent:    "Notificación enviada",
     adminHoursSlackError:   "Error al enviar la notificación",
     adminHoursAllComplete:  "Todos los empleados han completado sus horas esta semana.",
+    // Admin monthly summary view
+    adminMonthlyTitle:      "Resumen mensual Minor",
+    adminMonthlySubtitle:   "Vista anual con una columna por mes y total de horas por subproyecto, sumando a todos los empleados participantes.",
+    adminMonthlyPrevMonth:  "Año anterior",
+    adminMonthlyNextMonth:  "Año siguiente",
+    adminMonthlyMonthOf:    (year: string) => `Año: ${year}`,
+    adminMonthlyColSubproject: "Subproyecto",
+    adminMonthlyColEmployees:  "Empleados",
+    adminMonthlyQuarterLabel:  (quarter: number) => `T${quarter}`,
+    adminMonthlyColTotalHours: "Horas totales",
+    adminMonthlyNoData:     "No hay horas imputadas para este mes.",
     // Dashboard cards
     dashboardCard:          "Imputar horas Minor",
     dashboardCardDesc:      "Registra las horas semanales trabajadas en los subproyectos de Minor.",
@@ -476,6 +487,9 @@ export const strings = {
     adminHoursDashboardCard:     "Horas Minor",
     adminHoursDashboardCardDesc: "Revisa el resumen semanal de horas imputadas por el equipo.",
     adminHoursDashboardCardLink: "Ver horas →",
+    adminMonthlyDashboardCard:     "Resumen mensual Minor",
+    adminMonthlyDashboardCardDesc: "Consulta horas agregadas por subproyecto y mes para todo el equipo.",
+    adminMonthlyDashboardCardLink: "Ver resumen mensual →",
   },
 
   // ── Pricing ───────────────────────────────────────────────

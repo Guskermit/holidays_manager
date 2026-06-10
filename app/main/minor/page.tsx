@@ -78,16 +78,12 @@ export default async function MinorHoursPage() {
     .eq("active", true)
     .order("name");
 
-  // Determine current month range (fetch a 3-month window so the client
-  // can navigate without extra round-trips — we'll pass all available hours)
-  const today    = new Date();
-  const minYear  = today.getFullYear();
-  const minMonth = today.getMonth() - 1; // one month back
-  const maxMonth = today.getMonth() + 1; // one month forward
-
-  // Build the date range to fetch
-  const rangeStart = new Date(minYear, minMonth, 1);
-  const rangeEnd   = new Date(minYear, maxMonth + 1, 0); // last day of maxMonth
+  // Preload the full current year so navigating weeks around spring/summer
+  // (e.g., April while we're in June) keeps showing persisted values.
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const rangeStart = new Date(currentYear, 0, 1);
+  const rangeEnd = new Date(currentYear, 11, 31);
 
   const { data: hours } = await supabase
     .from("minor_hours")

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useTransition } from "react";
+import { Fragment, useState, useRef, useTransition } from "react";
 import { ChevronLeftIcon, ChevronRightIcon, CheckIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -95,20 +95,14 @@ export function MinorHoursForm({
 
   // ── Auto-save with debounce ────────────────────────────────────────────────
 
-  const triggerSave = (weekStart: string, map: HoursMap) => {
+  const triggerSave = (entry: { week_start: string; subproject_id: string; hours: number }) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setSaveStatus("saving");
     setSaveError(null);
 
     debounceRef.current = setTimeout(() => {
-      const entries = subprojects.map((sp) => ({
-        subproject_id: sp.id,
-        week_start: weekStart,
-        hours: map[weekStart]?.[sp.id] ?? 0,
-      }));
-
       startTransition(async () => {
-        const result = await upsertMinorHours(entries);
+        const result = await upsertMinorHours([entry]);
         if (result?.error) {
           setSaveStatus("error");
           setSaveError(strings.minor.errorSaving(result.error));
@@ -127,7 +121,11 @@ export function MinorHoursForm({
       [currentWeek]: { ...(hoursMap[currentWeek] ?? {}), [subprojectId]: value },
     };
     setHoursMap(newMap);
-    triggerSave(currentWeek, newMap);
+    triggerSave({
+      week_start: currentWeek,
+      subproject_id: subprojectId,
+      hours: value,
+    });
   };
 
   const navigate = (delta: number) => {
@@ -188,9 +186,9 @@ export function MinorHoursForm({
           </thead>
           <tbody>
             {groups.map(({ color, items }) => (
-              <>
+              <Fragment key={`group-${color}`}>
                 {/* Color group header */}
-                <tr key={`group-${color}`} style={{ borderTop: `3px solid ${color}` }}>
+                <tr style={{ borderTop: `3px solid ${color}` }}>
                   <td
                     colSpan={2}
                     className="px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide"
@@ -233,7 +231,7 @@ export function MinorHoursForm({
                     </td>
                   </tr>
                 ))}
-              </>
+              </Fragment>
             ))}
 
             {/* Total row */}

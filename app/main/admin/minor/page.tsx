@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { BackNav } from "@/components/back-nav";
 import { MinorSubprojectsManager } from "@/components/admin/minor-subprojects-manager";
 import { strings } from "@/lib/strings";
-import { BarChart2Icon } from "lucide-react";
+import { BarChart2Icon, CalendarDaysIcon } from "lucide-react";
 
 export default async function MinorAdminPage() {
   const supabase = await createClient();
@@ -63,17 +63,25 @@ export default async function MinorAdminPage() {
   return (
     <div className="flex flex-col gap-6">
       <BackNav />
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold">{strings.minor.adminSubprojectsTitle}</h1>
           <p className="text-sm text-muted-foreground mt-1">{strings.minor.adminSubprojectsSubtitle}</p>
         </div>
-        <Button asChild variant="outline">
-          <Link href="/main/admin/minor/hours">
-            <BarChart2Icon className="size-4 mr-1.5" />
-            {strings.minor.adminHoursDashboardCardLink}
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline">
+            <Link href="/main/admin/minor/hours">
+              <BarChart2Icon className="size-4 mr-1.5" />
+              {strings.minor.adminHoursDashboardCardLink}
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/main/admin/minor/monthly">
+              <CalendarDaysIcon className="size-4 mr-1.5" />
+              {strings.minor.adminMonthlyDashboardCardLink}
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <MinorSubprojectsManager subprojects={subprojects ?? []} />

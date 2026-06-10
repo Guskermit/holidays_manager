@@ -294,6 +294,23 @@ export default async function ProtectedPage() {
                 <span className="text-sm text-orange-600 font-medium group-hover:underline">{strings.minor.adminHoursDashboardCardLink}</span>
               </Link>
             )}
+
+            {isMinorAdmin && (
+              <Link
+                href="/main/admin/minor/monthly"
+                className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-orange-500 transition-colors"
+              >
+                <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-600">{strings.dashboard.adminBadge}</span>
+                <div className="flex items-center justify-center size-12 rounded-lg bg-orange-500/10 text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                  <CalendarIcon className="size-6" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <h2 className="text-lg font-semibold">{strings.minor.adminMonthlyDashboardCard}</h2>
+                  <p className="text-sm text-muted-foreground">{strings.minor.adminMonthlyDashboardCardDesc}</p>
+                </div>
+                <span className="text-sm text-orange-600 font-medium group-hover:underline">{strings.minor.adminMonthlyDashboardCardLink}</span>
+              </Link>
+            )}
           </div>
         </div>
       )}
