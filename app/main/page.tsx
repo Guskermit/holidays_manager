@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { FolderKanbanIcon, CalendarDaysIcon, LayoutListIcon, CheckCircle2Icon, ClockIcon, SunIcon, UsersIcon, ClipboardListIcon, BrainIcon, SearchIcon, TrendingUpIcon, SettingsIcon, BarChart2Icon, BookOpenIcon, TimerIcon, CalendarIcon } from "lucide-react";
+import { FolderKanbanIcon, CalendarDaysIcon, LayoutListIcon, CheckCircle2Icon, ClockIcon, SunIcon, UsersIcon, ClipboardListIcon, BrainIcon, SearchIcon, TrendingUpIcon, SettingsIcon, BarChart2Icon, BookOpenIcon, TimerIcon, CalendarIcon, BotIcon } from "lucide-react";
 import { strings } from "@/lib/strings";
 import { getEffectiveEmployee } from "@/lib/impersonation";
 import { ImpersonationSelector } from "@/components/impersonation-selector";
@@ -219,6 +219,20 @@ export default async function ProtectedPage() {
               <p className="text-sm text-muted-foreground">{strings.skills.dashboardCardDesc}</p>
             </div>
             <span className="text-sm text-amber-600 font-medium group-hover:underline">{strings.skills.dashboardCardLink}</span>
+          </Link>
+
+          <Link
+            href="/main/copilot"
+            className="group flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-amber-500 transition-colors"
+          >
+            <div className="flex items-center justify-center size-12 rounded-lg bg-amber-500/10 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+              <BotIcon className="size-6" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <h2 className="text-lg font-semibold">{strings.copilot.dashboardCard}</h2>
+              <p className="text-sm text-muted-foreground">{strings.copilot.dashboardCardDesc}</p>
+            </div>
+            <span className="text-sm text-amber-600 font-medium group-hover:underline">{strings.copilot.dashboardCardLink}</span>
           </Link>
 
           {isAdmin && (
@@ -445,6 +459,21 @@ export default async function ProtectedPage() {
                 <p className="text-sm text-muted-foreground">{strings.skills.adminPageSubtitle}</p>
               </div>
               <span className="text-sm text-violet-600 font-medium group-hover:underline">{strings.skills.adminDashboardLink}</span>
+            </Link>
+
+            <Link
+              href="/main/admin/copilot"
+              className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-violet-500 transition-colors"
+            >
+              <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-600">{strings.dashboard.adminBadge}</span>
+              <div className="flex items-center justify-center size-12 rounded-lg bg-violet-500/10 text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition-colors">
+                <BotIcon className="size-6" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <h2 className="text-lg font-semibold">{strings.copilot.managerDashboardCard}</h2>
+                <p className="text-sm text-muted-foreground">{strings.copilot.managerDashboardCardDesc}</p>
+              </div>
+              <span className="text-sm text-violet-600 font-medium group-hover:underline">{strings.copilot.managerDashboardCardLink}</span>
             </Link>
           </div>
         </div>
