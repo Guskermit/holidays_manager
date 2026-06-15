@@ -263,6 +263,8 @@ export const strings = {
     legendRejected:       "Rejected",
     legendHoliday:        "Public holiday",
     legendWeekend:        "Weekend",
+    legendBootcampApproved: "Bootcamp aprobado",
+    legendBootcampPending:  "Bootcamp pendiente",
 
     selectionTitle:       "Selection",
     selectionFrom:        "From: ",
@@ -276,6 +278,12 @@ export const strings = {
     submitLoading:        "Submitting...",
     clearButton:          "Clear",
     successMessage:       (n: number) => `Request for ${n} day${n !== 1 ? "s" : ""} submitted successfully.`,
+
+    bootcampCheckbox:     "Días de Bootcamp",
+    bootcampHint:         "Los días de Bootcamp no se descuentan del saldo de vacaciones (máx. 2 días/año).",
+    bootcampRemaining:    "Días Bootcamp restantes: ",
+    bootcampCalendarTitleApproved: "Bootcamp aprobado",
+    bootcampCalendarTitlePending:  "Bootcamp pendiente",
 
     statSolicitados:      "Solicitados",
     statAprobados:        "Aprobados",
@@ -349,6 +357,7 @@ export const strings = {
     colRequested:         "Requested",
     colStatus:            "Status",
     colActions:           "Actions",
+    badgeBootcamp:        "Bootcamp",
 
     statusPending:        "Pending",
     statusApproved:       "Approved",

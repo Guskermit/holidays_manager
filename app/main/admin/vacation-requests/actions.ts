@@ -29,7 +29,7 @@ export async function approveVacationRequest(requestId: string): Promise<{ error
 
   const { data: req } = await supabase
     .from("vacation_requests")
-    .select("id, status, days_requested, year, employee_id, start_date, end_date")
+    .select("id, status, days_requested, year, employee_id, start_date, end_date, is_bootcamp")
     .eq("id", requestId)
     .single();
 
@@ -43,23 +43,25 @@ export async function approveVacationRequest(requestId: string): Promise<{ error
 
   if (updErr) return { error: updErr.message };
 
-  // Use separate increments to avoid RPC dependency
-  const { data: bal } = await supabase
-    .from("vacation_balances")
-    .select("used_days, pending_days")
-    .eq("employee_id", req.employee_id)
-    .eq("year", req.year)
-    .single();
-
-  if (bal) {
-    await supabase
+  // Bootcamp requests do not consume the vacation balance
+  if (!req.is_bootcamp) {
+    const { data: bal } = await supabase
       .from("vacation_balances")
-      .update({
-        used_days: bal.used_days + req.days_requested,
-        pending_days: Math.max(0, bal.pending_days - req.days_requested),
-      })
+      .select("used_days, pending_days")
       .eq("employee_id", req.employee_id)
-      .eq("year", req.year);
+      .eq("year", req.year)
+      .single();
+
+    if (bal) {
+      await supabase
+        .from("vacation_balances")
+        .update({
+          used_days: bal.used_days + req.days_requested,
+          pending_days: Math.max(0, bal.pending_days - req.days_requested),
+        })
+        .eq("employee_id", req.employee_id)
+        .eq("year", req.year);
+    }
   }
 
   const { data: emp } = await supabase
@@ -87,7 +89,7 @@ export async function rejectVacationRequest(
 
   const { data: req } = await supabase
     .from("vacation_requests")
-    .select("id, status, days_requested, year, employee_id, start_date, end_date")
+    .select("id, status, days_requested, year, employee_id, start_date, end_date, is_bootcamp")
     .eq("id", requestId)
     .single();
 
@@ -106,20 +108,22 @@ export async function rejectVacationRequest(
 
   if (updErr) return { error: updErr.message };
 
-  // Return days to balance
-  const { data: bal } = await supabase
-    .from("vacation_balances")
-    .select("pending_days")
-    .eq("employee_id", req.employee_id)
-    .eq("year", req.year)
-    .single();
-
-  if (bal) {
-    await supabase
+  // Bootcamp requests do not consume the vacation balance
+  if (!req.is_bootcamp) {
+    const { data: bal } = await supabase
       .from("vacation_balances")
-      .update({ pending_days: Math.max(0, bal.pending_days - req.days_requested) })
+      .select("pending_days")
       .eq("employee_id", req.employee_id)
-      .eq("year", req.year);
+      .eq("year", req.year)
+      .single();
+
+    if (bal) {
+      await supabase
+        .from("vacation_balances")
+        .update({ pending_days: Math.max(0, bal.pending_days - req.days_requested) })
+        .eq("employee_id", req.employee_id)
+        .eq("year", req.year);
+    }
   }
 
   const { data: emp } = await supabase
@@ -144,7 +148,7 @@ export async function cancelApprovedRequest(requestId: string): Promise<{ error?
 
   const { data: req } = await supabase
     .from("vacation_requests")
-    .select("id, status, days_requested, year, employee_id, start_date, end_date")
+    .select("id, status, days_requested, year, employee_id, start_date, end_date, is_bootcamp")
     .eq("id", requestId)
     .single();
 
@@ -158,20 +162,22 @@ export async function cancelApprovedRequest(requestId: string): Promise<{ error?
 
   if (updErr) return { error: updErr.message };
 
-  // Return used days back to balance
-  const { data: bal } = await supabase
-    .from("vacation_balances")
-    .select("used_days")
-    .eq("employee_id", req.employee_id)
-    .eq("year", req.year)
-    .single();
-
-  if (bal) {
-    await supabase
+  // Bootcamp requests do not consume the vacation balance
+  if (!req.is_bootcamp) {
+    const { data: bal } = await supabase
       .from("vacation_balances")
-      .update({ used_days: Math.max(0, bal.used_days - req.days_requested) })
+      .select("used_days")
       .eq("employee_id", req.employee_id)
-      .eq("year", req.year);
+      .eq("year", req.year)
+      .single();
+
+    if (bal) {
+      await supabase
+        .from("vacation_balances")
+        .update({ used_days: Math.max(0, bal.used_days - req.days_requested) })
+        .eq("employee_id", req.employee_id)
+        .eq("year", req.year);
+    }
   }
 
   const { data: emp } = await supabase

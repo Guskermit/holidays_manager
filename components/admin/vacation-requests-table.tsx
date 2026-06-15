@@ -19,6 +19,7 @@ type Request = {
   status: Status;
   created_at: string;
   rejection_reason: string | null;
+  is_bootcamp: boolean;
   employees: { id: string; name: string; email: string } | null;
   project_name: string | null;
   project_color: string | null;
@@ -263,7 +264,14 @@ export function VacationRequestsTable({ requests }: Props) {
                       )}
                     >
                       <td className="px-4 py-3">
-                        <div className="font-medium">{req.employees?.name ?? "—"}</div>
+                        <div className="font-medium flex items-center gap-2">
+                          {req.employees?.name ?? "—"}
+                          {req.is_bootcamp && (
+                            <Badge variant="outline" className="border-purple-400 text-purple-700 dark:text-purple-300 text-xs">
+                              {strings.admin.badgeBootcamp}
+                            </Badge>
+                          )}
+                        </div>
                         <div className="text-xs text-muted-foreground">{req.employees?.email}</div>
                       </td>
                       <td className="px-4 py-3">

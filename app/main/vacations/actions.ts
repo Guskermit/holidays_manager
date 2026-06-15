@@ -4,12 +4,15 @@ import { createClient } from "@/lib/supabase/server";
 import { getCategoryDays } from "@/lib/categories";
 import { notifyVacationRequested } from "@/lib/slack";
 
+const BOOTCAMP_MAX_DAYS = 2;
+
 export async function requestVacation(
   employeeId: string,
   startDate: string,
   endDate: string,
   daysRequested: number,
-  year: number
+  year: number,
+  isBootcamp: boolean = false
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
 
@@ -28,37 +31,62 @@ export async function requestVacation(
     return { error: "Employee not found or access denied." };
   }
 
-  // Compute category-based maximum days
-  const maxDays = await getCategoryDays(supabase, employee.category);
+  if (isBootcamp) {
+    // Validate against bootcamp limit (max 2 days per year, separate from vacation balance)
+    const { data: existingBootcamp } = await supabase
+      .from("vacation_requests")
+      .select("days_requested")
+      .eq("employee_id", employeeId)
+      .eq("year", year)
+      .eq("is_bootcamp", true)
+      .in("status", ["approved", "pending"]);
 
-  // Sum all approved + pending days for the year
-  const { data: existingRequests } = await supabase
-    .from("vacation_requests")
-    .select("days_requested")
-    .eq("employee_id", employeeId)
-    .eq("year", year)
-    .in("status", ["approved", "pending"]);
+    const usedBootcamp = (existingBootcamp ?? []).reduce(
+      (sum, r) => sum + r.days_requested,
+      0
+    );
+    const remainingBootcamp = BOOTCAMP_MAX_DAYS - usedBootcamp;
 
-  const usedAndPending = (existingRequests ?? []).reduce(
-    (sum, r) => sum + r.days_requested,
-    0
-  );
-  const remaining = maxDays - usedAndPending;
+    if (daysRequested > remainingBootcamp) {
+      return {
+        error: `No tienes suficientes días de Bootcamp. Te quedan ${remainingBootcamp} de ${BOOTCAMP_MAX_DAYS} días.`,
+      };
+    }
+  } else {
+    // Compute category-based maximum days
+    const maxDays = await getCategoryDays(supabase, employee.category);
 
-  if (daysRequested > remaining) {
-    return {
-      error: `Insufficient vacation balance. You have ${remaining} of ${maxDays} days remaining.`,
-    };
+    // Sum all approved + pending non-bootcamp days for the year
+    const { data: existingRequests } = await supabase
+      .from("vacation_requests")
+      .select("days_requested")
+      .eq("employee_id", employeeId)
+      .eq("year", year)
+      .eq("is_bootcamp", false)
+      .in("status", ["approved", "pending"]);
+
+    const usedAndPending = (existingRequests ?? []).reduce(
+      (sum, r) => sum + r.days_requested,
+      0
+    );
+    const remaining = maxDays - usedAndPending;
+
+    if (daysRequested > remaining) {
+      return {
+        error: `Insufficient vacation balance. You have ${remaining} of ${maxDays} days remaining.`,
+      };
+    }
   }
 
-  // Create the request
+  // Create the request — bootcamp days are auto-approved
   const { error: insertError } = await supabase.from("vacation_requests").insert({
     employee_id: employeeId,
     start_date: startDate,
     end_date: endDate,
     days_requested: daysRequested,
-    status: "pending",
+    status: isBootcamp ? "approved" : "pending",
     year,
+    is_bootcamp: isBootcamp,
   });
 
   if (insertError) return { error: insertError.message };
@@ -76,27 +104,31 @@ export async function requestVacation(
     days: daysRequested,
   });
 
-  // Update or create balance
-  const { data: balance } = await supabase
-    .from("vacation_balances")
-    .select("pending_days, total_days")
-    .eq("employee_id", employeeId)
-    .eq("year", year)
-    .single();
+  // Bootcamp requests do NOT consume the regular vacation balance
+  if (!isBootcamp) {
+    const maxDays = await getCategoryDays(supabase, employee.category);
 
-  if (balance) {
-    await supabase
+    const { data: balance } = await supabase
       .from("vacation_balances")
-      .update({ pending_days: balance.pending_days + daysRequested })
+      .select("pending_days, total_days")
       .eq("employee_id", employeeId)
-      .eq("year", year);
-  } else {
-    await supabase.from("vacation_balances").insert({
-      employee_id: employeeId,
-      year,
-      total_days: maxDays,
-      pending_days: daysRequested,
-    });
+      .eq("year", year)
+      .single();
+
+    if (balance) {
+      await supabase
+        .from("vacation_balances")
+        .update({ pending_days: balance.pending_days + daysRequested })
+        .eq("employee_id", employeeId)
+        .eq("year", year);
+    } else {
+      await supabase.from("vacation_balances").insert({
+        employee_id: employeeId,
+        year,
+        total_days: maxDays,
+        pending_days: daysRequested,
+      });
+    }
   }
 
   return {};
@@ -120,7 +152,7 @@ export async function cancelVacationRequest(
 
   const { data: req } = await supabase
     .from("vacation_requests")
-    .select("id, status, start_date, days_requested, year, employee_id")
+    .select("id, status, start_date, days_requested, year, employee_id, is_bootcamp")
     .eq("id", requestId)
     .eq("employee_id", employee.id)
     .single();
@@ -146,25 +178,27 @@ export async function cancelVacationRequest(
 
   if (updErr) return { error: updErr.message };
 
-  // Restore days in balance
-  const { data: bal } = await supabase
-    .from("vacation_balances")
-    .select("pending_days, used_days")
-    .eq("employee_id", employee.id)
-    .eq("year", req.year)
-    .single();
-
-  if (bal) {
-    const patch =
-      req.status === "pending"
-        ? { pending_days: Math.max(0, bal.pending_days - req.days_requested) }
-        : { used_days: Math.max(0, bal.used_days - req.days_requested) };
-
-    await supabase
+  // Bootcamp requests do not touch the vacation balance
+  if (!req.is_bootcamp) {
+    const { data: bal } = await supabase
       .from("vacation_balances")
-      .update(patch)
+      .select("pending_days, used_days")
       .eq("employee_id", employee.id)
-      .eq("year", req.year);
+      .eq("year", req.year)
+      .single();
+
+    if (bal) {
+      const patch =
+        req.status === "pending"
+          ? { pending_days: Math.max(0, bal.pending_days - req.days_requested) }
+          : { used_days: Math.max(0, bal.used_days - req.days_requested) };
+
+      await supabase
+        .from("vacation_balances")
+        .update(patch)
+        .eq("employee_id", employee.id)
+        .eq("year", req.year);
+    }
   }
 
   return {};

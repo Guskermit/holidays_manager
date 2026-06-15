@@ -84,7 +84,7 @@ export default async function TeamVacationPage() {
   const { data: rawEmployees } = await supabase
     .from("employees")
     .select(
-      `id, name, office, category, employee_specializations ( specializations ( name ) ), vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status, days_requested, year )`
+      `id, name, office, category, employee_specializations ( specializations ( name ) ), vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status, days_requested, year, is_bootcamp )`
     )
     .in("id", uniqueColleagueIds)
     .order("name");

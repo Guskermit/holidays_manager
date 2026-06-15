@@ -49,7 +49,7 @@ export default async function VacationsPage() {
   const [{ data: requests }, holidaysSet] = await Promise.all([
     supabase
       .from("vacation_requests")
-      .select("id, start_date, end_date, days_requested, status, year")
+      .select("id, start_date, end_date, days_requested, status, year, is_bootcamp")
       .eq("employee_id", employee.id)
       .order("start_date", { ascending: false }),
     getHolidaysForOfficeFromDB((employee.office as Office) ?? "madrid", supabase),

@@ -43,7 +43,7 @@ export default async function VacationSummaryPage() {
   const [empResult, projResult, teamsResult] = await Promise.all([
     supabase
       .from("employees")
-      .select(`id, name, office, category, employee_specializations ( specializations ( name ) ), vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status, days_requested, year )`)
+      .select(`id, name, office, category, employee_specializations ( specializations ( name ) ), vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status, days_requested, year, is_bootcamp )`)
       .order("name"),
     supabase
       .from("projects")

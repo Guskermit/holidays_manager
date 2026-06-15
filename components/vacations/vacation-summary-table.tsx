@@ -20,6 +20,7 @@ type VacationRequest = {
   start_date: string;
   end_date: string;
   status: "pending" | "approved" | "rejected" | "cancelled";
+  is_bootcamp?: boolean;
 };
 
 type Employee = {
@@ -200,6 +201,30 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
     return map;
   }, [visibleEmployees]);
 
+  /* ── pre-compute bootcamp approved dates per employee ──────── */
+  const employeeBootcampMap = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const emp of visibleEmployees) {
+      const bootcampSet = new Set<string>();
+      const officeHolidays = holidaysByOffice?.[emp.office]
+        ? new Set(holidaysByOffice[emp.office])
+        : new Set<string>();
+      for (const req of emp.vacation_requests) {
+        if (!req.is_bootcamp || req.status !== "approved") continue;
+        const cur = new Date(req.start_date + "T00:00:00");
+        const end = new Date(req.end_date   + "T00:00:00");
+        while (cur <= end) {
+          if (!isWeekend(cur) && !isHoliday(cur, officeHolidays)) {
+            bootcampSet.add(toDateString(cur));
+          }
+          cur.setDate(cur.getDate() + 1);
+        }
+      }
+      map.set(emp.id, bootcampSet);
+    }
+    return map;
+  }, [visibleEmployees]);
+
   const selectedProject = projects.find(p => p.id_engagement === projectFilter);
 
   return (
@@ -376,6 +401,10 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
           </span>
         ))}
         <span className="flex items-center gap-1.5">
+          <span className="size-3 rounded bg-purple-400 dark:bg-purple-500" />
+          {strings.vacations.legendBootcampApproved}
+        </span>
+        <span className="flex items-center gap-1.5">
           <span className="size-3 rounded bg-muted-foreground/20" /> {strings.vacations.legendWeekend} / {strings.vacations.legendHoliday}
         </span>
       </div>
@@ -431,6 +460,7 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
             <tbody className="divide-y">
               {visibleEmployees.map(emp => {
                 const dayMap = employeeDayMap.get(emp.id) ?? new Map();
+                const bootcampSet = employeeBootcampMap.get(emp.id) ?? new Set<string>();
                 const officeHolidays = holidaysByOffice?.[emp.office]
                   ? new Set(holidaysByOffice[emp.office])
                   : new Set<string>();
@@ -505,13 +535,16 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
                       const weekend = isWeekend(d);
                       const holiday = isHoliday(d, officeHolidays);
                       const status: VacationRequest["status"] | undefined = dayMap.get(ds);
+                      const isBootcampApproved = status === "approved" && bootcampSet.has(ds);
                       const blocked = weekend || holiday;
 
                       return (
                         <td
                           key={ds}
                           title={
-                            status
+                            isBootcampApproved
+                              ? strings.vacations.bootcampCalendarTitleApproved
+                              : status
                               ? STATUS_LABEL[status]
                               : holiday
                               ? strings.vacations.calendarTitleHoliday
@@ -528,7 +561,9 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
                             <div
                               className={cn(
                                 "mx-auto rounded size-5 flex items-center justify-center",
-                                STATUS_COLOR[status]
+                                isBootcampApproved
+                                  ? "bg-purple-400 dark:bg-purple-500"
+                                  : STATUS_COLOR[status]
                               )}
                             />
                           )}
