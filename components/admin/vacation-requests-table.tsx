@@ -11,6 +11,8 @@ import { strings } from "@/lib/strings";
 
 type Status = "pending" | "approved" | "rejected" | "cancelled";
 
+type ProjectInfo = { name: string; color: string | null };
+
 type Request = {
   id: string;
   start_date: string;
@@ -21,6 +23,7 @@ type Request = {
   rejection_reason: string | null;
   is_bootcamp: boolean;
   employees: { id: string; name: string; email: string } | null;
+  employee_projects: ProjectInfo[];
   project_name: string | null;
   project_color: string | null;
 };
@@ -73,11 +76,13 @@ export function VacationRequestsTable({ requests }: Props) {
       : <ArrowDownIcon className="size-3 ml-1 inline" />;
   };
 
-  // Derive unique projects from requests
+  // Derive unique projects from all employee_projects arrays
   const projects = useMemo(() => {
     const map = new Map<string, { name: string; color: string | null }>();
     requests.forEach((r) => {
-      if (r.project_name) map.set(r.project_name, { name: r.project_name, color: r.project_color });
+      (r.employee_projects ?? []).forEach((p) => {
+        if (!map.has(p.name)) map.set(p.name, { name: p.name, color: p.color });
+      });
     });
     return [...map.entries()].map(([key, val]) => ({ key, ...val }));
   }, [requests]);
@@ -85,7 +90,7 @@ export function VacationRequestsTable({ requests }: Props) {
   const filtered = useMemo(() => {
     return requests.filter((r) => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
-      if (projectFilter !== "all" && r.project_name !== projectFilter) return false;
+      if (projectFilter !== "all" && !(r.employee_projects ?? []).some((p) => p.name === projectFilter)) return false;
       if (search.trim()) {
         const q = search.trim().toLowerCase();
         const name  = r.employees?.name.toLowerCase()  ?? "";
@@ -275,14 +280,18 @@ export function VacationRequestsTable({ requests }: Props) {
                         <div className="text-xs text-muted-foreground">{req.employees?.email}</div>
                       </td>
                       <td className="px-4 py-3">
-                        {req.project_name ? (
-                          <span className="flex items-center gap-1.5">
-                            <span
-                              className="size-2.5 rounded-full shrink-0"
-                              style={{ backgroundColor: req.project_color ?? "#6366f1" }}
-                            />
-                            {req.project_name}
-                          </span>
+                        {(req.employee_projects ?? []).length > 0 ? (
+                          <div className="flex flex-col gap-1">
+                            {(req.employee_projects ?? []).map((p) => (
+                              <span key={p.name} className="flex items-center gap-1.5">
+                                <span
+                                  className="size-2.5 rounded-full shrink-0"
+                                  style={{ backgroundColor: p.color ?? "#6366f1" }}
+                                />
+                                {p.name}
+                              </span>
+                            ))}
+                          </div>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}

@@ -62,22 +62,26 @@ export default async function AdminVacationRequestsPage() {
     .from("employee_projects")
     .select(`employee_id, projects ( id_engagement, name, color )`);
 
-  // Build a map: employee_id → first project (or null)
-  const empProjectMap = new Map<string, { name: string; color: string | null }>();
+  // Build a map: employee_id → all projects
+  const empProjectMap = new Map<string, { name: string; color: string | null }[]>();
   (empProjects ?? []).forEach((ep: any) => {
     const proj = ep.projects;
-    if (proj && !empProjectMap.has(ep.employee_id)) {
-      empProjectMap.set(ep.employee_id, { name: proj.name, color: proj.color ?? null });
+    if (proj) {
+      const existing = empProjectMap.get(ep.employee_id) ?? [];
+      existing.push({ name: proj.name, color: proj.color ?? null });
+      empProjectMap.set(ep.employee_id, existing);
     }
   });
 
   const requests = (rawRequests ?? []).map((r: any) => {
     const empId = r.employees?.id ?? null;
-    const proj = empId ? empProjectMap.get(empId) : null;
+    const projs = empId ? (empProjectMap.get(empId) ?? []) : [];
     return {
       ...r,
-      project_name: proj?.name ?? null,
-      project_color: proj?.color ?? null,
+      employee_projects: projs,
+      // Keep first project for backward compat display
+      project_name: projs[0]?.name ?? null,
+      project_color: projs[0]?.color ?? null,
     };
   });
 
