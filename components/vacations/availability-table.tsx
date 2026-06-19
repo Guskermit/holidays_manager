@@ -380,8 +380,9 @@ export function AvailabilityTable({ employees, projects, teams = [], teamAssignm
     if (isIndividual || activeDims.length === 0) return [];
 
     const dimGroupsList = activeDims.map(d => perDimGroups[d]);
+    const [first, ...rest] = dimGroupsList;
 
-    return dimGroupsList.reduce<GroupRow[]>((acc, curr) => {
+    return rest.reduce<GroupRow[]>((acc, curr) => {
       const result: GroupRow[] = [];
       for (const a of acc) {
         for (const b of curr) {
@@ -396,7 +397,7 @@ export function AvailabilityTable({ employees, projects, teams = [], teamAssignm
         }
       }
       return result;
-    });
+    }, first);
   }, [isIndividual, activeDims, perDimGroups]);
 
   /* ── Aggregated weekly data per group ───────────────────── */
