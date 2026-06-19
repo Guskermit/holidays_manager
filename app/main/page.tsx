@@ -198,6 +198,23 @@ export default async function ProtectedPage() {
               <span className="text-sm text-teal-600 font-medium group-hover:underline">{strings.dashboard.cardRequestsLink}</span>
             </Link>
           )}
+
+          {isAdmin && (
+            <Link
+              href="/main/vacations/availability"
+              className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-teal-500 transition-colors"
+            >
+              <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-600">{strings.dashboard.adminBadge}</span>
+              <div className="flex items-center justify-center size-12 rounded-lg bg-teal-500/10 text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+                <BarChart2Icon className="size-6" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <h2 className="text-lg font-semibold">{strings.vacations.availabilityTitle}</h2>
+                <p className="text-sm text-muted-foreground">{strings.vacations.availabilitySubtitle}</p>
+              </div>
+              <span className="text-sm text-teal-600 font-medium group-hover:underline">{strings.vacations.availabilityLink}</span>
+            </Link>
+          )}
         </div>
       </div>
 

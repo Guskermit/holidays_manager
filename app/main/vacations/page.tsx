@@ -5,7 +5,7 @@ import { requestVacation, cancelVacationRequest } from "@/app/main/vacations/act
 import { type Office, getHolidaysForOfficeFromDB } from "@/lib/holidays";
 import { getCategoryDays } from "@/lib/categories";
 import Link from "next/link";
-import { LayoutListIcon } from "lucide-react";
+import { LayoutListIcon, BarChart2Icon } from "lucide-react";
 import { BackNav } from "@/components/back-nav";
 import { strings } from "@/lib/strings";
 import { getEffectiveEmployee } from "@/lib/impersonation";
@@ -67,13 +67,22 @@ export default async function VacationsPage() {
           </p>
         </div>
         {(effectiveRole === "admin" || effectiveRole === "super-admin") && (
-          <Link
-            href="/main/vacations/summary"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <LayoutListIcon className="size-4" />
-            {strings.vacations.teamOverviewLink}
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/main/vacations/summary"
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <LayoutListIcon className="size-4" />
+              {strings.vacations.teamOverviewLink}
+            </Link>
+            <Link
+              href="/main/vacations/availability"
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <BarChart2Icon className="size-4" />
+              {strings.vacations.availabilityLink}
+            </Link>
+          </div>
         )}
       </div>
 

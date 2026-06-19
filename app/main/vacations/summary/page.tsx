@@ -5,6 +5,8 @@ import { VacationSummaryTable } from "@/components/vacations/vacation-summary-ta
 import { BackNav } from "@/components/back-nav";
 import { strings } from "@/lib/strings";
 import { getAllOfficeHolidaysFromDB } from "@/lib/holidays";
+import Link from "next/link";
+import { BarChart2Icon } from "lucide-react";
 
 function flattenEmployee(emp: any) {
   return {
@@ -119,11 +121,20 @@ export default async function VacationSummaryPage() {
   return (
     <div className="flex flex-col gap-6">
       <BackNav />
-      <div>
-        <h1 className="text-2xl font-bold">{strings.vacations.overviewTitle}</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {strings.vacations.overviewSubtitleAdmin}
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">{strings.vacations.overviewTitle}</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {strings.vacations.overviewSubtitleAdmin}
+          </p>
+        </div>
+        <Link
+          href="/main/vacations/availability"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <BarChart2Icon className="size-4" />
+          {strings.vacations.availabilityLink}
+        </Link>
       </div>
 
       <VacationSummaryTable
