@@ -22,6 +22,7 @@ type Props = {
     company: string | null;
     cost_per_hour: number | null;
     weekly_hours: number | null;
+    exit_date: string | null;
   };
 };
 
@@ -40,6 +41,7 @@ export function EmployeeForm({ employee }: Props) {
       : "Staff"
   );
   const [selectedCompany, setSelectedCompany] = useState(employee.company ?? "");
+  const [exitDate, setExitDate] = useState(employee.exit_date ?? "");
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -209,6 +211,31 @@ export function EmployeeForm({ employee }: Props) {
           className="max-w-[200px]"
         />
         <p className="text-xs text-muted-foreground">{strings.employees.formWeeklyHoursHint}</p>
+      </div>
+
+      {/* Exit date (baja) */}
+      <div className="grid gap-2 border-t pt-6 mt-2">
+        <Label htmlFor="exit_date">{strings.employees.formExitDateLabel}</Label>
+        <div className="flex items-center gap-3 flex-wrap">
+          <Input
+            id="exit_date"
+            name="exit_date"
+            type="date"
+            value={exitDate}
+            onChange={(e) => setExitDate(e.target.value)}
+            className="max-w-[200px]"
+          />
+          {exitDate && (
+            <button
+              type="button"
+              onClick={() => setExitDate("")}
+              className="text-sm text-muted-foreground underline hover:text-foreground"
+            >
+              {strings.employees.formExitDateClear}
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">{strings.employees.formExitDateHint}</p>
       </div>
 
       <div className="flex gap-3">

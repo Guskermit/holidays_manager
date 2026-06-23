@@ -45,6 +45,7 @@ export default async function AvailabilityPage() {
         employee_specializations ( specializations ( name ) ),
         vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status, is_bootcamp )
       `)
+      .or(`exit_date.is.null,exit_date.gt.${new Date().toISOString().split("T")[0]}`)
       .order("name"),
     supabase
       .from("projects")

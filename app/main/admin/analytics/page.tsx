@@ -30,7 +30,7 @@ export default async function AdminAnalyticsPage() {
     { data: vacRequests },
     { data: allSkillsDB },
   ] = await Promise.all([
-    supabase.from("employees").select("id, name, category"),
+    supabase.from("employees").select("id, name, category").or(`exit_date.is.null,exit_date.gt.${new Date().toISOString().split("T")[0]}`),
     supabase
       .from("projects")
       .select("id_engagement, name, color, end_date, employee_projects(employee_id)")
@@ -38,13 +38,22 @@ export default async function AdminAnalyticsPage() {
     supabase.from("employee_skills").select("employee_id, skill_id, level, skills(id, name, category)"),
     supabase
       .from("vacation_requests")
-      .select("status, days_requested, year, start_date"),
+      .select("employee_id, status, days_requested, year, start_date"),
     supabase.from("skills").select("id, name, category").order("category, name"),
   ]);
 
   const currentYear = new Date().getFullYear();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  // Build a set of active employee IDs to filter other datasets
+  const activeEmployeeIds = new Set((employees ?? []).map((e: any) => e.id as string));
+  const activeEmpSkills = (empSkills ?? []).filter((es: any) =>
+    activeEmployeeIds.has((es as any).employee_id as string)
+  );
+  const activeVacRequests = (vacRequests ?? []).filter((r: any) =>
+    activeEmployeeIds.has((r as any).employee_id as string)
+  );
 
   // ── Employees by category ──────────────────────────────────────
   const categoryCount = new Map<string, number>();
@@ -169,7 +178,7 @@ export default async function AdminAnalyticsPage() {
 
   // ── Top skills ─────────────────────────────────────────────────
   const skillCount = new Map<string, number>();
-  for (const es of empSkills ?? []) {
+  for (const es of activeEmpSkills) {
     const name = (es as any).skills?.name as string | undefined;
     if (name) skillCount.set(name, (skillCount.get(name) ?? 0) + 1);
   }
@@ -187,7 +196,7 @@ export default async function AdminAnalyticsPage() {
   const skillStatsMap = new Map<string, SkillStats>();
   const empsByCategory = new Map<string, Set<string>>();
 
-  for (const row of empSkills ?? []) {
+  for (const row of activeEmpSkills) {
     const skillInfo = (row as any).skills as { id: string; name: string; category: string } | null;
     if (!skillInfo) continue;
     const skillId = (row as any).skill_id as string;
@@ -235,11 +244,11 @@ export default async function AdminAnalyticsPage() {
     .map((s) => ({ name: s.name as string, category: s.category as string }));
 
   const allEmpIdsWithSkills = new Set<string>();
-  for (const row of empSkills ?? []) allEmpIdsWithSkills.add((row as any).employee_id as string);
+  for (const row of activeEmpSkills) allEmpIdsWithSkills.add((row as any).employee_id as string);
   const totalWithSkills = allEmpIdsWithSkills.size;
 
   // ── Vacation stats ─────────────────────────────────────────────
-  const thisYearReqs: any[] = (vacRequests ?? []).filter(
+  const thisYearReqs: any[] = activeVacRequests.filter(
     (r: any) => r.year === currentYear
   );
   const approvedReqs = thisYearReqs.filter((r) => r.status === "approved");

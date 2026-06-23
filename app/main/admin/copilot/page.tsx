@@ -47,17 +47,21 @@ export default async function AdminCopilotPage() {
           name,
           email,
           has_copilot,
-          copilot_engagement
+          copilot_engagement,
+          exit_date
         )
       )
     `)
     .order("name", { ascending: true });
+
+  const todayIso = new Date().toISOString().split("T")[0];
 
   const projects: ProjectCopilotGroup[] = (projectsData ?? [])
     .map((project: any) => {
       const employees = (project.employee_projects ?? [])
         .map((ep: any) => ep.employees)
         .filter(Boolean)
+        .filter((emp: any) => !emp.exit_date || emp.exit_date > todayIso)
         .map((emp: any) => ({
           id: emp.id,
           name: emp.name,

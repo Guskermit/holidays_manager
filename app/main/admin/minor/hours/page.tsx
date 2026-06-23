@@ -100,6 +100,7 @@ export default async function MinorHoursAdminPage({
     email: string;
     weekly_hours: number;
     hours: { [subprojectId: string]: number };
+    exit_date: string | null;
   }[] = [];
 
   if (minorProjectIds.length > 0) {
@@ -115,7 +116,7 @@ export default async function MinorHoursAdminPage({
       // Fetch employee details
       const { data: employees } = await supabase
         .from("employees")
-        .select("id, name, email, weekly_hours")
+        .select("id, name, email, weekly_hours, exit_date")
         .in("id", employeeIds)
         .order("name");
 
@@ -139,6 +140,7 @@ export default async function MinorHoursAdminPage({
         email: emp.email,
         weekly_hours: emp.weekly_hours ?? 42,
         hours: hoursLookup[emp.id] ?? {},
+        exit_date: emp.exit_date ?? null,
       }));
     }
   }

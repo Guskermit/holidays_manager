@@ -28,7 +28,7 @@ export default async function EmployeesPage() {
 
   const { data: employees } = await supabase
     .from("employees")
-    .select("id, name, email, office, role, created_at")
+    .select("id, name, email, office, role, created_at, exit_date")
     .order("name");
 
   return (
@@ -53,13 +53,22 @@ export default async function EmployeesPage() {
                 <th className="text-left font-medium px-4 py-3">{strings.employees.colOffice}</th>
                 <th className="text-left font-medium px-4 py-3">{strings.employees.colRole}</th>
                 <th className="text-left font-medium px-4 py-3">{strings.employees.colJoined}</th>
+                <th className="text-left font-medium px-4 py-3">{strings.employees.colExitDate}</th>
                 <th className="text-left font-medium px-4 py-3 w-16"></th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {employees.map((emp) => (
-                <tr key={emp.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3 font-medium">{emp.name}</td>
+              {employees.map((emp) => {
+                const today = new Date().toISOString().split("T")[0];
+                const isInactive = !!emp.exit_date && emp.exit_date <= today;
+                return (
+                <tr key={emp.id} className={isInactive ? "opacity-60 bg-muted/20 hover:bg-muted/30 transition-colors" : "hover:bg-muted/30 transition-colors"}>
+                  <td className="px-4 py-3 font-medium">
+                    {emp.name}
+                    {isInactive && (
+                      <Badge variant="secondary" className="ml-2 text-xs">{strings.employees.badgeBaja}</Badge>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">{emp.email}</td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {OFFICE_LABELS[emp.office as keyof typeof OFFICE_LABELS] ?? emp.office}
@@ -76,6 +85,15 @@ export default async function EmployeesPage() {
                       year: "numeric",
                     })}
                   </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {emp.exit_date
+                      ? new Date(emp.exit_date).toLocaleDateString("es-ES", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "—"}
+                  </td>
                   <td className="px-4 py-3">
                     {/* Regular admins cannot edit super-admin employees */}
                     {(emp.role !== "super-admin" || currentEmployee?.role === "super-admin") && (
@@ -87,7 +105,8 @@ export default async function EmployeesPage() {
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

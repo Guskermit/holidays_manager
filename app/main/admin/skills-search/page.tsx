@@ -49,6 +49,7 @@ export default async function AdminSkillsSearchPage() {
           )
         )
       `)
+      .or(`exit_date.is.null,exit_date.gt.${new Date().toISOString().split("T")[0]}`)
       .order("name"),
   ]);
 

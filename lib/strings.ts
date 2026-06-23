@@ -152,6 +152,12 @@ export const strings = {
     formCostPerHourHint:  "Coste base que se cargará automáticamente al asignar este empleado a una oportunidad.",
     formWeeklyHoursLabel: "Horas semanales Minor",
     formWeeklyHoursHint:  "Número de horas que este empleado debe imputar semanalmente en el proyecto Minor.",
+    formExitDateLabel:    "Fecha de baja",
+    formExitDateHint:     "Si el empleado ha abandonado la empresa, indica la fecha de salida. A partir de esa fecha quedará excluido de reports, estadísticas, skills, Copilot y no podrá imputar horas en Minor.",
+    formExitDateClear:    "Reactivar empleado",
+    badgeBaja:            "Baja",
+    colExitDate:          "Fecha baja",
+    inactiveMessage:      "Tu cuenta está marcada como baja. Si crees que es un error, contacta con un administrador.",
   },
 
   // ── GitHub Copilot ────────────────────────────────────────
@@ -521,6 +527,8 @@ export const strings = {
     subprojectActive:       "Activo",
     subprojectInactive:     "Inactivo",
     notMinorAdmin:          "No tienes permisos de administrador en el proyecto Minor.",
+    employeeInactive:       "Tu cuenta está marcada como baja. Si crees que es un error, contacta con un administrador.",
+    adminHoursBadgeBaja:    "Baja",
     // Admin hours view
     adminHoursTitle:        "Horas imputadas – Minor",
     adminHoursSubtitle:     "Resumen semanal de horas imputadas por empleado y subproyecto.",

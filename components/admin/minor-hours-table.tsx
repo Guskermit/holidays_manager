@@ -17,6 +17,7 @@ type EmployeeRow = {
   email: string;
   weekly_hours: number;
   hours: { [subprojectId: string]: number };
+  exit_date?: string | null;
 };
 
 type Props = {
@@ -85,8 +86,13 @@ export function MinorHoursTable({
   const [, startTransition] = useTransition();
 
   const groups = groupByColor(subprojects);
+  const todayIso = new Date().toISOString().split("T")[0];
+
+  const isEmployeeInactive = (e: EmployeeRow) =>
+    !!e.exit_date && e.exit_date <= todayIso;
 
   const incompleteEmployees = initialEmployees.filter((e) => {
+    if (isEmployeeInactive(e)) return false;
     const total = subprojects.reduce((sum, sp) => sum + (e.hours[sp.id] ?? 0), 0);
     return total < e.weekly_hours;
   });
@@ -212,12 +218,18 @@ export function MinorHoursTable({
                 const total = subprojects.reduce(
                   (sum, sp) => sum + (employee.hours[sp.id] ?? 0), 0
                 );
-                const isComplete = total >= employee.weekly_hours;
+                const inactive = isEmployeeInactive(employee);
+                const isComplete = inactive || total >= employee.weekly_hours;
 
                 return (
-                  <tr key={employee.id} className="hover:bg-muted/30">
+                  <tr key={employee.id} className={cn("hover:bg-muted/30", inactive && "opacity-50")}>
                     <td className="px-4 py-3 font-medium sticky left-0 bg-background whitespace-nowrap z-10">
                       {employee.name}
+                      {inactive && (
+                        <span className="ml-2 inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          {strings.minor.adminHoursBadgeBaja}
+                        </span>
+                      )}
                       <span className="block text-xs text-muted-foreground font-normal">
                         {employee.email}
                       </span>
@@ -240,11 +252,12 @@ export function MinorHoursTable({
 
                     <td className={cn(
                       "px-3 py-3 text-center font-semibold tabular-nums",
-                      !isComplete && "text-red-500",
-                      isComplete  && "text-emerald-600",
+                      inactive && "text-muted-foreground",
+                      !inactive && !isComplete && "text-red-500",
+                      !inactive && isComplete  && "text-emerald-600",
                     )}>
-                      {total % 1 === 0 ? total : total.toFixed(1)}
-                      {!isComplete && (
+                      {inactive ? "—" : total % 1 === 0 ? total : total.toFixed(1)}
+                      {!inactive && !isComplete && (
                         <span className="block text-[10px] font-normal">
                           / {employee.weekly_hours}
                         </span>

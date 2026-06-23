@@ -36,11 +36,22 @@ export default async function MinorHoursPage() {
   // Get the effective employee's data
   const { data: employee } = await supabase
     .from("employees")
-    .select("id, name, weekly_hours")
+    .select("id, name, weekly_hours, exit_date")
     .eq("id", effectiveId)
     .single();
 
   if (!employee) redirect("/main");
+
+  // Block inactive (baja) employees from submitting new hours
+  const todayIso = new Date().toISOString().split("T")[0];
+  if (employee.exit_date && employee.exit_date <= todayIso) {
+    return (
+      <div className="flex flex-col gap-6">
+        <BackNav />
+        <p className="text-sm text-muted-foreground">{strings.minor.employeeInactive}</p>
+      </div>
+    );
+  }
 
   // Verify the employee is assigned to a Minor project
   const { data: employeeProjects } = await supabase
