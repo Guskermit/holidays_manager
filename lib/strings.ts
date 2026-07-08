@@ -271,6 +271,7 @@ export const strings = {
     legendWeekend:        "Weekend",
     legendBootcampApproved: "Bootcamp aprobado",
     legendBootcampPending:  "Bootcamp pendiente",
+    legendMedicalLeaveApproved: "Baja médica aprobada",
 
     selectionTitle:       "Selection",
     selectionFrom:        "From: ",
@@ -290,6 +291,12 @@ export const strings = {
     bootcampRemaining:    "Días Bootcamp restantes: ",
     bootcampCalendarTitleApproved: "Bootcamp aprobado",
     bootcampCalendarTitlePending:  "Bootcamp pendiente",
+    medicalLeaveCheckbox: "Días de baja médica",
+    medicalLeaveHint:     "Los días de baja médica no se descuentan del saldo de vacaciones y se aprueban automáticamente.",
+    medicalLeaveCalendarTitleApproved: "Baja médica aprobada",
+    medicalLeaveAutoApproveLabel: "Estado: ",
+    medicalLeaveAutoApproveValue: "Aprobación automática",
+    badgeMedicalLeave:    "Baja médica",
 
     statSolicitados:      "Solicitados",
     statAprobados:        "Aprobados",
@@ -338,7 +345,7 @@ export const strings = {
 
     availabilityLink:          "Disponibilidad",
     availabilityTitle:         "Disponibilidad del equipo",
-    availabilitySubtitle:      "Días laborables disponibles por semana hasta fin de año. Descuenta vacaciones aprobadas, festivos y bootcamp.",
+    availabilitySubtitle:      "Días laborables disponibles por semana hasta fin de año. Descuenta vacaciones aprobadas, festivos, bootcamp y bajas médicas.",
     availabilityTotalRow:      "Total",
     availabilityLegendFull:    "Alta (≥80%)",
     availabilityLegendPartial: "Media (40–79%)",
@@ -384,6 +391,7 @@ export const strings = {
     colStatus:            "Status",
     colActions:           "Actions",
     badgeBootcamp:        "Bootcamp",
+    badgeMedicalLeave:    "Baja médica",
 
     statusPending:        "Pending",
     statusApproved:       "Approved",

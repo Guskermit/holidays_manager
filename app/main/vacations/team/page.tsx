@@ -84,7 +84,7 @@ export default async function TeamVacationPage() {
   const { data: rawEmployees } = await supabase
     .from("employees")
     .select(
-      `id, name, office, category, employee_specializations ( specializations ( name ) ), vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status, days_requested, year, is_bootcamp )`
+      `id, name, office, category, employee_specializations ( specializations ( name ) ), vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status, days_requested, year, is_bootcamp, is_medical_leave )`
     )
     .in("id", uniqueColleagueIds)
     .or(`exit_date.is.null,exit_date.gt.${new Date().toISOString().split("T")[0]}`)
@@ -127,6 +127,7 @@ export default async function TeamVacationPage() {
     let pendingDays = 0;
     for (const req of (emp.vacation_requests ?? []) as any[]) {
       if (req.year !== currentYear) continue;
+      if (req.is_bootcamp || req.is_medical_leave) continue;
       if (req.status === "approved") usedDays += req.days_requested ?? 0;
       else if (req.status === "pending") pendingDays += req.days_requested ?? 0;
     }

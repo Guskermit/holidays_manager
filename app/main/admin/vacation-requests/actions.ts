@@ -29,7 +29,7 @@ export async function approveVacationRequest(requestId: string): Promise<{ error
 
   const { data: req } = await supabase
     .from("vacation_requests")
-    .select("id, status, days_requested, year, employee_id, start_date, end_date, is_bootcamp")
+    .select("id, status, days_requested, year, employee_id, start_date, end_date, is_bootcamp, is_medical_leave")
     .eq("id", requestId)
     .single();
 
@@ -43,8 +43,8 @@ export async function approveVacationRequest(requestId: string): Promise<{ error
 
   if (updErr) return { error: updErr.message };
 
-  // Bootcamp requests do not consume the vacation balance
-  if (!req.is_bootcamp) {
+  // Bootcamp and medical leave requests do not consume the vacation balance
+  if (!req.is_bootcamp && !req.is_medical_leave) {
     const { data: bal } = await supabase
       .from("vacation_balances")
       .select("used_days, pending_days")
@@ -89,7 +89,7 @@ export async function rejectVacationRequest(
 
   const { data: req } = await supabase
     .from("vacation_requests")
-    .select("id, status, days_requested, year, employee_id, start_date, end_date, is_bootcamp")
+    .select("id, status, days_requested, year, employee_id, start_date, end_date, is_bootcamp, is_medical_leave")
     .eq("id", requestId)
     .single();
 
@@ -108,8 +108,8 @@ export async function rejectVacationRequest(
 
   if (updErr) return { error: updErr.message };
 
-  // Bootcamp requests do not consume the vacation balance
-  if (!req.is_bootcamp) {
+  // Bootcamp and medical leave requests do not consume the vacation balance
+  if (!req.is_bootcamp && !req.is_medical_leave) {
     const { data: bal } = await supabase
       .from("vacation_balances")
       .select("pending_days")
@@ -148,7 +148,7 @@ export async function cancelApprovedRequest(requestId: string): Promise<{ error?
 
   const { data: req } = await supabase
     .from("vacation_requests")
-    .select("id, status, days_requested, year, employee_id, start_date, end_date, is_bootcamp")
+    .select("id, status, days_requested, year, employee_id, start_date, end_date, is_bootcamp, is_medical_leave")
     .eq("id", requestId)
     .single();
 
@@ -162,8 +162,8 @@ export async function cancelApprovedRequest(requestId: string): Promise<{ error?
 
   if (updErr) return { error: updErr.message };
 
-  // Bootcamp requests do not consume the vacation balance
-  if (!req.is_bootcamp) {
+  // Bootcamp and medical leave requests do not consume the vacation balance
+  if (!req.is_bootcamp && !req.is_medical_leave) {
     const { data: bal } = await supabase
       .from("vacation_balances")
       .select("used_days")

@@ -14,6 +14,7 @@ type VacationRequest = {
   end_date: string;
   status: "pending" | "approved" | "rejected" | "cancelled";
   is_bootcamp?: boolean;
+  is_medical_leave?: boolean;
 };
 
 type Employee = {
@@ -260,7 +261,7 @@ export function AvailabilityTable({ employees, projects, teams = [], teamAssignm
   }, [employees, projects, projectFilter, teamFilter, teamAssignments, categoryFilter, specFilter]);
 
   /* ── Per-employee: set of approved-off working days ─────── */
-  // Includes approved vacations AND approved bootcamp days (both make the employee unavailable)
+  // Includes approved vacations, bootcamp, and medical leave (all make the employee unavailable)
   const employeeUnavailableMap = useMemo(() => {
     const map = new Map<string, Set<string>>();
     for (const emp of visibleEmployees) {

@@ -35,6 +35,7 @@ export default async function AdminVacationRequestsPage() {
       created_at,
       rejection_reason,
       is_bootcamp,
+      is_medical_leave,
       employees!vacation_requests_employee_id_fkey ( id, name, email )
     `)
         .order("start_date", { ascending: true });

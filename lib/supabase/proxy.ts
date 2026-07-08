@@ -13,8 +13,7 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // With Fluid compute, don't put this client in a global environment
-  // variable. Always create a new one on each request.
+  // Always create a new client on each request (required for middleware).
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -38,14 +37,11 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // Do not run code between createServerClient and
-  // supabase.auth.getClaims(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
-  // IMPORTANT: If you remove getClaims() and you use server-side rendering
-  // with the Supabase client, your users may be randomly logged out.
-  const { data } = await supabase.auth.getClaims();
-  const user = data?.claims;
+  // Use getUser() to validate the session server-side via the Supabase auth API.
+  // getClaims() fetches JWKs (.well-known/jwks.json) which may be unreachable
+  // on restricted networks. getUser() calls /auth/v1/user directly and is
+  // the battle-tested approach for middleware session validation.
+  const { data: { user } } = await supabase.auth.getUser();
 
   if (
     request.nextUrl.pathname !== "/" &&
@@ -68,7 +64,7 @@ export async function updateSession(request: NextRequest) {
     const { data: employee } = await supabase
       .from("employees")
       .select("approved")
-      .eq("user_id", user.sub)
+      .eq("user_id", user.id)
       .single();
 
     if (employee && employee.approved === false) {
