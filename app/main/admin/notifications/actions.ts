@@ -66,7 +66,7 @@ export async function getNotifications(): Promise<{
   data?: NotificationRow[];
   error?: string;
 }> {
-  const { supabase, employee, error: authError } = await requireAdmin();
+  const { supabase, error: authError } = await requireAdmin();
   if (authError) return { error: authError };
 
   const { data: notifications, error } = await supabase
