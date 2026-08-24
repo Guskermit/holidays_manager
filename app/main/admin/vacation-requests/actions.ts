@@ -7,6 +7,11 @@ import {
   notifyVacationRejected,
   notifyVacationCancelled,
 } from "@/lib/slack";
+import {
+  notifyVacationApprovedInApp,
+  notifyVacationRejectedInApp,
+  notifyVacationCancelledInApp,
+} from "@/lib/notifications";
 
 async function getAdminEmployee() {
   const supabase = await createClient();
@@ -76,6 +81,17 @@ export async function approveVacationRequest(requestId: string): Promise<{ error
     days: req.days_requested,
   });
 
+  // In-app notification for the employee
+  await notifyVacationApprovedInApp({
+    employeeId: req.employee_id,
+    adminId,
+    startDate: req.start_date,
+    endDate: req.end_date,
+    days: req.days_requested,
+    isBootcamp: req.is_bootcamp,
+    isMedicalLeave: req.is_medical_leave,
+  });
+
   revalidatePath("/main/admin/vacation-requests");
   return {};
 }
@@ -138,6 +154,15 @@ export async function rejectVacationRequest(
     reason: reason || null,
   });
 
+  // In-app notification for the employee
+  await notifyVacationRejectedInApp({
+    employeeId: req.employee_id,
+    adminId,
+    startDate: req.start_date,
+    endDate: req.end_date,
+    reason,
+  });
+
   revalidatePath("/main/admin/vacation-requests");
   return {};
 }
@@ -190,6 +215,14 @@ export async function cancelApprovedRequest(requestId: string): Promise<{ error?
     startDate: req.start_date,
     endDate: req.end_date,
     days: req.days_requested,
+  });
+
+  // In-app notification for the employee
+  await notifyVacationCancelledInApp({
+    employeeId: req.employee_id,
+    adminId,
+    startDate: req.start_date,
+    endDate: req.end_date,
   });
 
   revalidatePath("/main/admin/vacation-requests");

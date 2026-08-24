@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCategoryDays } from "@/lib/categories";
 import { notifyVacationRequested } from "@/lib/slack";
+import { notifyManagersVacationRequested } from "@/lib/notifications";
 
 const BOOTCAMP_MAX_DAYS = 2;
 
@@ -109,6 +110,19 @@ export async function requestVacation(
     endDate,
     days: daysRequested,
   });
+
+  // In-app notification to managers of the employee's projects
+  if (!isBootcamp && !isMedicalLeave) {
+    await notifyManagersVacationRequested({
+      employeeId,
+      employeeName: emp?.name ?? "Empleado",
+      startDate,
+      endDate,
+      days: daysRequested,
+      isBootcamp,
+      isMedicalLeave,
+    });
+  }
 
   // Bootcamp and medical leave requests do NOT consume the regular vacation balance
   if (!isBootcamp && !isMedicalLeave) {
