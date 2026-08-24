@@ -2,6 +2,7 @@ import { EnvVarWarning } from "@/components/env-var-warning";
 import { AuthButton } from "@/components/auth-button";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
+import { NotificationBell } from "@/components/notification-bell";
 import { hasEnvVars } from "@/lib/utils";
 import { strings } from "@/lib/strings";
 import Link from "next/link";
@@ -26,9 +27,14 @@ export default function ProtectedLayout({
             {!hasEnvVars ? (
               <EnvVarWarning />
             ) : (
-              <Suspense>
-                <AuthButton />
-              </Suspense>
+              <div className="flex items-center gap-2">
+                <Suspense>
+                  <NotificationBell />
+                </Suspense>
+                <Suspense>
+                  <AuthButton />
+                </Suspense>
+              </div>
             )}
           </div>
         </nav>

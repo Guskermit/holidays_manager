@@ -657,4 +657,83 @@ export const strings = {
     dashboardCardLink:      "Ir a Pricing →",
   },
 
+  // ── Notifications ────────────────────────────────────────
+  notifications: {
+    // Header bell
+    bellLabel:              "Notificaciones",
+    bellEmpty:              "No tienes notificaciones.",
+    markAllRead:            "Marcar todo como leído",
+    viewAll:                "Ver todas",
+    unreadCount:            (n: number) => `${n} notificación${n !== 1 ? "es" : ""} sin leer`,
+
+    // Admin page
+    adminPageTitle:         "Gestión de notificaciones",
+    adminPageSubtitle:      "Crea, edita y gestiona las notificaciones para los empleados.",
+    newButton:              "Nueva notificación",
+    newTitle:               "Crear notificación",
+    newSubtitle:            "Envía una notificación a todos, a un proyecto o a una persona concreta.",
+    editTitle:              "Editar notificación",
+    editSubtitle:           "Modifica los datos de la notificación.",
+
+    // Form fields
+    titleLabel:             "Título",
+    titlePlaceholder:       "Ej. Recordatorio de vacaciones",
+    messageLabel:           "Mensaje",
+    messagePlaceholder:     "Escribe el contenido de la notificación…",
+    targetTypeLabel:        "Destinatario",
+    targetTypeAll:          "Todos los empleados",
+    targetTypeProject:      "Proyecto específico",
+    targetTypeEmployee:     "Empleado específico",
+    targetProjectLabel:     "Seleccionar proyecto",
+    targetProjectPlaceholder: "Buscar proyecto…",
+    targetEmployeeLabel:    "Seleccionar empleado",
+    targetEmployeePlaceholder: "Buscar empleado…",
+    recurrenceLabel:        "Recurrencia",
+    recurrenceNone:         "Una vez",
+    recurrenceDaily:        "Diaria",
+    recurrenceWeekly:       "Semanal",
+    recurrenceMonthly:      "Mensual",
+    submitCreate:           "Crear notificación",
+    submitCreating:         "Creando…",
+    submitUpdate:           "Guardar cambios",
+    submitUpdating:         "Guardando…",
+    successCreated:         "Notificación creada correctamente.",
+    successUpdated:         "Notificación actualizada correctamente.",
+    successDeleted:         "Notificación eliminada.",
+    successCopied:          "Notificación duplicada.",
+
+    // Table
+    colTitle:               "Título",
+    colMessage:             "Mensaje",
+    colTarget:              "Destinatario",
+    colRecurrence:          "Recurrencia",
+    colStatus:              "Estado",
+    colCreatedBy:           "Creada por",
+    colCreatedAt:           "Fecha",
+    colActions:             "Acciones",
+    badgeActive:            "Activa",
+    badgeInactive:          "Inactiva",
+    badgeRecurrence:        (r: string) => r === 'none' ? 'Una vez' : r === 'daily' ? 'Diaria' : r === 'weekly' ? 'Semanal' : 'Mensual',
+    targetAll:              "Todos",
+    targetProject:          (name: string) => `Proyecto: ${name}`,
+    targetEmployee:         (name: string) => `Empleado: ${name}`,
+    empty:                  "No hay notificaciones creadas.",
+    confirmDelete:          "¿Eliminar esta notificación? Esta acción no se puede deshacer.",
+    confirmCopy:            "¿Duplicar esta notificación?",
+
+    // Actions
+    editButton:             "Editar",
+    deleteButton:           "Eliminar",
+    copyButton:             "Duplicar",
+    activateButton:         "Activar",
+    deactivateButton:       "Desactivar",
+    sending:                "Enviando…",
+    sent:                   "Enviada",
+
+    // Dashboard card
+    dashboardCard:          "Notificaciones",
+    dashboardCardDesc:      "Gestiona las notificaciones internas para los empleados.",
+    dashboardCardLink:      "Ir a Notificaciones →",
+  },
+
 } as const;
