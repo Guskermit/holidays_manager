@@ -10,6 +10,7 @@ import { revalidatePath } from "next/cache";
 export async function getMyNotifications(): Promise<{
   data?: {
     id: string;
+    notification_id: string;
     title: string;
     message: string;
     is_read: boolean;
