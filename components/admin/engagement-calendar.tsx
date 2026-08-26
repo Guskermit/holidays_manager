@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useTransition, useMemo, useCallback, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { strings } from "@/lib/strings";
 import { CATEGORY_LABELS, type Category, sortEmployeesByCategory } from "@/lib/categories";
 import {
@@ -16,7 +15,6 @@ import {
 import {
   SaveIcon,
   ArrowLeftIcon,
-  PlusIcon,
   UsersIcon,
   BriefcaseIcon,
 } from "lucide-react";
@@ -150,20 +148,6 @@ function countNonHolidayWorkdays(
   return count;
 }
 
-function isEmployeeOnVacation(
-  empId: string,
-  weekStart: Date,
-  weekEnd: Date,
-  vacations: Props["vacations"]
-): boolean {
-  return vacations.some(
-    (v) =>
-      v.employee_id === empId &&
-      v.start_date <= formatDate(weekEnd) &&
-      v.end_date >= formatDate(weekStart)
-  );
-}
-
 function countVacationDaysInWeek(
   empId: string,
   weekStart: Date,
@@ -197,7 +181,6 @@ export function EngagementCalendar({
   vacations,
 }: Props) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);

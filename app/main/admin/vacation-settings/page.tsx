@@ -48,7 +48,7 @@ export default async function AdminVacationSettingsPage() {
     .from("engagement_hours_settings")
     .select("category, regular_hours, summer_hours");
 
-  const currentHours: Record<Category, { regular: number; summer: number }> = {} as any;
+  const currentHours = {} as Record<Category, { regular: number; summer: number }>;
   for (const cat of CATEGORIES) {
     const row = (hoursRows as HoursSettingsRow[] | null)?.find((r) => r.category === cat);
     const fallback = DEFAULT_HOURS[cat];

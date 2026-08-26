@@ -67,7 +67,7 @@ export default async function EngagementDetailPage({
       .select("id, name, category, office")
       .in("id", selectedEmpIds);
 
-    employees = (emps ?? []).map((e: any) => ({
+    employees = (emps ?? []).map((e: { id: string; name: string; category: string | null; office: string | null }) => ({
       id: e.id,
       name: e.name,
       category: e.category ?? "Staff",
@@ -81,8 +81,9 @@ export default async function EngagementDetailPage({
       .eq("engagement_id", engagementId);
 
     const empMap = new Map<string, EngagementEmployee>();
-    for (const imp of imps ?? []) {
-      const emp = (imp as any).employees;
+    type ImpWithEmployee = { employee_id: string; employees: EngagementEmployee | null };
+    for (const imp of (imps ?? []) as ImpWithEmployee[]) {
+      const emp = imp.employees;
       if (emp && !empMap.has(emp.id)) {
         empMap.set(emp.id, {
           id: emp.id,
@@ -143,10 +144,10 @@ export default async function EngagementDetailPage({
       <EngagementCalendar
         engagement={engagement}
         employees={employees}
-        existingImputaciones={(existingImps as any) ?? []}
+        existingImputaciones={(existingImps as { employee_id: string; start_date: string; end_date: string | null; weekly_hours: number }[]) ?? []}
         hoursSettings={(hoursRows as HoursSettingsRow[]) ?? []}
         holidaysByOffice={holidaysByOffice}
-        vacations={(vacationRows as any) ?? []}
+        vacations={(vacationRows as { employee_id: string; start_date: string; end_date: string }[]) ?? []}
       />
     </div>
   );

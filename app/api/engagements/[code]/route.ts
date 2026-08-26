@@ -88,8 +88,16 @@ export async function GET(
     }
   >();
 
-  for (const row of imputaciones ?? []) {
-    const emp = (row as any).employees as EmpRow | null;
+  type ImputacionWithEmployee = {
+    employee_id: string;
+    start_date: string;
+    end_date: string | null;
+    weekly_hours: number;
+    employees: EmpRow | null;
+  };
+
+  for (const row of (imputaciones ?? []) as ImputacionWithEmployee[]) {
+    const emp = row.employees;
     if (!emp) continue;
 
     if (!employeeMap.has(emp.id)) {

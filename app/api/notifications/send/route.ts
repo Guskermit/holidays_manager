@@ -144,7 +144,8 @@ export async function GET(request: NextRequest) {
   }
 
   // ── Insert recipients ─────────────────────────────────────
-  const recipientRows2 = recipientRows.map((emp: any) => ({
+  type RecipientRow = { id: string; name: string; email: string };
+  const recipientRows2 = recipientRows.map((emp: RecipientRow) => ({
     notification_id: notification.id,
     employee_id: emp.id,
   }));
@@ -171,7 +172,7 @@ export async function GET(request: NextRequest) {
     title,
     message,
     recipients_notified: recipientRows.length,
-    recipients: recipientRows.map((emp: any) => ({
+    recipients: recipientRows.map((emp: { id: string; name: string; email: string }) => ({
       id: emp.id,
       name: emp.name,
       email: emp.email,

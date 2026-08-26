@@ -12,7 +12,6 @@ import {
   PencilIcon,
   Trash2Icon,
   CheckIcon,
-  XIcon,
   SettingsIcon,
   ArrowRightIcon,
 } from "lucide-react";

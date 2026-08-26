@@ -89,8 +89,8 @@ export default async function ProtectedPage() {
     weekly_hours: number;
   };
 
-  let thisWeekImputaciones: WeekImputacion[] = [];
-  let nextWeekImputaciones: WeekImputacion[] = [];
+  const thisWeekImputaciones: WeekImputacion[] = [];
+  const nextWeekImputaciones: WeekImputacion[] = [];
 
   if (effectiveId) {
     // Fetch all active imputaciones overlapping this+next week
@@ -101,8 +101,15 @@ export default async function ProtectedPage() {
       .lte("start_date", nextSundayStr)
       .or(`end_date.is.null,end_date.gte.${thisMondayStr}`);
 
-    for (const imp of imps ?? []) {
-      const eng = (imp as any).engagements;
+    type ImpWithEngagement = {
+      engagement_id: string;
+      start_date: string;
+      end_date: string | null;
+      weekly_hours: number;
+      engagements: { name: string; engagement_code: string } | null;
+    };
+    for (const imp of (imps ?? []) as ImpWithEngagement[]) {
+      const eng = imp.engagements;
       if (!eng) continue;
 
       const impStart = imp.start_date as string;

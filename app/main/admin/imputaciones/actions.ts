@@ -200,7 +200,7 @@ export async function getImputaciones(clientId?: string): Promise<{
   const { supabase, error: authError } = await requireAdmin();
   if (authError) return { error: authError };
 
-  let query = supabase
+  const query = supabase
     .from("employee_imputations")
     .select("*")
     .order("created_at", { ascending: false });
