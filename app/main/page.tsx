@@ -1,10 +1,25 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { FolderKanbanIcon, CalendarDaysIcon, LayoutListIcon, CheckCircle2Icon, ClockIcon, SunIcon, UsersIcon, ClipboardListIcon, BrainIcon, SearchIcon, TrendingUpIcon, SettingsIcon, BarChart2Icon, BookOpenIcon, TimerIcon, CalendarIcon, BotIcon, BellIcon } from "lucide-react";
+import { FolderKanbanIcon, CalendarDaysIcon, LayoutListIcon, CheckCircle2Icon, ClockIcon, SunIcon, UsersIcon, ClipboardListIcon, BrainIcon, SearchIcon, TrendingUpIcon, SettingsIcon, BarChart2Icon, BookOpenIcon, TimerIcon, CalendarIcon, BotIcon, BellIcon, BriefcaseIcon } from "lucide-react";
 import { strings } from "@/lib/strings";
 import { getEffectiveEmployee } from "@/lib/impersonation";
 import { ImpersonationSelector } from "@/components/impersonation-selector";
+
+/** Get Monday of the current week */
+function getMonday(d: Date): Date {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  date.setDate(diff);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+/** Format date as YYYY-MM-DD */
+function fmtDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
 
 export default async function ProtectedPage() {
   const supabase = await createClient();
@@ -56,6 +71,63 @@ export default async function ProtectedPage() {
     : { data: null };
 
   const isAdmin = effectiveEmployee?.role === "admin" || effectiveEmployee?.role === "super-admin";
+
+  // ── Imputaciones for current & next week ──────────────────
+  const now = new Date();
+  const thisMonday = getMonday(now);
+  const nextMonday = new Date(thisMonday);
+  nextMonday.setDate(nextMonday.getDate() + 7);
+  const nextSunday = new Date(nextMonday);
+  nextSunday.setDate(nextSunday.getDate() + 6);
+
+  const thisMondayStr = fmtDate(thisMonday);
+  const nextSundayStr = fmtDate(nextSunday);
+
+  type WeekImputacion = {
+    engagement_name: string;
+    engagement_code: string;
+    weekly_hours: number;
+  };
+
+  let thisWeekImputaciones: WeekImputacion[] = [];
+  let nextWeekImputaciones: WeekImputacion[] = [];
+
+  if (effectiveId) {
+    // Fetch all active imputaciones overlapping this+next week
+    const { data: imps } = await supabase
+      .from("employee_imputations")
+      .select("engagement_id, start_date, end_date, weekly_hours, engagements(name, engagement_code)")
+      .eq("employee_id", effectiveId)
+      .lte("start_date", nextSundayStr)
+      .or(`end_date.is.null,end_date.gte.${thisMondayStr}`);
+
+    for (const imp of imps ?? []) {
+      const eng = (imp as any).engagements;
+      if (!eng) continue;
+
+      const impStart = imp.start_date as string;
+      const impEnd = (imp.end_date as string | null) ?? "9999-12-31";
+
+      // Check overlap with this week
+      if (impStart <= fmtDate(new Date(thisMonday.getTime() + 6 * 86400000)) && impEnd >= thisMondayStr) {
+        thisWeekImputaciones.push({
+          engagement_name: eng.name,
+          engagement_code: eng.engagement_code,
+          weekly_hours: imp.weekly_hours,
+        });
+      }
+
+      // Check overlap with next week
+      const nextWeekEnd = new Date(nextMonday.getTime() + 6 * 86400000);
+      if (impStart <= fmtDate(nextWeekEnd) && impEnd >= fmtDate(nextMonday)) {
+        nextWeekImputaciones.push({
+          engagement_name: eng.name,
+          engagement_code: eng.engagement_code,
+          weekly_hours: imp.weekly_hours,
+        });
+      }
+    }
+  }
 
   const { count: pendingApprovalsCount } = isAdmin
     ? await supabase
@@ -145,6 +217,75 @@ export default async function ProtectedPage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Imputaciones de la semana ──────────────────────── */}
+      {effectiveId && (
+        <div className="flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+            <BriefcaseIcon className="size-4" />
+            {strings.imputaciones.weeklyTitle}
+          </h2>
+          {thisWeekImputaciones.length === 0 && nextWeekImputaciones.length === 0 ? (
+            <div className="rounded-xl border p-4 bg-indigo-500/5">
+              <p className="text-sm text-muted-foreground">{strings.imputaciones.noEngagementMessage}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* This week */}
+              <div className="rounded-xl border p-4 bg-indigo-500/5">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold">{strings.imputaciones.thisWeekLabel}</h3>
+                  <span className="text-[10px] text-muted-foreground">
+                    {fmtDate(thisMonday)} – {fmtDate(new Date(thisMonday.getTime() + 6 * 86400000))}
+                  </span>
+                </div>
+                {thisWeekImputaciones.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">{strings.imputaciones.noHoursThisWeek}</p>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    {thisWeekImputaciones.map((imp) => (
+                      <div key={imp.engagement_code} className="flex items-center justify-between text-xs">
+                        <span className="truncate font-medium">{imp.engagement_name}</span>
+                        <span className="shrink-0 ml-2 text-indigo-600 dark:text-indigo-400 font-semibold">{imp.weekly_hours}h</span>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between text-xs font-bold border-t pt-1.5 mt-1">
+                      <span>{strings.imputaciones.totalLabel}</span>
+                      <span className="text-indigo-600 dark:text-indigo-400">{thisWeekImputaciones.reduce((s, i) => s + i.weekly_hours, 0)}h</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Next week */}
+              <div className="rounded-xl border p-4 bg-indigo-500/5">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold">{strings.imputaciones.nextWeekLabel}</h3>
+                  <span className="text-[10px] text-muted-foreground">
+                    {fmtDate(nextMonday)} – {nextSundayStr}
+                  </span>
+                </div>
+                {nextWeekImputaciones.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">{strings.imputaciones.noHoursThisWeek}</p>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    {nextWeekImputaciones.map((imp) => (
+                      <div key={imp.engagement_code} className="flex items-center justify-between text-xs">
+                        <span className="truncate font-medium">{imp.engagement_name}</span>
+                        <span className="shrink-0 ml-2 text-indigo-600 dark:text-indigo-400 font-semibold">{imp.weekly_hours}h</span>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between text-xs font-bold border-t pt-1.5 mt-1">
+                      <span>{strings.imputaciones.totalLabel}</span>
+                      <span className="text-indigo-600 dark:text-indigo-400">{nextWeekImputaciones.reduce((s, i) => s + i.weekly_hours, 0)}h</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -506,6 +647,21 @@ export default async function ProtectedPage() {
                 <p className="text-sm text-muted-foreground">{strings.notifications.dashboardCardDesc}</p>
               </div>
               <span className="text-sm text-violet-600 font-medium group-hover:underline">{strings.notifications.dashboardCardLink}</span>
+            </Link>
+
+            <Link
+              href="/main/admin/imputaciones"
+              className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-violet-500 transition-colors"
+            >
+              <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-600">{strings.dashboard.adminBadge}</span>
+              <div className="flex items-center justify-center size-12 rounded-lg bg-violet-500/10 text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition-colors">
+                <BriefcaseIcon className="size-6" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <h2 className="text-lg font-semibold">{strings.imputaciones.dashboardCard}</h2>
+                <p className="text-sm text-muted-foreground">{strings.imputaciones.dashboardCardDesc}</p>
+              </div>
+              <span className="text-sm text-violet-600 font-medium group-hover:underline">{strings.imputaciones.dashboardCardLink}</span>
             </Link>
           </div>
         </div>

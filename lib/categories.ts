@@ -1,6 +1,24 @@
 export const CATEGORIES = ["Staff", "Senior", "Manager", "Senior-Manager", "Externo", "Socio", "Intern"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
+/** Category display order for sorting employees by role */
+export const CATEGORY_SORT_ORDER: Record<string, number> = {
+  "Senior-Manager": 0,
+  Manager: 1,
+  Senior: 2,
+  Staff: 3,
+  Externo: 4,
+  Socio: 5,
+  Intern: 6,
+};
+
+/** Sort employees by category role (Senior-Manager → Manager → Senior → Staff → Externo → Socio → Intern) */
+export function sortEmployeesByCategory<T extends { category: string }>(employees: T[]): T[] {
+  return [...employees].sort(
+    (a, b) => (CATEGORY_SORT_ORDER[a.category] ?? 99) - (CATEGORY_SORT_ORDER[b.category] ?? 99)
+  );
+}
+
 export const PREDEFINED_SPECIALIZATIONS = [
   "Product Owner",
   "FrontEnd",
