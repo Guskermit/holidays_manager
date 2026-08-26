@@ -81,9 +81,9 @@ export default async function EngagementDetailPage({
       .eq("engagement_id", engagementId);
 
     const empMap = new Map<string, EngagementEmployee>();
-    type ImpWithEmployee = { employee_id: string; employees: EngagementEmployee | null };
-    for (const imp of (imps ?? []) as ImpWithEmployee[]) {
-      const emp = imp.employees;
+    type ImpWithEmployee = { employee_id: string; employees: EngagementEmployee[] | null };
+    for (const imp of (imps ?? []) as unknown as ImpWithEmployee[]) {
+      const emp = imp.employees?.[0] ?? null;
       if (emp && !empMap.has(emp.id)) {
         empMap.set(emp.id, {
           id: emp.id,
