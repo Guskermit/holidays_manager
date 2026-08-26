@@ -93,11 +93,11 @@ export async function GET(
     start_date: string;
     end_date: string | null;
     weekly_hours: number;
-    employees: EmpRow | null;
+    employees: EmpRow[] | null;
   };
 
-  for (const row of (imputaciones ?? []) as ImputacionWithEmployee[]) {
-    const emp = row.employees;
+  for (const row of (imputaciones ?? []) as unknown as ImputacionWithEmployee[]) {
+    const emp = row.employees?.[0] ?? null;
     if (!emp) continue;
 
     if (!employeeMap.has(emp.id)) {
