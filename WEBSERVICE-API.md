@@ -106,13 +106,13 @@ GET /api/notifications/send
 | ----------- | ------ | ------------------------------------------------------------------------ |
 | `title`     | string | **Required.** Notification title                                         |
 | `message`   | string | **Required.** Notification body text                                     |
-| `employees` | string | **Required.** Comma-separated employee emails (e.g. `ana@acme.com,carlos@acme.com`) |
-| `from`      | string | Optional. Sender email. Defaults to the first admin employee             |
+| `employees` | string | **Required.** Comma-separated employee IDs (e.g. `uuid1,uuid2`). Use the IDs from the engagements endpoint |
+| `from`      | string | Optional. Sender employee ID. Defaults to the first admin employee       |
 
 ### Example
 
 ```bash
-curl "http://localhost:4000/api/notifications/send?title=Alerta&message=Tu+licencia+expira+en+3+d%C3%ADas&employees=ana@acme.com,carlos@acme.com"
+curl "http://localhost:4000/api/notifications/send?title=Alerta&message=Tu+licencia+expira+en+3+d%C3%ADas&employees=emp-uuid-1,emp-uuid-2"
 ```
 
 ### Response (200 OK)
@@ -135,14 +135,15 @@ curl "http://localhost:4000/api/notifications/send?title=Alerta&message=Tu+licen
 | Status | Cause                                      |
 | ------ | ------------------------------------------ |
 | 400    | Missing required parameter                 |
-| 404    | No employees found for the provided emails |
+| 404    | No employees found for the provided IDs    |
 | 500    | Database error or no admin found           |
 
 ### Notes
 
 - The notification appears in the app's notification bell for each recipient.
 - If `from` is not provided, the first admin employee is used as the sender.
-- Duplicate emails are automatically deduplicated.
+- Duplicate IDs are automatically deduplicated.
+- **Typical flow:** Call the engagements endpoint first to get employee IDs, then use those IDs here to send notifications.
 
 ---
 
@@ -212,8 +213,8 @@ interface NotificationResponse {
 async function sendNotification(params: {
   title: string;
   message: string;
-  employees: string[];    // emails
-  from?: string;           // sender email
+  employees: string[];    // employee IDs
+  from?: string;           // sender employee ID
 }): Promise<NotificationResponse> {
   const qs = new URLSearchParams({
     title: params.title,
@@ -234,7 +235,7 @@ console.log(`${eng.engagement.name} — ${eng.employees.length} employees`);
 const notif = await sendNotification({
   title: "Aviso importante",
   message: "Reunión a las 10:00",
-  employees: ["ana@acme.com", "carlos@acme.com"],
+  employees: ["emp-uuid-1", "emp-uuid-2"],  // get IDs from engagements endpoint
 });
 console.log(`Notified ${notif.recipients_notified} employees`);
 ```
@@ -251,14 +252,15 @@ def get_engagement(code: str) -> dict:
     res.raise_for_status()
     return res.json()
 
-def send_notification(title: str, message: str, employees: list[str], from_email: str = None) -> dict:
+def send_notification(title: str, message: str, employees: list[str], from_id: str = None) -> dict:
+    """employees: list of employee IDs from holidays_manager"""
     params = {
         "title": title,
         "message": message,
         "employees": ",".join(employees),
     }
-    if from_email:
-        params["from"] = from_email
+    if from_id:
+        params["from"] = from_id
     res = requests.get(f"{API}/api/notifications/send", params=params)
     res.raise_for_status()
     return res.json()
@@ -272,7 +274,7 @@ for emp in eng["employees"]:
 notif = send_notification(
     title="Aviso importante",
     message="Reunión a las 10:00",
-    employees=["ana@acme.com", "carlos@acme.com"],
+    employees=["emp-uuid-1", "emp-uuid-2"],
 )
 print(f"Notified {notif['recipients_notified']} employees")
 ```
@@ -284,7 +286,7 @@ print(f"Notified {notif['recipients_notified']} employees")
 curl http://localhost:4000/api/engagements/ENG-2026-001 | jq
 
 # Send notification
-curl "http://localhost:4000/api/notifications/send?title=Alerta&message=Urgente&employees=ana@acme.com" | jq
+curl "http://localhost:4000/api/notifications/send?title=Alerta&message=Urgente&employees=emp-uuid-1" | jq
 ```
 
 ---

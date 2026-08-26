@@ -5,16 +5,16 @@ import { createClient } from "@supabase/supabase-js";
  * GET /api/notifications/send
  *
  * Public (unsecured) endpoint.
- * Sends an in-app notification to one or more employees by email.
+ * Creates an in-app notification for one or more employees by ID.
  *
  * Query params:
  *   - title     (required) Notification title
  *   - message   (required) Notification message body
- *   - employees (required) Comma-separated employee emails
- *   - from      (optional) Sender email (defaults to first admin)
+ *   - employees (required) Comma-separated employee IDs (from holidays_manager)
+ *   - from      (optional) Sender employee ID. Defaults to first admin
  *
  * Example:
- *   GET /api/notifications/send?title=Alerta&message=Urgente&employees=ana@acme.com
+ *   GET /api/notifications/send?title=Alerta&message=Urgente&employees=uuid1,uuid2
  */
 
 export async function GET(request: NextRequest) {
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   const title = searchParams.get("title")?.trim();
   const message = searchParams.get("message")?.trim();
   const employeesParam = searchParams.get("employees")?.trim();
-  const fromEmail = searchParams.get("from")?.trim();
+  const fromId = searchParams.get("from")?.trim();
 
   // ── Validate required params ──────────────────────────────
   if (!title) {
@@ -40,23 +40,23 @@ export async function GET(request: NextRequest) {
   }
   if (!employeesParam) {
     return NextResponse.json(
-      { error: "Missing required parameter: employees (comma-separated emails)" },
+      { error: "Missing required parameter: employees (comma-separated employee IDs)" },
       { status: 400 }
     );
   }
 
-  const recipientEmails = [
+  const recipientIds = [
     ...new Set(
       employeesParam
         .split(",")
-        .map((e) => e.trim().toLowerCase())
+        .map((e) => e.trim())
         .filter(Boolean)
     ),
   ];
 
-  if (recipientEmails.length === 0) {
+  if (recipientIds.length === 0) {
     return NextResponse.json(
-      { error: "No valid employee emails provided" },
+      { error: "No valid employee IDs provided" },
       { status: 400 }
     );
   }
@@ -67,11 +67,11 @@ export async function GET(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
   );
 
-  // ── Resolve recipient employees by email ──────────────────
+  // ── Resolve recipient employees by ID ─────────────────────
   const { data: recipientRows, error: recErr } = await supabase
     .from("employees")
     .select("id, name, email")
-    .in("email", recipientEmails);
+    .in("id", recipientIds);
 
   if (recErr) {
     return NextResponse.json(
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
 
   if (!recipientRows || recipientRows.length === 0) {
     return NextResponse.json(
-      { error: "No employees found for the provided emails" },
+      { error: "No employees found for the provided IDs" },
       { status: 404 }
     );
   }
@@ -90,13 +90,8 @@ export async function GET(request: NextRequest) {
   // ── Resolve sender (created_by) ───────────────────────────
   let createdBy: string | null = null;
 
-  if (fromEmail) {
-    const { data: sender } = await supabase
-      .from("employees")
-      .select("id")
-      .eq("email", fromEmail.toLowerCase().trim())
-      .single();
-    createdBy = sender?.id ?? null;
+  if (fromId) {
+    createdBy = fromId;
   }
 
   // Fallback: first admin
@@ -119,7 +114,6 @@ export async function GET(request: NextRequest) {
   }
 
   // ── Create the notification ───────────────────────────────
-  // Target one employee initially; we'll add more recipients manually
   const firstRecipient = recipientRows[0];
 
   const { data: notification, error: notifErr } = await supabase
@@ -155,7 +149,6 @@ export async function GET(request: NextRequest) {
     .insert(recipientRows2);
 
   if (recipErr) {
-    // Notification was created but recipients failed — still return partial success
     return NextResponse.json(
       {
         warning: `Notification created but recipients error: ${recipErr.message}`,
