@@ -106,10 +106,10 @@ export default async function ProtectedPage() {
       start_date: string;
       end_date: string | null;
       weekly_hours: number;
-      engagements: { name: string; engagement_code: string } | null;
+      engagements: { name: string; engagement_code: string }[] | null;
     };
-    for (const imp of (imps ?? []) as ImpWithEngagement[]) {
-      const eng = imp.engagements;
+    for (const imp of (imps ?? []) as unknown as ImpWithEngagement[]) {
+      const eng = imp.engagements?.[0] ?? null;
       if (!eng) continue;
 
       const impStart = imp.start_date as string;
