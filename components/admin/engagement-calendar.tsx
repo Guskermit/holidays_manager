@@ -22,6 +22,8 @@ import {
   EyeOffIcon,
   EyeIcon,
   ArrowRightIcon,
+  ClockIcon,
+  AlertTriangleIcon,
 } from "lucide-react";
 
 type Props = {
@@ -33,6 +35,14 @@ type Props = {
     end_date: string | null;
     weekly_hours: number;
   }[];
+  otherEngagementImputaciones: {
+    employee_id: string;
+    engagement_id: string;
+    start_date: string;
+    end_date: string | null;
+    weekly_hours: number;
+  }[];
+  engagementNames: Record<string, string>;
   hoursSettings: HoursSettingsRow[];
   holidaysByOffice: Record<string, string[]>;
   vacations: {
@@ -215,6 +225,8 @@ export function EngagementCalendar({
   engagement,
   employees: initialEmployees,
   existingImputaciones,
+  otherEngagementImputaciones,
+  engagementNames,
   hoursSettings,
   holidaysByOffice,
   vacations,
@@ -251,6 +263,17 @@ export function EngagementCalendar({
       return new Set();
     }
   });
+
+  // Show remaining hours toggle
+  const [showRemaining, setShowRemaining] = useState(false);
+
+  // Weeks that need correction (highlighted in red after save warning)
+  const [highlightWeeks, setHighlightWeeks] = useState<Map<string, boolean>>(new Map());
+
+  // Save warning state
+  const [saveWarning, setSaveWarning] = useState<{
+    incomplete: { empId: string; empName: string; weekIdx: number; weekLabel: string; remaining: number }[];
+  } | null>(null);
 
   // Persist clearedWeeks to localStorage whenever it changes
   useEffect(() => {
@@ -323,6 +346,116 @@ export function EngagementCalendar({
     }
     return map;
   }, [monthGroups]);
+
+  // ── Remaining hours calculation ──────────────────────
+  // For each employee+week: expectedHours - (this engagement hours + other engagements hours)
+  const remainingHours = useMemo(() => {
+    const map = new Map<string, number>(); // key: "empId-weekIdx"
+    const otherImps = otherEngagementImputaciones;
+
+    for (const emp of initialEmployees) {
+      const empH = hours.get(emp.id) ?? new Map();
+      for (let i = 0; i < weeks.length; i++) {
+        const w = weeks[i];
+        // Calculate expected hours for this week
+        const base = getDefaultHours(emp.category, w.isSummer, hoursSettings);
+        const empHolidays = getHolidaysForOffice(emp.office, holidaysByOffice);
+        const workdays = countNonHolidayWorkdays(w.start, w.end, empHolidays);
+        const vacDays = countVacationDaysInWeek(emp.id, w.start, w.end, vacations);
+        const dailyHours = base / 5;
+        const effectiveDays = Math.max(0, workdays - vacDays);
+        const expectedHours = Math.round(dailyHours * effectiveDays * 10) / 10;
+
+        // Hours assigned in OTHER engagements for this week
+        let otherHours = 0;
+        const otherEngDetails: { engId: string; engName: string; hours: number }[] = [];
+        const engHoursMap = new Map<string, number>();
+        for (const imp of otherImps) {
+          if (imp.employee_id !== emp.id) continue;
+          if (imp.start_date <= formatDate(w.end) && (!imp.end_date || imp.end_date >= formatDate(w.start))) {
+            const existing = engHoursMap.get(imp.engagement_id) ?? 0;
+            engHoursMap.set(imp.engagement_id, existing + imp.weekly_hours);
+          }
+        }
+        for (const [engId, engH] of engHoursMap) {
+          otherHours += engH;
+          otherEngDetails.push({
+            engId,
+            engName: engagementNames[engId] ?? engId,
+            hours: engH,
+          });
+        }
+
+        // Hours in THIS engagement for this week
+        const thisHours = empH.get(i) ?? 0;
+
+        const remaining = Math.round((expectedHours - thisHours - otherHours) * 10) / 10;
+        map.set(`${emp.id}-${i}`, remaining);
+      }
+    }
+    return map;
+  }, [initialEmployees, weeks, hoursSettings, holidaysByOffice, vacations, otherEngagementImputaciones, engagementNames, hours]);
+
+  // Detailed breakdown for tooltips
+  const remainingBreakdown = useMemo(() => {
+    const map = new Map<string, {
+      expectedHours: number;
+      thisHours: number;
+      otherHours: number;
+      holidays: number;
+      vacationDays: number;
+      otherEngagements: { engName: string; hours: number }[];
+      holidayDates: string[];
+    }>();
+
+    for (const emp of initialEmployees) {
+      const empH = hours.get(emp.id) ?? new Map();
+      for (let i = 0; i < weeks.length; i++) {
+        const w = weeks[i];
+        const base = getDefaultHours(emp.category, w.isSummer, hoursSettings);
+        const empHolidays = getHolidaysForOffice(emp.office, holidaysByOffice);
+        const workdays = countNonHolidayWorkdays(w.start, w.end, empHolidays);
+        const vacDays = countVacationDaysInWeek(emp.id, w.start, w.end, vacations);
+        const dailyHours = base / 5;
+        const effectiveDays = Math.max(0, workdays - vacDays);
+        const expectedHours = Math.round(dailyHours * effectiveDays * 10) / 10;
+
+        // Holiday dates in this week
+        const holidayDates: string[] = [];
+        const d = new Date(w.start);
+        while (d <= w.end) {
+          if (empHolidays.has(formatDate(d)) && d.getDay() >= 1 && d.getDay() <= 5) {
+            holidayDates.push(formatDate(d));
+          }
+          d.setDate(d.getDate() + 1);
+        }
+
+        // Other engagements
+        const engHoursMap = new Map<string, number>();
+        for (const imp of otherEngagementImputaciones) {
+          if (imp.employee_id !== emp.id) continue;
+          if (imp.start_date <= formatDate(w.end) && (!imp.end_date || imp.end_date >= formatDate(w.start))) {
+            engHoursMap.set(imp.engagement_id, (engHoursMap.get(imp.engagement_id) ?? 0) + imp.weekly_hours);
+          }
+        }
+        const otherEngagements = [...engHoursMap.entries()].map(([engId, h]) => ({
+          engName: engagementNames[engId] ?? engId,
+          hours: h,
+        }));
+
+        map.set(`${emp.id}-${i}`, {
+          expectedHours,
+          thisHours: empH.get(i) ?? 0,
+          otherHours: otherEngagements.reduce((s, e) => s + e.hours, 0),
+          holidays: holidayDates.length,
+          vacationDays: vacDays,
+          otherEngagements,
+          holidayDates,
+        });
+      }
+    }
+    return map;
+  }, [initialEmployees, weeks, hoursSettings, holidaysByOffice, vacations, otherEngagementImputaciones, engagementNames, hours]);
 
   // Calculate default hours for an employee in a week
   const calcDefaultHours = useCallback(
@@ -466,6 +599,31 @@ export function EngagementCalendar({
   function handleSave() {
     setError(null);
     setSuccess(null);
+    setSaveWarning(null);
+    setHighlightWeeks(new Map());
+
+    // Check for incomplete hours across visible weeks
+    const incomplete: { empId: string; empName: string; weekIdx: number; weekLabel: string; remaining: number }[] = [];
+    for (const emp of initialEmployees) {
+      for (const wi of visibleWeekIndices) {
+        const rem = remainingHours.get(`${emp.id}-${wi}`) ?? 0;
+        if (rem > 0.5) { // tolerance for rounding
+          incomplete.push({
+            empId: emp.id,
+            empName: emp.name,
+            weekIdx: wi,
+            weekLabel: weeks[wi].label,
+            remaining: rem,
+          });
+        }
+      }
+    }
+
+    if (incomplete.length > 0) {
+      setSaveWarning({ incomplete });
+      // Still save, but show warning
+    }
+
     startTransition(async () => {
       const assignments: {
         employeeId: string;
@@ -478,31 +636,24 @@ export function EngagementCalendar({
         const empH = hours.get(emp.id);
         if (!empH) continue;
 
-        // Group consecutive weeks with the same hours value into separate imputations
-        // Only save segments with hours > 0 (DB has a check constraint preventing 0)
-        let segStart = -1;
-        let segHours = -1;
-        for (let i = 0; i <= weeks.length; i++) {
-          const h = i < weeks.length ? (empH.get(i) ?? 0) : -1; // -1 sentinel to flush last segment
-          if (h === segHours && i < weeks.length) continue;
-          // Flush previous segment (only if hours > 0)
-          if (segStart !== -1 && segHours > 0) {
-            assignments.push({
-              employeeId: emp.id,
-              startDate: formatDate(weeks[segStart].start),
-              endDate: formatDate(weeks[i - 1].end),
-              weeklyHours: segHours,
-            });
-          }
-          // Start new segment (only for hours > 0)
-          if (i < weeks.length && h > 0) {
-            segStart = i;
-            segHours = h;
-          } else {
-            segStart = -1;
-            segHours = -1;
+        // Find first and last week with hours > 0
+        let firstWeek = -1;
+        let lastWeek = -1;
+        for (let i = 0; i < weeks.length; i++) {
+          const h = empH.get(i) ?? 0;
+          if (h > 0) {
+            if (firstWeek === -1) firstWeek = i;
+            lastWeek = i;
           }
         }
+        if (firstWeek === -1) continue;
+
+        assignments.push({
+          employeeId: emp.id,
+          startDate: formatDate(weeks[firstWeek].start),
+          endDate: formatDate(weeks[lastWeek].end),
+          weeklyHours: empH.get(firstWeek) ?? 0,
+        });
       }
 
       const result = await saveEngagementImputaciones(
@@ -587,7 +738,7 @@ export function EngagementCalendar({
         </div>
       </div>
 
-      {/* Toolbar: hide past, clear past, copy between employees */}
+      {/* Toolbar: hide past, clear past, copy between employees, remaining hours */}
       <div className="flex flex-wrap items-center gap-2">
         {/* Hide past weeks toggle */}
         <Button
@@ -611,6 +762,16 @@ export function EngagementCalendar({
         >
           <Trash2Icon className="size-3.5 mr-1" />
           {strings.imputaciones.deletePast}
+        </Button>
+
+        {/* Show remaining hours toggle */}
+        <Button
+          variant={showRemaining ? "default" : "outline"}
+          size="sm"
+          onClick={() => setShowRemaining(!showRemaining)}
+        >
+          <ClockIcon className="size-3.5 mr-1" />
+          {showRemaining ? strings.imputaciones.hideRemaining : strings.imputaciones.showRemaining}
         </Button>
 
         {/* Copy hours between employees */}
@@ -652,6 +813,44 @@ export function EngagementCalendar({
           </Button>
         </div>
       </div>
+
+      {/* Save warning */}
+      {saveWarning && saveWarning.incomplete.length > 0 && (
+        <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-3 text-sm">
+          <div className="flex items-start gap-2">
+            <AlertTriangleIcon className="size-4 mt-0.5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <div className="flex-1">
+              <p className="font-medium text-amber-800 dark:text-amber-200">
+                {strings.imputaciones.saveWarningTitle(saveWarning.incomplete.length)}
+              </p>
+              <ul className="mt-1 text-xs text-amber-700 dark:text-amber-300 space-y-0.5 max-h-32 overflow-y-auto">
+                {saveWarning.incomplete.map((item, idx) => (
+                  <li key={idx}>
+                    {item.empName} — {strings.imputaciones.weekLabel}: {item.weekLabel} → {item.remaining}h {strings.imputaciones.remaining}
+                  </li>
+                ))}
+              </ul>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 h-7 text-xs border-amber-400 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50"
+                onClick={() => {
+                  // Highlight incomplete weeks in red
+                  const highlights = new Map<string, boolean>();
+                  for (const item of saveWarning.incomplete) {
+                    highlights.set(`${item.empId}-${item.weekIdx}`, true);
+                  }
+                  setHighlightWeeks(highlights);
+                  setHidePastWeeks(false); // Show all weeks so user can see them
+                  setSaveWarning(null);
+                }}
+              >
+                {strings.imputaciones.fixButton}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Employees legend */}
       <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
@@ -807,9 +1006,13 @@ export function EngagementCalendar({
                       );
                       const hasVacation = vacDayCount > 0;
                       const isCurrentWeek = i === currentWeekIdx;
+                      const cellKey = `${emp.id}-${i}`;
+                      const isHighlighted = highlightWeeks.has(cellKey);
+                      const rem = showRemaining ? remainingHours.get(cellKey) : undefined;
+                      const breakdown = showRemaining ? remainingBreakdown.get(cellKey) : undefined;
                       return (
-                        <td key={i} className={`px-1 py-1 text-center ${isCurrentWeek ? "bg-primary/5" : ""}`}>
-                          <div className="relative">
+                        <td key={i} className={`px-1 py-1 text-center ${isCurrentWeek ? "bg-primary/5" : ""} ${isHighlighted ? "bg-red-100 dark:bg-red-950/50" : ""}`}>
+                          <div className="relative group">
                             <Input
                               type="number"
                               min="0"
@@ -823,7 +1026,7 @@ export function EngagementCalendar({
                                   parseFloat(e.target.value) || 0
                                 )
                               }
-                              className="w-14 h-7 text-center text-xs px-1"
+                              className={`w-14 h-7 text-center text-xs px-1 ${isHighlighted ? "border-red-400 dark:border-red-600 ring-1 ring-red-300 dark:ring-red-700" : ""}`}
                             />
                             {(hasHoliday || hasVacation) && (
                               <div className="absolute -top-1 -right-1 flex gap-0.5">
@@ -839,6 +1042,56 @@ export function EngagementCalendar({
                                     title={strings.imputaciones.vacationDayCount(vacDayCount)}
                                   />
                                 )}
+                              </div>
+                            )}
+                            {/* Remaining hours indicator */}
+                            {showRemaining && rem !== undefined && rem !== 0 && (
+                              <div className={`text-[9px] mt-0.5 leading-none ${rem > 0 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`}>
+                                {rem > 0 ? `-${rem}h` : `${rem}h`}
+                              </div>
+                            )}
+                            {/* Tooltip with breakdown */}
+                            {showRemaining && breakdown && (
+                              <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block w-56 rounded-lg border bg-popover p-2 text-xs text-popover-foreground shadow-md">
+                                <div className="font-medium mb-1">{strings.imputaciones.breakdownTitle}</div>
+                                <div className="space-y-0.5 text-muted-foreground">
+                                  <div className="flex justify-between">
+                                    <span>{strings.imputaciones.expectedLabel}</span>
+                                    <span>{breakdown.expectedHours}h</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>{strings.imputaciones.thisEngagementLabel}</span>
+                                    <span>{breakdown.thisHours}h</span>
+                                  </div>
+                                  {breakdown.otherEngagements.length > 0 && (
+                                    <div className="border-t pt-0.5 mt-0.5">
+                                      {breakdown.otherEngagements.map((oe, j) => (
+                                        <div key={j} className="flex justify-between text-[10px]">
+                                          <span className="truncate max-w-[120px]">{oe.engName}</span>
+                                          <span>{oe.hours}h</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {breakdown.holidays > 0 && (
+                                    <div className="flex justify-between text-red-500">
+                                      <span>🎄 {strings.imputaciones.holidaysLabel}</span>
+                                      <span>{breakdown.holidays}</span>
+                                    </div>
+                                  )}
+                                  {breakdown.vacationDays > 0 && (
+                                    <div className="flex justify-between text-blue-500">
+                                      <span>🏖️ {strings.imputaciones.vacationsLabel}</span>
+                                      <span>{breakdown.vacationDays}</span>
+                                    </div>
+                                  )}
+                                  <div className="border-t pt-0.5 mt-0.5 flex justify-between font-medium">
+                                    <span>{strings.imputaciones.remainingLabel}</span>
+                                    <span className={rem !== undefined && rem > 0 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}>
+                                      {rem !== undefined ? `${rem > 0 ? "-" : ""}${rem}h` : "—"}
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
                             )}
                           </div>

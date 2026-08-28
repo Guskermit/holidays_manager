@@ -836,6 +836,18 @@ export const strings = {
     hidePastWeeks:        "Ocultar semanas pasadas",
     showAllWeeks:         "Mostrar todas",
     deletePast:           "Borrar pasado",
+    showRemaining:        "Horas por asignar",
+    hideRemaining:        "Ocultar horas por asignar",
+    saveWarningTitle:     (n: number) => `${n} empleado(s) con horas sin completar`,
+    fixButton:            "Corregir",
+    weekLabel:            "Semana",
+    remaining:            "pendiente",
+    breakdownTitle:       "Desglose semanal",
+    expectedLabel:        "Horas esperadas",
+    thisEngagementLabel:  "Este engagement",
+    holidaysLabel:        "Festivos",
+    vacationsLabel:       "Vacaciones",
+    remainingLabel:       "Pendiente",
 
     // Client filter
     clientFilterLabel:     "Cliente:",

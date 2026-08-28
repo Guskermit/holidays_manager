@@ -138,6 +138,34 @@ export default async function EngagementDetailPage({
     .lte("start_date", engData.end_date ?? "2099-12-31")
     .gte("end_date", engData.start_date ?? "2000-01-01");
 
+  // Fetch ALL imputaciones for these employees (across all engagements) to compute remaining hours
+  const empIds = employees.map((e) => e.id);
+  const { data: allEmpImps } = empIds.length > 0
+    ? await supabase
+        .from("employee_imputaciones")
+        .select("employee_id, engagement_id, start_date, end_date, weekly_hours")
+        .in("employee_id", empIds)
+    : { data: [] };
+
+  // Filter out imputaciones from the current engagement
+  const otherEngagementImps = (allEmpImps ?? []).filter(
+    (imp: { engagement_id: string }) => imp.engagement_id !== engagementId
+  );
+
+  // Fetch engagement names for tooltip
+  const otherEngIds = [...new Set(otherEngagementImps.map((imp: { engagement_id: string }) => imp.engagement_id))];
+  const engNameMap: Record<string, string> = {};
+  if (otherEngIds.length > 0) {
+    const { data: otherEngs } = await supabase
+      .from("engagements")
+      .select("id, name, engagement_code")
+      .in("id", otherEngIds);
+    for (const e of otherEngs ?? []) {
+      const row = e as { id: string; name: string; engagement_code: string };
+      engNameMap[row.id] = `${row.engagement_code} - ${row.name}`;
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <BackNav />
@@ -145,6 +173,8 @@ export default async function EngagementDetailPage({
         engagement={engagement}
         employees={employees}
         existingImputaciones={(existingImps as { employee_id: string; start_date: string; end_date: string | null; weekly_hours: number }[]) ?? []}
+        otherEngagementImputaciones={(otherEngagementImps as { employee_id: string; engagement_id: string; start_date: string; end_date: string | null; weekly_hours: number }[]) ?? []}
+        engagementNames={engNameMap}
         hoursSettings={(hoursRows as HoursSettingsRow[]) ?? []}
         holidaysByOffice={holidaysByOffice}
         vacations={(vacationRows as { employee_id: string; start_date: string; end_date: string }[]) ?? []}
