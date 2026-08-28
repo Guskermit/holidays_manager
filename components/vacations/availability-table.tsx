@@ -15,6 +15,7 @@ type VacationRequest = {
   status: "pending" | "approved" | "rejected" | "cancelled";
   is_bootcamp?: boolean;
   is_medical_leave?: boolean;
+  is_other?: boolean;
 };
 
 type Employee = {

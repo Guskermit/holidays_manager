@@ -12,13 +12,14 @@ import {
   type Office,
 } from "@/lib/holidays";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeftIcon, ChevronRightIcon, Trash2Icon } from "lucide-react";
 import { strings } from "@/lib/strings";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
-type VacationRequest = {
+  type VacationRequest = {
   id: string;
   start_date: string;
   end_date: string;
@@ -27,6 +28,8 @@ type VacationRequest = {
   year: number;
   is_bootcamp?: boolean;
   is_medical_leave?: boolean;
+  is_other?: boolean;
+  other_reason?: string | null;
 };
 
 type Props = {
@@ -43,7 +46,9 @@ type Props = {
     daysRequested: number,
     year: number,
     isBootcamp: boolean,
-    isMedicalLeave: boolean
+    isMedicalLeave: boolean,
+    isOther: boolean,
+    otherReason: string
   ) => Promise<{ error?: string }>;
   onCancel?: (requestId: string) => Promise<{ error?: string }>;
 };
@@ -116,6 +121,8 @@ export function VacationCalendar({
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [isBootcamp, setIsBootcamp] = useState(false);
   const [isMedicalLeave, setIsMedicalLeave] = useState(false);
+  const [isOther, setIsOther] = useState(false);
+  const [otherReason, setOtherReason] = useState("");
 
   const holidays = useMemo(
     () => holidaysProp ? new Set(holidaysProp) : new Set<string>(),
@@ -200,6 +207,22 @@ export function VacationCalendar({
     const set = new Set<string>();
     for (const r of requests) {
       if (!r.is_medical_leave || r.status === "cancelled") continue;
+      const cur = new Date(r.start_date + "T00:00:00");
+      const end = new Date(r.end_date + "T00:00:00");
+      while (cur <= end) {
+        if (!isWeekend(cur) && !isHoliday(cur, holidays)) {
+          set.add(toDateString(cur));
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+    }
+    return set;
+  }, [requests, holidays]);
+
+  const otherDates = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of requests) {
+      if (!r.is_other || r.status === "cancelled") continue;
       const cur = new Date(r.start_date + "T00:00:00");
       const end = new Date(r.end_date + "T00:00:00");
       while (cur <= end) {
@@ -297,7 +320,7 @@ export function VacationCalendar({
 
   const remaining =
     maxDays - (requests
-      .filter(r => !r.is_bootcamp && !r.is_medical_leave && (r.status === "approved" || r.status === "pending"))
+      .filter(r => !r.is_bootcamp && !r.is_medical_leave && !r.is_other && (r.status === "approved" || r.status === "pending"))
       .reduce((s, r) => s + r.days_requested, 0));
 
   const BOOTCAMP_MAX = 2;
@@ -326,7 +349,9 @@ export function VacationCalendar({
       daysSelected,
       year,
       isBootcamp,
-      isMedicalLeave
+      isMedicalLeave,
+      isOther,
+      otherReason
     );
 
     if (result?.error) {
@@ -436,6 +461,7 @@ export function VacationCalendar({
                   const isEndpoint = isSelStart || isSelEnd;
                   const isBootcampDate = bootcampDates.has(toDateString(date));
                   const isMedicalLeaveDate = medicalLeaveDates.has(toDateString(date));
+                  const isOtherDate = otherDates.has(toDateString(date));
 
                   return (
                     <button
@@ -451,6 +477,8 @@ export function VacationCalendar({
                         isMedicalLeaveDate && existingStatus === "approved" ? strings.vacations.medicalLeaveCalendarTitleApproved
                         : isBootcampDate && existingStatus === "approved" ? strings.vacations.bootcampCalendarTitleApproved
                         : isBootcampDate && existingStatus === "pending"  ? strings.vacations.bootcampCalendarTitlePending
+                        : isOtherDate && existingStatus === "approved" ? strings.vacations.otherCalendarTitleApproved
+                        : isOtherDate && existingStatus === "pending"  ? strings.vacations.otherCalendarTitlePending
                         : existingStatus === "approved" ? strings.vacations.calendarTitleApproved
                         : existingStatus === "pending" ? strings.vacations.calendarTitlePending
                         : existingStatus === "rejected" ? strings.vacations.calendarTitleRejected
@@ -464,12 +492,14 @@ export function VacationCalendar({
                         holiday && !weekend && "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-medium",
                         weekend && "bg-muted/30",
                         !disabled && !inSelection && !existingStatus && "hover:bg-accent",
-                        // Bootcamp days get purple tones, vacation days get green/amber
+                        // Special types get distinct colors, vacation days get green/amber
                         isMedicalLeaveDate && existingStatus === "approved" && !inSelection && "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 font-medium",
                         isBootcampDate && existingStatus === "approved" && !inSelection && "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium",
                         isBootcampDate && existingStatus === "pending"  && !inSelection && "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium",
-                        !isMedicalLeaveDate && !isBootcampDate && existingStatus === "approved" && !inSelection && "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium",
-                        !isMedicalLeaveDate && !isBootcampDate && existingStatus === "pending"  && !inSelection && "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-medium",
+                        isOtherDate && existingStatus === "approved" && !inSelection && "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 font-medium",
+                        isOtherDate && existingStatus === "pending"  && !inSelection && "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 font-medium",
+                        !isMedicalLeaveDate && !isBootcampDate && !isOtherDate && existingStatus === "approved" && !inSelection && "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium",
+                        !isMedicalLeaveDate && !isBootcampDate && !isOtherDate && existingStatus === "pending"  && !inSelection && "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-medium",
                         existingStatus === "rejected" && !inSelection && "bg-red-100 dark:bg-red-900/30 text-red-500 dark:text-red-400 line-through opacity-60",
                         inSelection && !isEndpoint && "bg-primary/20 rounded-none",
                         isEndpoint && "bg-primary text-primary-foreground font-semibold",
@@ -512,6 +542,12 @@ export function VacationCalendar({
         </span>
         <span className="flex items-center gap-1.5">
           <span className="size-3 rounded bg-rose-100 dark:bg-rose-900/30" /> {strings.vacations.legendMedicalLeaveApproved}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="size-3 rounded bg-orange-100 dark:bg-orange-900/30" /> {strings.vacations.legendOtherApproved}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="size-3 rounded bg-yellow-100 dark:bg-yellow-900/30" /> {strings.vacations.legendOtherPending}
         </span>
         <span className="flex items-center gap-1.5">
           <span className="size-3 rounded bg-red-100 dark:bg-red-900/30" /> {strings.vacations.legendRejected}
@@ -559,7 +595,7 @@ export function VacationCalendar({
             )}
           </div>
 
-          {/* Bootcamp / Medical leave toggles */}
+          {/* Bootcamp / Medical leave / Other toggles */}
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
               <Checkbox
@@ -568,10 +604,10 @@ export function VacationCalendar({
                 onCheckedChange={(v) => {
                   const checked = !!v;
                   setIsBootcamp(checked);
-                  if (checked) setIsMedicalLeave(false);
+                  if (checked) { setIsMedicalLeave(false); setIsOther(false); setOtherReason(""); }
                   setSubmitError(null);
                 }}
-                disabled={(remainingBootcamp <= 0 && !isBootcamp) || isMedicalLeave}
+                disabled={(remainingBootcamp <= 0 && !isBootcamp) || isMedicalLeave || isOther}
               />
               <Label htmlFor="bootcamp-check" className="text-sm font-medium cursor-pointer">
                 {strings.vacations.bootcampCheckbox}
@@ -592,10 +628,10 @@ export function VacationCalendar({
                 onCheckedChange={(v) => {
                   const checked = !!v;
                   setIsMedicalLeave(checked);
-                  if (checked) setIsBootcamp(false);
+                  if (checked) { setIsBootcamp(false); setIsOther(false); setOtherReason(""); }
                   setSubmitError(null);
                 }}
-                disabled={isBootcamp}
+                disabled={isBootcamp || isOther}
               />
               <Label htmlFor="medical-leave-check" className="text-sm font-medium cursor-pointer">
                 {strings.vacations.medicalLeaveCheckbox}
@@ -606,9 +642,33 @@ export function VacationCalendar({
                 {strings.vacations.medicalLeaveHint}
               </p>
             )}
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="other-check"
+                checked={isOther}
+                onCheckedChange={(v) => {
+                  const checked = !!v;
+                  setIsOther(checked);
+                  if (checked) { setIsBootcamp(false); setIsMedicalLeave(false); }
+                  setSubmitError(null);
+                }}
+                disabled={isBootcamp || isMedicalLeave}
+              />
+              <Label htmlFor="other-check" className="text-sm font-medium cursor-pointer">
+                {strings.vacations.otherCheckbox}
+              </Label>
+            </div>
+            {isOther && (
+              <Input
+                className="ml-6 mt-1"
+                placeholder={strings.vacations.otherReasonPlaceholder}
+                value={otherReason}
+                onChange={(e) => { setOtherReason(e.target.value); setSubmitError(null); }}
+              />
+            )}
           </div>
 
-          {!isBootcamp && !isMedicalLeave && daysSelected > remaining && (
+          {!isBootcamp && !isMedicalLeave && !isOther && daysSelected > remaining && (
             <p className="text-xs text-red-500">
               {strings.vacations.errorNotEnoughDays}
             </p>
@@ -616,6 +676,11 @@ export function VacationCalendar({
           {isBootcamp && daysSelected > remainingBootcamp && (
             <p className="text-xs text-red-500">
               {strings.vacations.errorNotEnoughDays}
+            </p>
+          )}
+          {isOther && !otherReason.trim() && (
+            <p className="text-xs text-red-500">
+              {strings.vacations.otherReasonRequired}
             </p>
           )}
           {hasOverlap && (
@@ -633,6 +698,7 @@ export function VacationCalendar({
                 isSubmitting ||
                 daysSelected === 0 ||
                 hasOverlap ||
+                (isOther && !otherReason.trim()) ||
                 (isMedicalLeave
                   ? false
                   : isBootcamp
@@ -652,6 +718,8 @@ export function VacationCalendar({
                 setSuccessMsg(null);
                 setIsBootcamp(false);
                 setIsMedicalLeave(false);
+                setIsOther(false);
+                setOtherReason("");
               }}
             >
               {strings.vacations.clearButton}
@@ -667,16 +735,16 @@ export function VacationCalendar({
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           const solicitados = requests
-            .filter(r => r.status !== "cancelled" && !r.is_bootcamp && !r.is_medical_leave)
+            .filter(r => r.status !== "cancelled" && !r.is_bootcamp && !r.is_medical_leave && !r.is_other)
             .reduce((s, r) => s + r.days_requested, 0);
           const aprobados = requests
-            .filter(r => r.status === "approved" && !r.is_bootcamp && !r.is_medical_leave)
+            .filter(r => r.status === "approved" && !r.is_bootcamp && !r.is_medical_leave && !r.is_other)
             .reduce((s, r) => s + r.days_requested, 0);
           const pendientes = requests
-            .filter(r => r.status === "pending" && !r.is_bootcamp && !r.is_medical_leave)
+            .filter(r => r.status === "pending" && !r.is_bootcamp && !r.is_medical_leave && !r.is_other)
             .reduce((s, r) => s + r.days_requested, 0);
           const disfrutados = requests
-            .filter(r => r.status === "approved" && !r.is_bootcamp && !r.is_medical_leave && new Date(r.end_date + "T00:00:00") < today)
+            .filter(r => r.status === "approved" && !r.is_bootcamp && !r.is_medical_leave && !r.is_other && new Date(r.end_date + "T00:00:00") < today)
             .reduce((s, r) => s + r.days_requested, 0);
           const restantes = maxDays - aprobados - pendientes;
 
@@ -791,7 +859,15 @@ export function VacationCalendar({
                               {strings.vacations.badgeMedicalLeave}
                             </Badge>
                           )}
+                          {r.is_other && (
+                            <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-300">
+                              {strings.vacations.badgeOther}
+                            </Badge>
+                          )}
                         </div>
+                        {r.is_other && r.other_reason && (
+                          <p className="text-xs text-muted-foreground mt-1 italic">&ldquo;{r.other_reason}&rdquo;</p>
+                        )}
                       </td>
                       <td className="px-4 py-2 text-right">
                         {isCancellable && !readOnly && onCancel && (

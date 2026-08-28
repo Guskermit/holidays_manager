@@ -13,7 +13,6 @@ export async function getImpersonatedEmployeeId(): Promise<string | null> {
  * If the user is a super-admin and has an impersonation cookie set, returns
  * the impersonated employee's data. Otherwise returns the real employee.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getEffectiveEmployee(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,

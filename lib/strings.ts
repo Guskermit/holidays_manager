@@ -273,6 +273,8 @@ export const strings = {
     legendBootcampApproved: "Bootcamp aprobado",
     legendBootcampPending:  "Bootcamp pendiente",
     legendMedicalLeaveApproved: "Baja médica aprobada",
+    legendOtherApproved: "Otros aprobado",
+    legendOtherPending: "Otros pendiente",
 
     selectionTitle:       "Selection",
     selectionFrom:        "From: ",
@@ -298,6 +300,13 @@ export const strings = {
     medicalLeaveAutoApproveLabel: "Estado: ",
     medicalLeaveAutoApproveValue: "Aprobación automática",
     badgeMedicalLeave:    "Baja médica",
+    otherCheckbox:        "Otros",
+    otherHint:            "Indica el motivo de la solicitud en el campo de texto.",
+    otherReasonPlaceholder: "Motivo de la solicitud...",
+    otherReasonRequired:  "Debes indicar el motivo para solicitar días de \"Otros\".",
+    otherCalendarTitleApproved: "Otro motivo aprobado",
+    otherCalendarTitlePending:  "Otro motivo pendiente",
+    badgeOther:           "Otros",
 
     statSolicitados:      "Solicitados",
     statAprobados:        "Aprobados",
@@ -393,6 +402,7 @@ export const strings = {
     colActions:           "Actions",
     badgeBootcamp:        "Bootcamp",
     badgeMedicalLeave:    "Baja médica",
+    badgeOther:           "Otros",
 
     statusPending:        "Pending",
     statusApproved:       "Approved",

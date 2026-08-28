@@ -43,7 +43,7 @@ export default async function AvailabilityPage() {
       .select(`
         id, name, office, category,
         employee_specializations ( specializations ( name ) ),
-        vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status, is_bootcamp, is_medical_leave )
+        vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status, is_bootcamp, is_medical_leave, is_other, other_reason )
       `)
       .or(`exit_date.is.null,exit_date.gt.${new Date().toISOString().split("T")[0]}`)
       .order("name"),

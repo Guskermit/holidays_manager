@@ -14,7 +14,9 @@ export async function requestVacation(
   daysRequested: number,
   year: number,
   isBootcamp: boolean = false,
-  isMedicalLeave: boolean = false
+  isMedicalLeave: boolean = false,
+  isOther: boolean = false,
+  otherReason: string = ""
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
 
@@ -35,6 +37,10 @@ export async function requestVacation(
 
   if (isBootcamp && isMedicalLeave) {
     return { error: "A request cannot be both bootcamp and medical leave." };
+  }
+
+  if (isOther && !otherReason.trim()) {
+    return { error: "Debes indicar el motivo para solicitar días de \"Otros\"." };
   }
 
   if (isBootcamp) {
@@ -84,16 +90,18 @@ export async function requestVacation(
     }
   }
 
-  // Create the request — bootcamp and medical leave days are auto-approved
+  // Create the request — bootcamp, medical leave, and other days are auto-approved
   const { error: insertError } = await supabase.from("vacation_requests").insert({
     employee_id: employeeId,
     start_date: startDate,
     end_date: endDate,
     days_requested: daysRequested,
-    status: isBootcamp || isMedicalLeave ? "approved" : "pending",
+    status: isBootcamp || isMedicalLeave || isOther ? "approved" : "pending",
     year,
     is_bootcamp: isBootcamp,
     is_medical_leave: isMedicalLeave,
+    is_other: isOther,
+    other_reason: isOther ? otherReason.trim() : null,
   });
 
   if (insertError) return { error: insertError.message };

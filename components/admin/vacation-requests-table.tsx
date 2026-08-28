@@ -23,6 +23,8 @@ type Request = {
   rejection_reason: string | null;
   is_bootcamp: boolean;
   is_medical_leave: boolean;
+  is_other: boolean;
+  other_reason: string | null;
   employees: { id: string; name: string; email: string } | null;
   employee_projects: ProjectInfo[];
   project_name: string | null;
@@ -280,6 +282,11 @@ export function VacationRequestsTable({ requests }: Props) {
                           {req.is_medical_leave && (
                             <Badge variant="outline" className="border-rose-400 text-rose-700 dark:text-rose-300 text-xs">
                               {strings.admin.badgeMedicalLeave}
+                            </Badge>
+                          )}
+                          {req.is_other && (
+                            <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-300 text-xs">
+                              {strings.admin.badgeOther}
                             </Badge>
                           )}
                         </div>
