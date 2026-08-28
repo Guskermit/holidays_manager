@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { strings } from "@/lib/strings";
-import { sortEmployeesByCategory, CATEGORY_LABELS, CATEGORIES, type Category } from "@/lib/categories";
+import { sortEmployeesByCategory, CATEGORIES } from "@/lib/categories";
 import {
   PlusIcon,
   PencilIcon,
@@ -14,7 +14,6 @@ import {
   CheckIcon,
   SettingsIcon,
   ArrowRightIcon,
-  ArrowUpDownIcon,
   ArrowDownAZIcon,
   LayersIcon,
 } from "lucide-react";
