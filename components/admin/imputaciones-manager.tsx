@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { strings } from "@/lib/strings";
-import { sortEmployeesByCategory } from "@/lib/categories";
+import { sortEmployeesByCategory, CATEGORY_LABELS, CATEGORIES, type Category } from "@/lib/categories";
 import {
   PlusIcon,
   PencilIcon,
@@ -14,6 +14,9 @@ import {
   CheckIcon,
   SettingsIcon,
   ArrowRightIcon,
+  ArrowUpDownIcon,
+  ArrowDownAZIcon,
+  LayersIcon,
 } from "lucide-react";
 import {
   getEngagements,
@@ -45,6 +48,10 @@ export function ImputacionesManager({ clients }: ImputacionesManagerProps) {
   // Selected engagement for assignment
   const [selectedEngId, setSelectedEngId] = useState<string | null>(null);
   const [selectedEmpIds, setSelectedEmpIds] = useState<Set<string>>(new Set());
+
+  // Sort & filter for employee list
+  const [empSortMode, setEmpSortMode] = useState<"category" | "name">("category");
+  const [empCategoryFilter, setEmpCategoryFilter] = useState<string>("");
 
   // Engagement management form state
   const [showEngForm, setShowEngForm] = useState(false);
@@ -192,6 +199,41 @@ export function ImputacionesManager({ clients }: ImputacionesManagerProps) {
   // ── Derived state ──────────────────────────────────────────
 
   const selectedEng = engagements.find((e) => e.id === selectedEngId);
+
+  // Sorted & filtered employee list
+  const filteredEmployees = (() => {
+    let list = [...clientEmployees];
+    if (empCategoryFilter) {
+      list = list.filter((e) => e.category === empCategoryFilter);
+    }
+    if (empSortMode === "name") {
+      list.sort((a, b) => a.name.localeCompare(b.name, "es"));
+    } else {
+      list = sortEmployeesByCategory(list);
+    }
+    return list;
+  })();
+
+  // Category colors for badges
+  const CATEGORY_COLORS: Record<string, string> = {
+    Staff:          "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
+    Senior:         "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700",
+    Manager:        "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900 dark:text-purple-300 dark:border-purple-700",
+    "Senior-Manager": "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900 dark:text-amber-300 dark:border-amber-700",
+    Externo:        "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900 dark:text-orange-300 dark:border-orange-700",
+    Socio:          "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900 dark:text-emerald-300 dark:border-emerald-700",
+    Intern:         "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900 dark:text-pink-300 dark:border-pink-700",
+  };
+
+  const CATEGORY_STRINGS: Record<string, string> = {
+    Staff:          strings.imputaciones.categoryStaff,
+    Senior:         strings.imputaciones.categorySenior,
+    Manager:        strings.imputaciones.categoryManager,
+    "Senior-Manager": strings.imputaciones.categorySeniorManager,
+    Externo:        strings.imputaciones.categoryExterno,
+    Socio:          strings.imputaciones.categorySocio,
+    Intern:         strings.imputaciones.categoryIntern,
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -447,37 +489,109 @@ export function ImputacionesManager({ clients }: ImputacionesManagerProps) {
                   {strings.imputaciones.employeesEmpty}
                 </p>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {sortEmployeesByCategory(clientEmployees).map((emp) => (
-                    <div
-                      key={emp.id}
-                      className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors ${
-                        selectedEmpIds.has(emp.id)
-                          ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                          : "bg-background hover:bg-muted/50"
-                      }`}
-                      onClick={() => toggleEmployee(emp.id)}
-                    >
-                      <span className="flex-1 font-medium">{emp.name}</span>
-                      <Button
-                        size="icon"
-                        variant={selectedEmpIds.has(emp.id) ? "default" : "outline"}
-                        className="size-7 shrink-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleEmployee(emp.id);
-                        }}
-                        title={strings.imputaciones.addEmployeeToEngagement}
+                <>
+                  {/* Sort & filter controls */}
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <div className="flex items-center rounded-md border bg-background overflow-hidden">
+                      <button
+                        className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                          empSortMode === "category"
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:bg-muted/50"
+                        }`}
+                        onClick={() => setEmpSortMode("category")}
+                        title={strings.imputaciones.sortByCategory}
                       >
-                        {selectedEmpIds.has(emp.id) ? (
-                          <CheckIcon className="size-3.5" />
-                        ) : (
-                          <PlusIcon className="size-3.5" />
-                        )}
-                      </Button>
+                        <LayersIcon className="size-3" />
+                        {strings.imputaciones.sortByCategory}
+                      </button>
+                      <button
+                        className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                          empSortMode === "name"
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:bg-muted/50"
+                        }`}
+                        onClick={() => setEmpSortMode("name")}
+                        title={strings.imputaciones.sortByName}
+                      >
+                        <ArrowDownAZIcon className="size-3" />
+                        {strings.imputaciones.sortByName}
+                      </button>
                     </div>
-                  ))}
-                </div>
+
+                    {empSortMode === "category" && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground">{strings.imputaciones.filterByCategory}:</span>
+                        <div className="flex flex-wrap gap-1">
+                          <button
+                            className={`px-2 py-0.5 rounded-full text-xs border transition-colors ${
+                              !empCategoryFilter
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background text-muted-foreground hover:bg-muted/50"
+                            }`}
+                            onClick={() => setEmpCategoryFilter("")}
+                          >
+                            {strings.imputaciones.allCategories}
+                          </button>
+                          {CATEGORIES.map((cat) => (
+                            <button
+                              key={cat}
+                              className={`px-2 py-0.5 rounded-full text-xs border transition-colors ${
+                                empCategoryFilter === cat
+                                  ? CATEGORY_COLORS[cat]
+                                  : "bg-background text-muted-foreground hover:bg-muted/50"
+                              }`}
+                              onClick={() => setEmpCategoryFilter(empCategoryFilter === cat ? "" : cat)}
+                            >
+                              {CATEGORY_STRINGS[cat] ?? cat}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {filteredEmployees.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">
+                      {strings.common.empty}
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {filteredEmployees.map((emp) => (
+                        <div
+                          key={emp.id}
+                          className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors ${
+                            selectedEmpIds.has(emp.id)
+                              ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                              : "bg-background hover:bg-muted/50"
+                          }`}
+                          onClick={() => toggleEmployee(emp.id)}
+                        >
+                          <span className="flex-1 font-medium">{emp.name}</span>
+                          <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${CATEGORY_COLORS[emp.category] ?? "bg-muted text-muted-foreground"}`}>
+                            {CATEGORY_STRINGS[emp.category] ?? emp.category}
+                          </span>
+                          <Button
+                            size="icon"
+                            variant={selectedEmpIds.has(emp.id) ? "default" : "outline"}
+                            className="size-7 shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleEmployee(emp.id);
+                            }}
+                            title={strings.imputaciones.addEmployeeToEngagement}
+                          >
+                            {selectedEmpIds.has(emp.id) ? (
+                              <CheckIcon className="size-3.5" />
+                            ) : (
+                              <PlusIcon className="size-3.5" />
+                            )}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

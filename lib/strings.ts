@@ -814,6 +814,17 @@ export const strings = {
     assignEmployeesHint:  "Pulsa + junto a un empleado para añadirlo al engagement. Después pulsa \"Finalizar\" para configurar las horas.",
     finalizeButton:        "Finalizar",
     addEmployeeToEngagement: "Añadir empleado al engagement",
+    sortByCategory:        "Ordenar por categoría",
+    sortByName:            "Ordenar por nombre",
+    filterByCategory:      "Filtrar por categoría",
+    allCategories:         "Todas",
+    categoryStaff:         "Staff",
+    categorySenior:        "Senior",
+    categoryManager:       "Manager",
+    categorySeniorManager: "Senior Manager",
+    categoryExterno:       "Externo",
+    categorySocio:         "Socio",
+    categoryIntern:        "Becario",
 
     // Calendar view
     calendarSaveSuccess:  "Imputaciones guardadas correctamente.",
