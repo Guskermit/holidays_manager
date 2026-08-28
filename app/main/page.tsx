@@ -101,8 +101,8 @@ export default async function ProtectedPage() {
       .eq("employee_id", effectiveId);
 
     // Batch-fetch engagement names/codes for all engagement_ids found
-    const engIds = [...new Set((imps ?? []).map((i: any) => i.engagement_id))];
-    let engMap: Record<string, { name: string; engagement_code: string }> = {};
+    const engIds = [...new Set((imps ?? []).map((i: { engagement_id: string }) => i.engagement_id))];
+    const engMap: Record<string, { name: string; engagement_code: string }> = {};
     if (engIds.length > 0) {
       const { data: engs } = await supabase
         .from("engagements")
