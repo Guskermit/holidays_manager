@@ -369,6 +369,53 @@ export async function getEmployeesByClient(clientId: string): Promise<{
 }
 
 // ══════════════════════════════════════════════════════════════
+// ALL EMPLOYEES (for adding to client)
+// ══════════════════════════════════════════════════════════════
+
+export async function getAllEmployees(): Promise<{
+  data?: EmployeeRow[];
+  error?: string;
+}> {
+  const { supabase, error: authError } = await requireAdmin();
+  if (authError) return { error: authError };
+
+  const { data, error } = await supabase
+    .from("employees")
+    .select("id, name, category")
+    .order("name");
+
+  if (error) return { error: error.message };
+
+  return {
+    data: (data ?? []).map((e: any) => ({
+      id: e.id,
+      name: e.name,
+      category: e.category ?? "Staff",
+    })),
+  };
+}
+
+export async function assignEmployeeToClient(
+  employeeId: string,
+  clientId: string
+): Promise<{ error?: string }> {
+  const { supabase, error: authError } = await requireAdmin();
+  if (authError) return { error: authError };
+
+  const { error } = await supabase
+    .from("employee_projects")
+    .upsert(
+      { employee_id: employeeId, project_id: clientId },
+      { onConflict: "employee_id,project_id" }
+    );
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/main/admin/imputaciones");
+  return {};
+}
+
+// ══════════════════════════════════════════════════════════════
 // ASSIGNED EMPLOYEE IDS for an engagement
 // ══════════════════════════════════════════════════════════════
 

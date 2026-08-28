@@ -16,6 +16,9 @@ import {
   ArrowRightIcon,
   ArrowDownAZIcon,
   LayersIcon,
+  XIcon,
+  UserPlusIcon,
+  SearchIcon,
 } from "lucide-react";
 import {
   getEngagements,
@@ -24,6 +27,8 @@ import {
   deleteEngagement,
   getEmployeesByClient,
   getAssignedEmployeeIds,
+  getAllEmployees,
+  assignEmployeeToClient,
   type EngagementRow,
 } from "@/app/main/admin/imputaciones/actions";
 
@@ -51,6 +56,13 @@ export function ImputacionesManager({ clients }: ImputacionesManagerProps) {
   // Sort & filter for employee list
   const [empSortMode, setEmpSortMode] = useState<"category" | "name">("category");
   const [empCategoryFilter, setEmpCategoryFilter] = useState<string>("");
+
+  // Add employee to client lightbox
+  const [showAddEmpModal, setShowAddEmpModal] = useState(false);
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
+  const [addEmpLoading, setAddEmpLoading] = useState(false);
+  const [addEmpSearch, setAddEmpSearch] = useState("");
+  const [addEmpSuccess, setAddEmpSuccess] = useState<string | null>(null);
 
   // Engagement management form state
   const [showEngForm, setShowEngForm] = useState(false);
@@ -177,6 +189,30 @@ export function ImputacionesManager({ clients }: ImputacionesManagerProps) {
     });
   }
 
+  async function openAddEmployeeModal() {
+    setAddEmpSearch("");
+    setAddEmpSuccess(null);
+    setShowAddEmpModal(true);
+    setAddEmpLoading(true);
+    const result = await getAllEmployees();
+    if (result.data) setAllEmployees(result.data);
+    setAddEmpLoading(false);
+  }
+
+  async function handleAssignEmployee(empId: string) {
+    if (!selectedClientId) return;
+    setAddEmpSuccess(null);
+    const result = await assignEmployeeToClient(empId, selectedClientId);
+    if (result.error) {
+      setError(result.error);
+    } else {
+      setAddEmpSuccess(strings.imputaciones.addClientSuccess);
+      // Refresh client employees list
+      const refreshed = await getEmployeesByClient(selectedClientId);
+      if (refreshed.data) setClientEmployees(refreshed.data);
+    }
+  }
+
   function toggleEmployee(empId: string) {
     setSelectedEmpIds((prev) => {
       const next = new Set(prev);
@@ -198,6 +234,17 @@ export function ImputacionesManager({ clients }: ImputacionesManagerProps) {
   // ── Derived state ──────────────────────────────────────────
 
   const selectedEng = engagements.find((e) => e.id === selectedEngId);
+
+  // Employees NOT yet assigned to the current client
+  const availableEmployees = allEmployees.filter((ae) => {
+    const isAssigned = clientEmployees.some((ce) => ce.id === ae.id);
+    if (isAssigned) return false;
+    if (addEmpSearch) {
+      const q = addEmpSearch.toLowerCase();
+      return ae.name.toLowerCase().includes(q) || ae.category.toLowerCase().includes(q);
+    }
+    return true;
+  });
 
   // Sorted & filtered employee list
   const filteredEmployees = (() => {
@@ -453,6 +500,17 @@ export function ImputacionesManager({ clients }: ImputacionesManagerProps) {
                 })}
               </div>
             )}
+
+            {/* Add employee to client button */}
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-3"
+              onClick={openAddEmployeeModal}
+            >
+              <UserPlusIcon className="size-3.5 mr-1.5" />
+              {strings.imputaciones.addEmployeeToClient}
+            </Button>
           </div>
 
           {/* ── Step 2: Assign Employees to Selected Engagement ── */}
@@ -595,6 +653,111 @@ export function ImputacionesManager({ clients }: ImputacionesManagerProps) {
             </div>
           )}
         </>
+      )}
+
+      {/* ── Add Employee to Client Lightbox ──────────────── */}
+      {showAddEmpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-card rounded-lg border shadow-xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <h3 className="font-semibold text-sm">
+                {strings.imputaciones.addEmployeeToClientTitle}
+              </h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                onClick={() => setShowAddEmpModal(false)}
+              >
+                <XIcon className="size-4" />
+              </Button>
+            </div>
+
+            {/* Content */}
+            <div className="px-4 py-3 flex flex-col gap-3 flex-1 overflow-hidden">
+              <p className="text-xs text-muted-foreground">
+                {strings.imputaciones.addEmployeeToClientHint}
+              </p>
+
+              {/* Search */}
+              <div className="relative">
+                <Input
+                  placeholder={strings.imputaciones.searchPlaceholder}
+                  value={addEmpSearch}
+                  onChange={(e) => setAddEmpSearch(e.target.value)}
+                  className="pl-8"
+                />
+                <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+              </div>
+
+              {/* Messages */}
+              {addEmpSuccess && (
+                <p className="text-xs text-green-600 bg-green-50 dark:bg-green-950/30 rounded-lg px-3 py-1.5">
+                  {addEmpSuccess}
+                </p>
+              )}
+
+              {/* Employee list */}
+              <div className="flex-1 overflow-y-auto">
+                {addEmpLoading ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">
+                    {strings.common.loading}
+                  </p>
+                ) : availableEmployees.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">
+                    {strings.imputaciones.noEmployeesToAdd}
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {availableEmployees.map((emp) => {
+                      const isAlreadyToClient = clientEmployees.some((ce) => ce.id === emp.id);
+                      return (
+                        <div
+                          key={emp.id}
+                          className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/50 transition-colors"
+                        >
+                          <span className="flex-1 font-medium">{emp.name}</span>
+                          <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${CATEGORY_COLORS[emp.category] ?? "bg-muted text-muted-foreground"}`}>
+                            {CATEGORY_STRINGS[emp.category] ?? emp.category}
+                          </span>
+                          {isAlreadyToClient ? (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <CheckIcon className="size-3" />
+                              {strings.imputaciones.alreadyAssigned}
+                            </span>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => handleAssignEmployee(emp.id)}
+                              disabled={isPending}
+                            >
+                              <PlusIcon className="size-3 mr-1" />
+                              {strings.imputaciones.addClientButton}
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-4 py-3 border-t flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAddEmpModal(false)}
+              >
+                {strings.common.close}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

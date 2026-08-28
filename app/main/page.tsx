@@ -5,6 +5,7 @@ import { FolderKanbanIcon, CalendarDaysIcon, LayoutListIcon, CheckCircle2Icon, C
 import { strings } from "@/lib/strings";
 import { getEffectiveEmployee } from "@/lib/impersonation";
 import { ImpersonationSelector } from "@/components/impersonation-selector";
+import { WeekEngagementList } from "@/components/week-engagement-list";
 
 /** Get Monday of the current week */
 function getMonday(d: Date): Date {
@@ -93,30 +94,37 @@ export default async function ProtectedPage() {
   const nextWeekImputaciones: WeekImputacion[] = [];
 
   if (effectiveId) {
-    // Fetch all active imputaciones overlapping this+next week
+    // Fetch ALL imputaciones for this employee, then filter in JS
     const { data: imps } = await supabase
       .from("employee_imputations")
-      .select("engagement_id, start_date, end_date, weekly_hours, engagements(name, engagement_code)")
-      .eq("employee_id", effectiveId)
-      .lte("start_date", nextSundayStr)
-      .or(`end_date.is.null,end_date.gte.${thisMondayStr}`);
+      .select("engagement_id, start_date, end_date, weekly_hours")
+      .eq("employee_id", effectiveId);
 
-    type ImpWithEngagement = {
-      engagement_id: string;
-      start_date: string;
-      end_date: string | null;
-      weekly_hours: number;
-      engagements: { name: string; engagement_code: string }[] | null;
-    };
-    for (const imp of (imps ?? []) as unknown as ImpWithEngagement[]) {
-      const eng = imp.engagements?.[0] ?? null;
+    // Batch-fetch engagement names/codes for all engagement_ids found
+    const engIds = [...new Set((imps ?? []).map((i: any) => i.engagement_id))];
+    let engMap: Record<string, { name: string; engagement_code: string }> = {};
+    if (engIds.length > 0) {
+      const { data: engs } = await supabase
+        .from("engagements")
+        .select("id, name, engagement_code")
+        .in("id", engIds);
+      for (const e of engs ?? []) {
+        engMap[e.id] = { name: e.name, engagement_code: e.engagement_code };
+      }
+    }
+
+    const thisSundayStr = fmtDate(new Date(thisMonday.getTime() + 6 * 86400000));
+    const nextWeekEndStr = fmtDate(new Date(nextMonday.getTime() + 6 * 86400000));
+
+    for (const imp of (imps ?? []) as { engagement_id: string; start_date: string; end_date: string | null; weekly_hours: number }[]) {
+      const eng = engMap[imp.engagement_id];
       if (!eng) continue;
 
       const impStart = imp.start_date as string;
       const impEnd = (imp.end_date as string | null) ?? "9999-12-31";
 
       // Check overlap with this week
-      if (impStart <= fmtDate(new Date(thisMonday.getTime() + 6 * 86400000)) && impEnd >= thisMondayStr) {
+      if (impStart <= thisSundayStr && impEnd >= thisMondayStr) {
         thisWeekImputaciones.push({
           engagement_name: eng.name,
           engagement_code: eng.engagement_code,
@@ -125,8 +133,7 @@ export default async function ProtectedPage() {
       }
 
       // Check overlap with next week
-      const nextWeekEnd = new Date(nextMonday.getTime() + 6 * 86400000);
-      if (impStart <= fmtDate(nextWeekEnd) && impEnd >= fmtDate(nextMonday)) {
+      if (impStart <= nextWeekEndStr && impEnd >= fmtDate(nextMonday)) {
         nextWeekImputaciones.push({
           engagement_name: eng.name,
           engagement_code: eng.engagement_code,
@@ -251,18 +258,7 @@ export default async function ProtectedPage() {
                 {thisWeekImputaciones.length === 0 ? (
                   <p className="text-xs text-muted-foreground">{strings.imputaciones.noHoursThisWeek}</p>
                 ) : (
-                  <div className="flex flex-col gap-1.5">
-                    {thisWeekImputaciones.map((imp) => (
-                      <div key={imp.engagement_code} className="flex items-center justify-between text-xs">
-                        <span className="truncate font-medium">{imp.engagement_name}</span>
-                        <span className="shrink-0 ml-2 text-indigo-600 dark:text-indigo-400 font-semibold">{imp.weekly_hours}h</span>
-                      </div>
-                    ))}
-                    <div className="flex items-center justify-between text-xs font-bold border-t pt-1.5 mt-1">
-                      <span>{strings.imputaciones.totalLabel}</span>
-                      <span className="text-indigo-600 dark:text-indigo-400">{thisWeekImputaciones.reduce((s, i) => s + i.weekly_hours, 0)}h</span>
-                    </div>
-                  </div>
+                  <WeekEngagementList engagements={thisWeekImputaciones} />
                 )}
               </div>
 
@@ -277,18 +273,7 @@ export default async function ProtectedPage() {
                 {nextWeekImputaciones.length === 0 ? (
                   <p className="text-xs text-muted-foreground">{strings.imputaciones.noHoursThisWeek}</p>
                 ) : (
-                  <div className="flex flex-col gap-1.5">
-                    {nextWeekImputaciones.map((imp) => (
-                      <div key={imp.engagement_code} className="flex items-center justify-between text-xs">
-                        <span className="truncate font-medium">{imp.engagement_name}</span>
-                        <span className="shrink-0 ml-2 text-indigo-600 dark:text-indigo-400 font-semibold">{imp.weekly_hours}h</span>
-                      </div>
-                    ))}
-                    <div className="flex items-center justify-between text-xs font-bold border-t pt-1.5 mt-1">
-                      <span>{strings.imputaciones.totalLabel}</span>
-                      <span className="text-indigo-600 dark:text-indigo-400">{nextWeekImputaciones.reduce((s, i) => s + i.weekly_hours, 0)}h</span>
-                    </div>
-                  </div>
+                  <WeekEngagementList engagements={nextWeekImputaciones} />
                 )}
               </div>
             </div>

@@ -20,6 +20,7 @@ export const strings = {
     signUp:         "Sign up",
     poweredBy:      "Powered by",
     noData:         "—",
+    close:          "Cerrar",
   },
 
   // ── Navigation ─────────────────────────────────────────────
@@ -814,6 +815,14 @@ export const strings = {
     assignEmployeesHint:  "Pulsa + junto a un empleado para añadirlo al engagement. Después pulsa \"Finalizar\" para configurar las horas.",
     finalizeButton:        "Finalizar",
     addEmployeeToEngagement: "Añadir empleado al engagement",
+    addEmployeeToClient:     "Añadir empleado al cliente",
+    addEmployeeToClientTitle: "Añadir empleado al cliente",
+    addEmployeeToClientHint: "Selecciona los empleados que quieras asociar a este cliente.",
+    addClientButton:         "Añadir al cliente",
+    addClientSuccess:        "Empleado(s) añadido(s) al cliente correctamente.",
+    noEmployeesToAdd:        "No hay empleados disponibles para añadir.",
+    alreadyAssigned:         "Ya asignado",
+    searchPlaceholder:       "Buscar empleado...",
     sortByCategory:        "Ordenar por categoría",
     sortByName:            "Ordenar por nombre",
     filterByCategory:      "Filtrar por categoría",
