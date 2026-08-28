@@ -17,6 +17,11 @@ import {
   ArrowLeftIcon,
   UsersIcon,
   BriefcaseIcon,
+  CopyIcon,
+  Trash2Icon,
+  EyeOffIcon,
+  EyeIcon,
+  ArrowRightIcon,
 } from "lucide-react";
 
 type Props = {
@@ -43,6 +48,27 @@ type WeekInfo = {
   label: string;
   isSummer: boolean;
 };
+
+// ── Month color palette ──────────────────────────────────
+const MONTH_COLORS = [
+  { bg: "bg-blue-50 dark:bg-blue-950/40", text: "text-blue-700 dark:text-blue-300", border: "border-blue-200 dark:border-blue-800" },
+  { bg: "bg-emerald-50 dark:bg-emerald-950/40", text: "text-emerald-700 dark:text-emerald-300", border: "border-emerald-200 dark:border-emerald-800" },
+  { bg: "bg-amber-50 dark:bg-amber-950/40", text: "text-amber-700 dark:text-amber-300", border: "border-amber-200 dark:border-amber-800" },
+  { bg: "bg-purple-50 dark:bg-purple-950/40", text: "text-purple-700 dark:text-purple-300", border: "border-purple-200 dark:border-purple-800" },
+  { bg: "bg-rose-50 dark:bg-rose-950/40", text: "text-rose-700 dark:text-rose-300", border: "border-rose-200 dark:border-rose-800" },
+  { bg: "bg-cyan-50 dark:bg-cyan-950/40", text: "text-cyan-700 dark:text-cyan-300", border: "border-cyan-200 dark:border-cyan-800" },
+  { bg: "bg-orange-50 dark:bg-orange-950/40", text: "text-orange-700 dark:text-orange-300", border: "border-orange-200 dark:border-orange-800" },
+  { bg: "bg-teal-50 dark:bg-teal-950/40", text: "text-teal-700 dark:text-teal-300", border: "border-teal-200 dark:border-teal-800" },
+  { bg: "bg-indigo-50 dark:bg-indigo-950/40", text: "text-indigo-700 dark:text-indigo-300", border: "border-indigo-200 dark:border-indigo-800" },
+  { bg: "bg-pink-50 dark:bg-pink-950/40", text: "text-pink-700 dark:text-pink-300", border: "border-pink-200 dark:border-pink-800" },
+  { bg: "bg-lime-50 dark:bg-lime-950/40", text: "text-lime-700 dark:text-lime-300", border: "border-lime-200 dark:border-lime-800" },
+  { bg: "bg-violet-50 dark:bg-violet-950/40", text: "text-violet-700 dark:text-violet-300", border: "border-violet-200 dark:border-violet-800" },
+];
+
+const MONTH_NAMES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
 
 // ── Helpers ────────────────────────────────────────────────
 
@@ -170,6 +196,19 @@ function countVacationDaysInWeek(
   return count;
 }
 
+function hasHolidayInWeek(
+  start: Date,
+  end: Date,
+  holidays: Set<string>
+): boolean {
+  const d = new Date(start);
+  while (d <= end) {
+    if (holidays.has(formatDate(d))) return true;
+    d.setDate(d.getDate() + 1);
+  }
+  return false;
+}
+
 // ── Component ──────────────────────────────────────────────
 
 export function EngagementCalendar({
@@ -190,6 +229,39 @@ export function EngagementCalendar({
     () => new Map()
   );
 
+  // Base hours per employee (for copy-to-all-weeks feature)
+  const [baseHours, setBaseHours] = useState<Map<string, number>>(() => new Map());
+
+  // Hide past weeks toggle (enabled by default)
+  const [hidePastWeeks, setHidePastWeeks] = useState(true);
+
+  // Copy hours between employees
+  const [copySourceEmp, setCopySourceEmp] = useState<string>("");
+  const [copyTargetEmp, setCopyTargetEmp] = useState<string>("");
+
+  // Track which past weeks have been explicitly cleared to 0
+  // (key format: "empId-weekIdx")
+  // Persisted in localStorage per engagement so it survives page reloads
+  const [clearedWeeks, setClearedWeeks] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const stored = localStorage.getItem(`clearedWeeks_${engagement.id}`);
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  // Persist clearedWeeks to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        `clearedWeeks_${engagement.id}`,
+        JSON.stringify([...clearedWeeks])
+      );
+    } catch { /* ignore */ }
+  }, [clearedWeeks, engagement.id]);
+
   // Generate weeks
   const weeks = useMemo(() => {
     if (!engagement.start_date) return [];
@@ -199,6 +271,58 @@ export function EngagementCalendar({
       : addDays(start, 84); // default ~12 weeks
     return weeksBetween(start, end);
   }, [engagement.start_date, engagement.end_date]);
+
+  // Current week index (for highlighting & past weeks logic)
+  const currentWeekIdx = useMemo(() => {
+    const now = new Date();
+    const nowMonday = getMonday(now);
+    for (let i = 0; i < weeks.length; i++) {
+      if (formatDate(weeks[i].start) === formatDate(nowMonday)) return i;
+      if (weeks[i].start > nowMonday) return Math.max(0, i - 1);
+    }
+    return weeks.length - 1;
+  }, [weeks]);
+
+  // Visible week indices (respecting hidePastWeeks)
+  const visibleWeekIndices = useMemo(() => {
+    if (!hidePastWeeks) return weeks.map((_, i) => i);
+    return weeks.map((_, i) => i).filter((i) => i >= currentWeekIdx);
+  }, [weeks, hidePastWeeks, currentWeekIdx]);
+
+  // Month groups for header coloring
+  const monthGroups = useMemo(() => {
+    const groups: { monthKey: string; monthName: string; startIdx: number; endIdx: number; colorIdx: number }[] = [];
+    const seen = new Map<string, number>();
+    let colorIdx = 0;
+    for (let i = 0; i < weeks.length; i++) {
+      const w = weeks[i];
+      const key = `${w.start.getFullYear()}-${w.start.getMonth()}`;
+      if (!seen.has(key)) {
+        seen.set(key, colorIdx);
+        colorIdx++;
+      }
+      const ci = seen.get(key)!;
+      const monthName = MONTH_NAMES[w.start.getMonth()];
+      const last = groups[groups.length - 1];
+      if (last && last.monthKey === key) {
+        last.endIdx = i;
+      } else {
+        groups.push({ monthKey: key, monthName, startIdx: i, endIdx: i, colorIdx: ci });
+      }
+    }
+    return groups;
+  }, [weeks]);
+
+  // Map weekIdx -> monthColor
+  const weekColorMap = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const g of monthGroups) {
+      for (let i = g.startIdx; i <= g.endIdx; i++) {
+        map.set(i, g.colorIdx);
+      }
+    }
+    return map;
+  }, [monthGroups]);
 
   // Calculate default hours for an employee in a week
   const calcDefaultHours = useCallback(
@@ -229,13 +353,21 @@ export function EngagementCalendar({
     for (const emp of initialEmployees) {
       const empHours = new Map<number, number>();
       for (let i = 0; i < weeks.length; i++) {
-        // Check if there's an existing imputation covering this week
-        const existing = existingImputaciones.find(
-          (imp) =>
-            imp.employee_id === emp.id &&
-            imp.start_date <= formatDate(weeks[i].end) &&
-            (!imp.end_date || imp.end_date >= formatDate(weeks[i].start))
-        );
+        // Check if this week was explicitly cleared (past week set to 0)
+        if (clearedWeeks.has(`${emp.id}-${i}`)) {
+          empHours.set(i, 0);
+          continue;
+        }
+        // Find the most specific imputation covering this week
+        const matching = existingImputaciones
+          .filter(
+            (imp) =>
+              imp.employee_id === emp.id &&
+              imp.start_date <= formatDate(weeks[i].end) &&
+              (!imp.end_date || imp.end_date >= formatDate(weeks[i].start))
+          )
+          .sort((a, b) => b.start_date.localeCompare(a.start_date));
+        const existing = matching[0];
         if (existing) {
           empHours.set(i, existing.weekly_hours);
         } else {
@@ -245,7 +377,7 @@ export function EngagementCalendar({
       map.set(emp.id, empHours);
     }
     setHours(map);
-  }, [initialEmployees, weeks, existingImputaciones, calcDefaultHours]);
+  }, [initialEmployees, weeks, existingImputaciones, calcDefaultHours, clearedWeeks]);
 
   // Handle hours change
   function updateHours(empId: string, weekIdx: number, value: number) {
@@ -258,7 +390,79 @@ export function EngagementCalendar({
     });
   }
 
-  // Save
+  // ── Copy base hours to all weeks for an employee ──────
+  function handleCopyBaseToAllWeeks(empId: string) {
+    const base = baseHours.get(empId);
+    if (base === undefined || base === 0) return;
+
+    const emp = initialEmployees.find((e) => e.id === empId);
+    if (!emp) return;
+
+    setHours((prev) => {
+      const next = new Map(prev);
+      const empMap = new Map(next.get(empId) ?? new Map());
+      const empHolidays = getHolidaysForOffice(emp.office, holidaysByOffice);
+
+      for (let i = 0; i < weeks.length; i++) {
+        const w = weeks[i];
+        const workdays = countNonHolidayWorkdays(w.start, w.end, empHolidays);
+        const vacDays = countVacationDaysInWeek(emp.id, w.start, w.end, vacations);
+        const effectiveDays = Math.max(0, workdays - vacDays);
+        const dailyHours = base / 5;
+        empMap.set(i, Math.round(dailyHours * effectiveDays * 10) / 10);
+      }
+
+      next.set(empId, empMap);
+      return next;
+    });
+  }
+
+  // ── Copy hours from one employee to another ───────────
+  function handleCopyHoursBetweenEmployees() {
+    if (!copySourceEmp || !copyTargetEmp) return;
+    if (copySourceEmp === copyTargetEmp) return;
+
+    setHours((prev) => {
+      const next = new Map(prev);
+      const sourceHours = next.get(copySourceEmp);
+      if (!sourceHours) return prev;
+
+      const targetMap = new Map<number, number>();
+      for (const [weekIdx, h] of sourceHours) {
+        targetMap.set(weekIdx, h);
+      }
+      next.set(copyTargetEmp, targetMap);
+      return next;
+    });
+
+    setSuccess(strings.imputaciones.copyHoursButton + " ✓");
+    setTimeout(() => setSuccess(null), 2000);
+  }
+
+  // ── Clear past weeks ──────────────────────────────────
+  function handleClearPastWeeks() {
+    if (!window.confirm(strings.imputaciones.clearPastWeeksConfirm)) return;
+
+    const newCleared = new Set(clearedWeeks);
+    setHours((prev) => {
+      const next = new Map(prev);
+      for (const emp of initialEmployees) {
+        const empMap = new Map(next.get(emp.id) ?? new Map());
+        for (let i = 0; i < currentWeekIdx; i++) {
+          empMap.set(i, 0);
+          newCleared.add(`${emp.id}-${i}`);
+        }
+        next.set(emp.id, empMap);
+      }
+      return next;
+    });
+    setClearedWeeks(newCleared);
+
+    setSuccess(strings.imputaciones.clearPastWeeks + " ✓");
+    setTimeout(() => setSuccess(null), 2000);
+  }
+
+  // ── Save ────────────────────────────────────────────────
   function handleSave() {
     setError(null);
     setSuccess(null);
@@ -273,24 +477,32 @@ export function EngagementCalendar({
       for (const emp of initialEmployees) {
         const empH = hours.get(emp.id);
         if (!empH) continue;
-        // Find first and last week with hours > 0
-        let firstWeek = -1;
-        let lastWeek = -1;
-        for (let i = 0; i < weeks.length; i++) {
-          const h = empH.get(i) ?? 0;
-          if (h > 0) {
-            if (firstWeek === -1) firstWeek = i;
-            lastWeek = i;
+
+        // Group consecutive weeks with the same hours value into separate imputations
+        // Only save segments with hours > 0 (DB has a check constraint preventing 0)
+        let segStart = -1;
+        let segHours = -1;
+        for (let i = 0; i <= weeks.length; i++) {
+          const h = i < weeks.length ? (empH.get(i) ?? 0) : -1; // -1 sentinel to flush last segment
+          if (h === segHours && i < weeks.length) continue;
+          // Flush previous segment (only if hours > 0)
+          if (segStart !== -1 && segHours > 0) {
+            assignments.push({
+              employeeId: emp.id,
+              startDate: formatDate(weeks[segStart].start),
+              endDate: formatDate(weeks[i - 1].end),
+              weeklyHours: segHours,
+            });
+          }
+          // Start new segment (only for hours > 0)
+          if (i < weeks.length && h > 0) {
+            segStart = i;
+            segHours = h;
+          } else {
+            segStart = -1;
+            segHours = -1;
           }
         }
-        if (firstWeek === -1) continue;
-
-        assignments.push({
-          employeeId: emp.id,
-          startDate: formatDate(weeks[firstWeek].start),
-          endDate: formatDate(weeks[lastWeek].end),
-          weeklyHours: empH.get(firstWeek) ?? 0,
-        });
       }
 
       const result = await saveEngagementImputaciones(
@@ -375,6 +587,72 @@ export function EngagementCalendar({
         </div>
       </div>
 
+      {/* Toolbar: hide past, clear past, copy between employees */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Hide past weeks toggle */}
+        <Button
+          variant={hidePastWeeks ? "default" : "outline"}
+          size="sm"
+          onClick={() => setHidePastWeeks(!hidePastWeeks)}
+        >
+          {hidePastWeeks ? (
+            <EyeIcon className="size-3.5 mr-1" />
+          ) : (
+            <EyeOffIcon className="size-3.5 mr-1" />
+          )}
+          {hidePastWeeks ? strings.imputaciones.showAllWeeks : strings.imputaciones.hidePastWeeks}
+        </Button>
+
+        {/* Clear past weeks */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleClearPastWeeks}
+        >
+          <Trash2Icon className="size-3.5 mr-1" />
+          {strings.imputaciones.deletePast}
+        </Button>
+
+        {/* Copy hours between employees */}
+        <div className="flex items-center gap-1.5 ml-2 border-l pl-3">
+          <CopyIcon className="size-3.5 text-muted-foreground" />
+          <select
+            value={copySourceEmp}
+            onChange={(e) => setCopySourceEmp(e.target.value)}
+            className="h-7 rounded-md border bg-background px-2 text-xs"
+          >
+            <option value="">{strings.imputaciones.copyHoursFrom}</option>
+            {initialEmployees.map((emp) => (
+              <option key={emp.id} value={emp.id}>
+                {emp.name}
+              </option>
+            ))}
+          </select>
+          <ArrowRightIcon className="size-3 text-muted-foreground" />
+          <select
+            value={copyTargetEmp}
+            onChange={(e) => setCopyTargetEmp(e.target.value)}
+            className="h-7 rounded-md border bg-background px-2 text-xs"
+          >
+            <option value="">{strings.imputaciones.copyHoursTo}</option>
+            {initialEmployees.map((emp) => (
+              <option key={emp.id} value={emp.id}>
+                {emp.name}
+              </option>
+            ))}
+          </select>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="h-7 text-xs"
+            disabled={!copySourceEmp || !copyTargetEmp || copySourceEmp === copyTargetEmp}
+            onClick={handleCopyHoursBetweenEmployees}
+          >
+            {strings.imputaciones.copyHoursButton}
+          </Button>
+        </div>
+      </div>
+
       {/* Employees legend */}
       <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
@@ -404,28 +682,59 @@ export function EngagementCalendar({
         <div className="rounded-lg border bg-card overflow-x-auto">
           <table className="w-full text-xs min-w-[800px]">
             <thead>
+              {/* Month name row */}
+              <tr>
+                <th className="text-left px-3 py-1 font-medium sticky left-0 bg-card z-10 min-w-[160px]" />
+                {monthGroups.map((g) => {
+                  const color = MONTH_COLORS[g.colorIdx % MONTH_COLORS.length];
+                  // Count visible weeks in this group's range
+                  const visibleInRange = visibleWeekIndices.filter(
+                    (vi) => vi >= g.startIdx && vi <= g.endIdx
+                  );
+                  if (visibleInRange.length === 0) return null;
+                  // Use the first visible week index for the month name year
+                  const firstVisibleIdx = visibleInRange[0];
+                  return (
+                    <th
+                      key={g.monthKey}
+                      colSpan={visibleInRange.length}
+                      className={`text-center px-1 py-1 font-bold text-[11px] border-b ${color.bg} ${color.text} ${color.border}`}
+                    >
+                      {g.monthName} {weeks[firstVisibleIdx].start.getFullYear()}
+                    </th>
+                  );
+                })}
+                <th className="text-center px-3 py-1 font-medium sticky right-0 bg-card z-10" />
+              </tr>
+              {/* Week header row */}
               <tr className="bg-muted/50">
-                <th className="text-left px-3 py-2 font-medium sticky left-0 bg-muted/50 z-10 min-w-[160px]">
+                <th className="text-left px-3 py-2 font-medium sticky left-0 bg-muted z-10 min-w-[160px]">
                   {strings.imputaciones.calendarColEmployee}
                 </th>
-                {weeks.map((w, i) => (
-                  <th
-                    key={i}
-                    className={`text-center px-2 py-2 font-medium min-w-[60px] ${
-                      w.isSummer
-                        ? "text-amber-600 dark:text-amber-400"
-                        : ""
-                    }`}
-                  >
-                    <div>{w.label}</div>
-                    <div className="text-[10px] font-normal text-muted-foreground">
-                      {w.isSummer
-                        ? strings.imputaciones.summerLabel
-                        : strings.imputaciones.regularLabel}
-                    </div>
-                  </th>
-                ))}
-                <th className="text-center px-3 py-2 font-medium min-w-[70px]">
+                {weeks.map((w, i) => {
+                  if (!visibleWeekIndices.includes(i)) return null;
+                  const colorIdx = weekColorMap.get(i) ?? 0;
+                  const color = MONTH_COLORS[colorIdx % MONTH_COLORS.length];
+                  const isCurrentWeek = i === currentWeekIdx;
+                  return (
+                    <th
+                      key={i}
+                      className={`text-center px-2 py-2 font-medium min-w-[60px] border-b-2 ${color.border} ${
+                        w.isSummer
+                          ? "text-amber-600 dark:text-amber-400"
+                          : ""
+                      } ${isCurrentWeek ? "ring-2 ring-primary/50 rounded-t" : ""}`}
+                    >
+                      <div>{w.label}</div>
+                      <div className="text-[10px] font-normal text-muted-foreground">
+                        {w.isSummer
+                          ? strings.imputaciones.summerLabel
+                          : strings.imputaciones.regularLabel}
+                      </div>
+                    </th>
+                  );
+                })}
+                <th className="text-center px-3 py-2 font-medium min-w-[70px] sticky right-0 bg-muted z-10">
                   {strings.imputaciones.calendarColTotal}
                 </th>
               </tr>
@@ -445,8 +754,44 @@ export function EngagementCalendar({
                         {CATEGORY_LABELS[emp.category as Category] ??
                           emp.category}
                       </div>
+                      {/* Base hours input + copy button */}
+                      <div className="flex items-center gap-1 mt-1">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="60"
+                          step="0.5"
+                          value={baseHours.get(emp.id) ?? ""}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value);
+                            setBaseHours((prev) => {
+                              const next = new Map(prev);
+                              if (isNaN(val) || val === 0) {
+                                next.delete(emp.id);
+                              } else {
+                                next.set(emp.id, val);
+                              }
+                              return next;
+                            });
+                          }}
+                          placeholder={strings.imputaciones.baseHoursPlaceholder}
+                          className="w-12 h-5 text-center text-[10px] px-0.5"
+                          title={strings.imputaciones.baseHoursLabel}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-5"
+                          disabled={!baseHours.has(emp.id)}
+                          onClick={() => handleCopyBaseToAllWeeks(emp.id)}
+                          title={strings.imputaciones.copyToAllWeeks}
+                        >
+                          <CopyIcon className="size-2.5" />
+                        </Button>
+                      </div>
                     </td>
                     {weeks.map((w, i) => {
+                      if (!visibleWeekIndices.includes(i)) return null;
                       const val = empH.get(i) ?? 0;
                       const vacDayCount = countVacationDaysInWeek(
                         emp.id,
@@ -461,8 +806,9 @@ export function EngagementCalendar({
                         empHolidays
                       );
                       const hasVacation = vacDayCount > 0;
+                      const isCurrentWeek = i === currentWeekIdx;
                       return (
-                        <td key={i} className="px-1 py-1 text-center">
+                        <td key={i} className={`px-1 py-1 text-center ${isCurrentWeek ? "bg-primary/5" : ""}`}>
                           <div className="relative">
                             <Input
                               type="number"
@@ -499,7 +845,7 @@ export function EngagementCalendar({
                         </td>
                       );
                     })}
-                    <td className="px-3 py-2 text-center font-medium">
+                    <td className="px-3 py-2 text-center font-medium sticky right-0 bg-card z-10">
                       {Math.round(total * 10) / 10}h
                     </td>
                   </tr>
@@ -507,10 +853,11 @@ export function EngagementCalendar({
               })}
               {/* Totals row */}
               <tr className="border-t bg-muted/30 font-medium">
-                <td className="px-3 py-2 sticky left-0 bg-muted/30 z-10">
+                <td className="px-3 py-2 sticky left-0 bg-muted z-10">
                   {strings.imputaciones.calendarColTotal}
                 </td>
                 {weeks.map((w, i) => {
+                  if (!visibleWeekIndices.includes(i)) return null;
                   let weekTotal = 0;
                   for (const emp of initialEmployees) {
                     const empH = hours.get(emp.id) ?? new Map();
@@ -522,7 +869,7 @@ export function EngagementCalendar({
                     </td>
                   );
                 })}
-                <td className="px-3 py-2 text-center">
+                <td className="px-3 py-2 text-center sticky right-0 bg-muted z-10">
                   {Math.round(
                     initialEmployees.reduce((empTotal, emp) => {
                       const empH = hours.get(emp.id) ?? new Map();
@@ -541,17 +888,4 @@ export function EngagementCalendar({
       )}
     </div>
   );
-}
-
-function hasHolidayInWeek(
-  start: Date,
-  end: Date,
-  holidays: Set<string>
-): boolean {
-  const d = new Date(start);
-  while (d <= end) {
-    if (holidays.has(formatDate(d))) return true;
-    d.setDate(d.getDate() + 1);
-  }
-  return false;
 }

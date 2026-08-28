@@ -825,6 +825,17 @@ export const strings = {
     summerLabel:          "Verano",
     holidayTooltip:       "Festivo",
     vacationDayCount:     (n: number) => `${n} día(s) de vacaciones`,
+    baseHoursLabel:       "Horas base/semana",
+    baseHoursPlaceholder: "Base",
+    copyToAllWeeks:       "Copiar a todas las semanas",
+    copyHoursFrom:        "Copiar horas de...",
+    copyHoursTo:          "Copiar horas a...",
+    copyHoursButton:      "Copiar",
+    clearPastWeeks:       "Borrar semanas pasadas",
+    clearPastWeeksConfirm:"¿Borrar las horas de todas las semanas anteriores a la semana en curso?",
+    hidePastWeeks:        "Ocultar semanas pasadas",
+    showAllWeeks:         "Mostrar todas",
+    deletePast:           "Borrar pasado",
 
     // Client filter
     clientFilterLabel:     "Cliente:",
