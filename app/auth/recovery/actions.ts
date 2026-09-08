@@ -51,7 +51,7 @@ export async function requestPasswordRecovery(email: string): Promise<{
     return { error: "Esta cuenta no tiene un usuario asociado." };
   }
 
-  // 2. Find the employee's managers (direct manager + project admins)
+  // 2. Find the employee's managers (direct manager + project managers)
   //    Same logic as notifyManagersVacationRequested
   const managerIds = new Set<string>();
 
@@ -66,7 +66,7 @@ export async function requestPasswordRecovery(email: string): Promise<{
     managerIds.add(empData.manager_id);
   }
 
-  // Project admins — find projects the employee is assigned to
+  // Project managers — find projects the employee is assigned to
   const { data: empProjects } = await supabase
     .from("employee_projects")
     .select("project_id")
@@ -85,6 +85,7 @@ export async function requestPasswordRecovery(email: string): Promise<{
     ];
 
     if (memberIds.length > 0) {
+      // System admins
       const { data: admins } = await supabase
         .from("employees")
         .select("id")
@@ -92,6 +93,15 @@ export async function requestPasswordRecovery(email: string): Promise<{
         .in("role", ["admin", "super-admin"]);
 
       (admins ?? []).forEach((a) => managerIds.add(a.id));
+
+      // Employees with Manager / Senior-Manager category in the same projects
+      const { data: catManagers } = await supabase
+        .from("employees")
+        .select("id")
+        .in("id", memberIds)
+        .in("category", ["Manager", "Senior-Manager"]);
+
+      (catManagers ?? []).forEach((m) => managerIds.add(m.id));
     }
   }
 

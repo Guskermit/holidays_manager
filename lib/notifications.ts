@@ -171,7 +171,7 @@ export async function notifyManagersVacationRequested(params: {
   const projectIds = (empProjects ?? []).map((ep) => ep.project_id);
 
   if (projectIds.length > 0) {
-    // 3. Find admins/super-admins assigned to those projects
+    // 3. Find project managers assigned to those projects
     const { data: projectMembers } = await supabase
       .from("employee_projects")
       .select("employee_id")
@@ -182,6 +182,7 @@ export async function notifyManagersVacationRequested(params: {
     ];
 
     if (memberIds.length > 0) {
+      // System admins
       const { data: admins } = await supabase
         .from("employees")
         .select("id")
@@ -189,6 +190,15 @@ export async function notifyManagersVacationRequested(params: {
         .in("role", ["admin", "super-admin"]);
 
       (admins ?? []).forEach((a) => managerIds.add(a.id));
+
+      // Employees with Manager / Senior-Manager category in the same projects
+      const { data: catManagers } = await supabase
+        .from("employees")
+        .select("id")
+        .in("id", memberIds)
+        .in("category", ["Manager", "Senior-Manager"]);
+
+      (catManagers ?? []).forEach((m) => managerIds.add(m.id));
     }
   }
 
