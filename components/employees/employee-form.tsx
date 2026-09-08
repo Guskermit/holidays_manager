@@ -23,6 +23,7 @@ type Props = {
     cost_per_hour: number | null;
     weekly_hours: number | null;
     exit_date: string | null;
+    custom_vacation_days: number | null;
   };
 };
 
@@ -211,6 +212,22 @@ export function EmployeeForm({ employee }: Props) {
           className="max-w-[200px]"
         />
         <p className="text-xs text-muted-foreground">{strings.employees.formWeeklyHoursHint}</p>
+      </div>
+
+      {/* Custom vacation days override */}
+      <div className="grid gap-2">
+        <Label htmlFor="custom_vacation_days">{strings.employees.formCustomVacationLabel}</Label>
+        <Input
+          id="custom_vacation_days"
+          name="custom_vacation_days"
+          type="number"
+          min="0"
+          step="1"
+          placeholder={strings.common.noData}
+          defaultValue={employee.custom_vacation_days ?? ""}
+          className="max-w-[200px]"
+        />
+        <p className="text-xs text-muted-foreground">{strings.employees.formCustomVacationHint}</p>
       </div>
 
       {/* Exit date (baja) */}

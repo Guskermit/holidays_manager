@@ -29,7 +29,7 @@ export default async function EditEmployeePage({
 
   const { data: employee, error: empError } = await supabase
     .from("employees")
-    .select("id, name, email, office, role, category, company, cost_per_hour, weekly_hours, exit_date")
+    .select("id, name, email, office, role, category, company, cost_per_hour, weekly_hours, exit_date, custom_vacation_days")
     .eq("id", id)
     .single();
 

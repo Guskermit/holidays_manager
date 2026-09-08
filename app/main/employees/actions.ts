@@ -35,17 +35,21 @@ export async function updateEmployee(
     return { error: "Super-admin employees can only be modified by other super-admins" };
   }
 
-  const name        = (formData.get("name")         as string)?.trim();
-  const office      = (formData.get("office")       as string)?.trim();
-  const role        = (formData.get("role")         as string)?.trim();
-  const category    = (formData.get("category")     as string)?.trim();
-  const company     = (formData.get("company")      as string | null)?.trim() || null;
-  const costRaw     = (formData.get("cost_per_hour") as string)?.trim();
-  const costPerHour = costRaw !== "" && costRaw != null ? parseFloat(costRaw) : null;
-  const weeklyHoursRaw = (formData.get("weekly_hours") as string)?.trim();
-  const weeklyHours = weeklyHoursRaw !== "" && weeklyHoursRaw != null ? parseInt(weeklyHoursRaw, 10) : 42;
-  const exitDateRaw = (formData.get("exit_date") as string)?.trim();
-  const exitDate    = exitDateRaw !== "" && exitDateRaw != null ? exitDateRaw : null;
+  const name             = (formData.get("name")              as string)?.trim();
+  const office           = (formData.get("office")            as string)?.trim();
+  const role             = (formData.get("role")              as string)?.trim();
+  const category         = (formData.get("category")          as string)?.trim();
+  const company          = (formData.get("company")           as string | null)?.trim() || null;
+  const costRaw          = (formData.get("cost_per_hour")     as string)?.trim();
+  const costPerHour      = costRaw !== "" && costRaw != null ? parseFloat(costRaw) : null;
+  const weeklyHoursRaw   = (formData.get("weekly_hours")      as string)?.trim();
+  const weeklyHours      = weeklyHoursRaw !== "" && weeklyHoursRaw != null ? parseInt(weeklyHoursRaw, 10) : 42;
+  const exitDateRaw      = (formData.get("exit_date")         as string)?.trim();
+  const exitDate         = exitDateRaw !== "" && exitDateRaw != null ? exitDateRaw : null;
+  const customVacRaw     = (formData.get("custom_vacation_days") as string)?.trim();
+  const customVacationDays = customVacRaw !== "" && customVacRaw != null
+    ? parseInt(customVacRaw, 10)
+    : null;
 
   if (!name || !office || !role || !category) {
     return { error: "All fields are required" };
@@ -70,13 +74,14 @@ export async function updateEmployee(
       cost_per_hour: costPerHour,
       weekly_hours: weeklyHours,
       exit_date: exitDate,
+      custom_vacation_days: customVacationDays,
     })
     .eq("id", employeeId);
 
   if (error) return { error: error.message };
 
   // Update vacation balance total_days for current year based on new category
-  const maxDays = await getCategoryDays(supabase, category);
+  const maxDays = await getCategoryDays(supabase, category, customVacationDays);
   const currentYear = new Date().getFullYear();
   await supabase
     .from("vacation_balances")

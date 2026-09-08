@@ -34,11 +34,13 @@ export async function updateVacationSettings(
 
     if (error) return { error: error.message };
 
-    // Propagate the new total_days to all existing vacation_balances for this year
+    // Propagate the new total_days to existing vacation_balances for this year,
+    // but only for employees who do NOT have a custom_vacation_days override.
     const { data: affectedEmployees } = await supabase
       .from("employees")
       .select("id")
-      .eq("category", category);
+      .eq("category", category)
+      .is("custom_vacation_days", null);
 
     if (affectedEmployees && affectedEmployees.length > 0) {
       const ids = affectedEmployees.map((e) => e.id);

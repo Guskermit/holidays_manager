@@ -54,11 +54,20 @@ export const CATEGORY_DAYS: Record<Category, number> = {
 };
 
 /**
- * Reads vacation days for a category from the DB.
- * Falls back to CATEGORY_DAYS if the DB row is missing.
+ * Returns the vacation days for an employee.
+ * If `customVacationDays` is a non-negative number it takes precedence;
+ * otherwise the value is read from the DB `category_vacation_days` table,
+ * falling back to the CATEGORY_DAYS constant.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function getCategoryDays(supabase: any, category: string | null): Promise<number> {
+export async function getCategoryDays(
+  supabase: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+  category: string | null,
+  customVacationDays?: number | null
+): Promise<number> {
+  if (customVacationDays != null && customVacationDays >= 0) {
+    return customVacationDays;
+  }
+
   const cat = (CATEGORIES as readonly string[]).includes(category ?? "")
     ? (category as Category)
     : "Staff";

@@ -20,7 +20,7 @@ export default async function VacationsPage() {
 
   const { data: realEmployee } = await supabase
     .from("employees")
-    .select("id, name, office, category, role")
+    .select("id, name, office, category, role, custom_vacation_days")
     .eq("user_id", authData.claims.sub)
     .single();
 
@@ -30,7 +30,7 @@ export default async function VacationsPage() {
   });
 
   const { data: employee } = isImpersonating
-    ? await supabase.from("employees").select("id, name, office, category").eq("id", effectiveId).single()
+    ? await supabase.from("employees").select("id, name, office, category, custom_vacation_days").eq("id", effectiveId).single()
     : { data: realEmployee };
 
   if (!employee) {
@@ -44,7 +44,7 @@ export default async function VacationsPage() {
     );
   }
 
-  const maxDays = await getCategoryDays(supabase, employee.category);
+  const maxDays = await getCategoryDays(supabase, employee.category, employee.custom_vacation_days);
 
   const [{ data: requests }, holidaysSet] = await Promise.all([
     supabase

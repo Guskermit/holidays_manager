@@ -156,6 +156,8 @@ export const strings = {
     formExitDateLabel:    "Fecha de baja",
     formExitDateHint:     "Si el empleado ha abandonado la empresa, indica la fecha de salida. A partir de esa fecha quedará excluido de reports, estadísticas, skills, Copilot y no podrá imputar horas en Minor.",
     formExitDateClear:    "Reactivar empleado",
+    formCustomVacationLabel: "Días de vacaciones personalizados",
+    formCustomVacationHint:  "Si se establece, se usa este valor en lugar de los días asignados por categoría. Útil para empleados que entran a mitad de año. Déjalo vacío para usar el valor de la categoría.",
     badgeBaja:            "Baja",
     colExitDate:          "Fecha baja",
     inactiveMessage:      "Tu cuenta está marcada como baja. Si crees que es un error, contacta con un administrador.",
