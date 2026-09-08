@@ -16,7 +16,12 @@ function flattenEmployee(emp: any) {
   };
 }
 
-export default async function TeamVacationPage() {
+export default async function TeamVacationPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ year?: string; month?: string }>;
+}) {
+  const params = await searchParams;
   const supabase = await createClient();
 
   const { data: authData, error: authError } = await supabase.auth.getClaims();
@@ -40,7 +45,8 @@ export default async function TeamVacationPage() {
     redirect("/main/vacations/summary");
   }
 
-  const currentYear = new Date().getFullYear();
+  const currentYear  = params.year  ? parseInt(params.year, 10)  : new Date().getFullYear();
+  const currentMonth = params.month ? parseInt(params.month, 10) : new Date().getMonth();
 
   // Get the current employee's project assignments
   const { data: myAssignments } = await supabase
@@ -147,6 +153,7 @@ export default async function TeamVacationPage() {
         projects={projects}
         balances={balances}
         year={currentYear}
+        month={currentMonth}
         holidaysByOffice={holidaysByOffice}
       />
     </div>

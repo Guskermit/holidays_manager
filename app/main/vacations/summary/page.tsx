@@ -17,7 +17,12 @@ function flattenEmployee(emp: any) {
   };
 }
 
-export default async function VacationSummaryPage() {
+export default async function VacationSummaryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ year?: string; month?: string }>;
+}) {
+  const params = await searchParams;
   const supabase = await createClient();
 
   const { data: authData, error: authError } = await supabase.auth.getClaims();
@@ -36,7 +41,8 @@ export default async function VacationSummaryPage() {
     redirect("/main");
   }
 
-  const currentYear = new Date().getFullYear();
+  const currentYear  = params.year  ? parseInt(params.year, 10)  : new Date().getFullYear();
+  const currentMonth = params.month ? parseInt(params.month, 10) : new Date().getMonth();
 
   let employees: any[] = [];
   let projects: any[] = [];
@@ -144,6 +150,7 @@ export default async function VacationSummaryPage() {
         projects={projects}
         balances={balances}
         year={currentYear}
+        month={currentMonth}
         teams={teams}
         teamAssignments={teamAssignments}
         holidaysByOffice={holidaysByOffice}

@@ -19,6 +19,8 @@ export async function requestVacation(
   otherReason: string = ""
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
+  // year may be overridden for cross-year vacations
+  let effectiveYear = year;
 
   // Verify the employee belongs to the current user
   const { data: authData } = await supabase.auth.getClaims();
@@ -65,7 +67,12 @@ export async function requestVacation(
       };
     }
   } else if (!isMedicalLeave) {
-    // Compute category-based maximum days
+    // Detect cross-year vacation (e.g. Dec 29 → Jan 5)
+    const endDateObj = new Date(endDate + "T00:00:00");
+    const endYear = endDateObj.getFullYear();
+    const crossYear = endYear > year;
+
+    // Compute category-based maximum days for the requested year
     const maxDays = await getCategoryDays(supabase, employee.category, employee.custom_vacation_days);
 
     // Sum all approved + pending non-bootcamp days for the year
@@ -81,7 +88,33 @@ export async function requestVacation(
       (sum, r) => sum + r.days_requested,
       0
     );
-    const remaining = maxDays - usedAndPending;
+    let remaining = maxDays - usedAndPending;
+
+    // For cross-year vacations: if the start year has insufficient balance,
+    // try using the next year's balance instead.
+    if (crossYear && daysRequested > remaining) {
+      const nextYear = year + 1;
+      const nextMaxDays = await getCategoryDays(supabase, employee.category, employee.custom_vacation_days);
+
+      const { data: nextYearRequests } = await supabase
+        .from("vacation_requests")
+        .select("days_requested")
+        .eq("employee_id", employeeId)
+        .eq("year", nextYear)
+        .eq("is_bootcamp", false)
+        .in("status", ["approved", "pending"]);
+
+      const nextUsedAndPending = (nextYearRequests ?? []).reduce(
+        (sum, r) => sum + r.days_requested,
+        0
+      );
+      const nextRemaining = nextMaxDays - nextUsedAndPending;
+
+      if (daysRequested <= nextRemaining) {
+        effectiveYear = nextYear;
+        remaining = nextRemaining;
+      }
+    }
 
     if (daysRequested > remaining) {
       return {
@@ -97,7 +130,7 @@ export async function requestVacation(
     end_date: endDate,
     days_requested: daysRequested,
     status: isBootcamp || isMedicalLeave || isOther ? "approved" : "pending",
-    year,
+    year: effectiveYear,
     is_bootcamp: isBootcamp,
     is_medical_leave: isMedicalLeave,
     is_other: isOther,
@@ -140,7 +173,7 @@ export async function requestVacation(
       .from("vacation_balances")
       .select("pending_days, total_days")
       .eq("employee_id", employeeId)
-      .eq("year", year)
+      .eq("year", effectiveYear)
       .single();
 
     if (balance) {
@@ -148,11 +181,11 @@ export async function requestVacation(
         .from("vacation_balances")
         .update({ pending_days: balance.pending_days + daysRequested })
         .eq("employee_id", employeeId)
-        .eq("year", year);
+        .eq("year", effectiveYear);
     } else {
       await supabase.from("vacation_balances").insert({
         employee_id: employeeId,
-        year,
+        year: effectiveYear,
         total_days: maxDays,
         pending_days: daysRequested,
       });

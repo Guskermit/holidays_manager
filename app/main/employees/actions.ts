@@ -80,15 +80,18 @@ export async function updateEmployee(
 
   if (error) return { error: error.message };
 
-  // Update vacation balance total_days for current year based on new category
+  // Update vacation balance total_days for current + next year based on new category
   const maxDays = await getCategoryDays(supabase, category, customVacationDays);
   const currentYear = new Date().getFullYear();
-  await supabase
-    .from("vacation_balances")
-    .upsert(
-      { employee_id: employeeId, year: currentYear, total_days: maxDays },
-      { onConflict: "employee_id,year", ignoreDuplicates: false }
-    );
+  const yearsToPropagate = [currentYear, currentYear + 1];
+  for (const yr of yearsToPropagate) {
+    await supabase
+      .from("vacation_balances")
+      .upsert(
+        { employee_id: employeeId, year: yr, total_days: maxDays },
+        { onConflict: "employee_id,year", ignoreDuplicates: false }
+      );
+  }
 
   redirect("/main/employees");
 }

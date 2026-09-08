@@ -5,7 +5,12 @@ import { VacationRequestsTable } from "@/components/admin/vacation-requests-tabl
 import { BackNav } from "@/components/back-nav";
 import { strings } from "@/lib/strings";
 
-export default async function AdminVacationRequestsPage() {
+export default async function AdminVacationRequestsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ year?: string }>;
+}) {
+  const params = await searchParams;
   const supabase = await createClient();
 
   const { data: authData, error: authError } = await supabase.auth.getClaims();
@@ -23,8 +28,10 @@ export default async function AdminVacationRequestsPage() {
     redirect("/main");
   }
 
+  const yearFilter = params.year ? parseInt(params.year, 10) : null;
+
   // Fetch all vacation requests with employee + project info
-  const { data: rawRequests, error: reqError } = await supabase
+  let query = supabase
     .from("vacation_requests")
     .select(`
       id,
@@ -32,6 +39,7 @@ export default async function AdminVacationRequestsPage() {
       end_date,
       days_requested,
       status,
+      year,
       created_at,
       rejection_reason,
       is_bootcamp,
@@ -39,8 +47,14 @@ export default async function AdminVacationRequestsPage() {
       is_other,
       other_reason,
       employees!vacation_requests_employee_id_fkey ( id, name, email )
-    `)
-        .order("start_date", { ascending: true });
+    `);
+
+  if (yearFilter) {
+    query = query.eq("year", yearFilter);
+  }
+
+  const { data: rawRequests, error: reqError } = await query
+    .order("start_date", { ascending: true });
 
   if (reqError) {
     return (

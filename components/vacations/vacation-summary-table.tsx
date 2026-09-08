@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
-import { ChevronLeftIcon, ChevronRightIcon, ArrowUpIcon, ArrowDownIcon, ArrowUpDownIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, ChevronsLeftIcon, ChevronsRightIcon, ArrowUpIcon, ArrowDownIcon, ArrowUpDownIcon } from "lucide-react";
 import { strings } from "@/lib/strings";
 import {
   isWeekend,
@@ -55,6 +56,7 @@ type Props = {
   projects: Project[];
   balances?: Map<string, { totalDays: number; usedDays: number; pendingDays: number }>;
   year?: number;
+  month?: number;
   teams?: Team[];
   // key: `${employeeId}:${projectId}` → teamIds[]
   teamAssignments?: Record<string, string[]>;
@@ -78,10 +80,19 @@ const STATUS_LABEL: Record<VacationRequest["status"], string> = {
 
 const MONTH_NAMES = strings.vacations.calendarMonths;
 
-export function VacationSummaryTable({ employees, projects, balances, year: propYear, teams = [], teamAssignments, holidaysByOffice }: Props) {
+export function VacationSummaryTable({ employees, projects, balances, year: propYear, month: propMonth, teams = [], teamAssignments, holidaysByOffice }: Props) {
   const today = new Date();
+  const router = useRouter();
   const [year, setYear]   = useState(propYear ?? today.getFullYear());
-  const [month, setMonth] = useState(today.getMonth());
+  const [month, setMonth] = useState(propMonth ?? today.getMonth());
+
+  /** Build a URL with updated year/month search params (preserves other params) */
+  const buildUrl = useCallback((newYear: number, newMonth: number) => {
+    const sp = new URLSearchParams();
+    sp.set("year", String(newYear));
+    sp.set("month", String(newMonth));
+    return `?${sp.toString()}`;
+  }, []);
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [teamFilter, setTeamFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -114,14 +125,25 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
     return [...seen].sort();
   }, [employees]);
 
-  /* ── month navigation ──────────────────────────────────────── */
+  /* ── date navigation (writes to URL so year/month stay coherent) ── */
   const goBack = () => {
-    if (month === 0) { setYear(y => y - 1); setMonth(11); }
-    else setMonth(m => m - 1);
+    const prevMonth = month === 0 ? 11 : month - 1;
+    const prevYear  = month === 0 ? year - 1 : year;
+    setYear(prevYear);
+    setMonth(prevMonth);
+    router.push(buildUrl(prevYear, prevMonth));
   };
   const goForward = () => {
-    if (month === 11) { setYear(y => y + 1); setMonth(0); }
-    else setMonth(m => m + 1);
+    const nextMonth = month === 11 ? 0 : month + 1;
+    const nextYear  = month === 11 ? year + 1 : year;
+    setYear(nextYear);
+    setMonth(nextMonth);
+    router.push(buildUrl(nextYear, nextMonth));
+  };
+  const goToYear = (targetYear: number) => {
+    setYear(targetYear);
+    setMonth(0);
+    router.push(buildUrl(targetYear, 0));
   };
 
   /* ── days of the month ─────────────────────────────────────── */
@@ -404,17 +426,35 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
         </div>
       )}
 
-      {/* ── Month navigation ── */}
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="sm" onClick={goBack}>
-          <ChevronLeftIcon className="size-4" />
-        </Button>
-        <span className="text-base font-semibold min-w-36 text-center">
-          {MONTH_NAMES[month]} {year}
-        </span>
-        <Button variant="outline" size="sm" onClick={goForward}>
-          <ChevronRightIcon className="size-4" />
-        </Button>
+      {/* ── Date navigation ── */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {/* Year selector */}
+        <div className="flex items-center gap-1">
+          <Button variant="outline" size="sm" onClick={() => goToYear(year - 1)}>
+            <ChevronsLeftIcon className="size-4" />
+          </Button>
+          <span className="text-sm font-semibold px-2 min-w-[3.5rem] text-center tabular-nums">
+            {year}
+          </span>
+          <Button variant="outline" size="sm" onClick={() => goToYear(year + 1)}>
+            <ChevronsRightIcon className="size-4" />
+          </Button>
+        </div>
+
+        <div className="h-6 w-px bg-border" />
+
+        {/* Month selector */}
+        <div className="flex items-center gap-1">
+          <Button variant="outline" size="sm" onClick={goBack}>
+            <ChevronLeftIcon className="size-4" />
+          </Button>
+          <span className="text-base font-semibold min-w-[8rem] text-center">
+            {MONTH_NAMES[month]}
+          </span>
+          <Button variant="outline" size="sm" onClick={goForward}>
+            <ChevronRightIcon className="size-4" />
+          </Button>
+        </div>
       </div>
 
       {/* ── Legend ── */}
@@ -464,7 +504,7 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
                   {strings.vacations.overviewColOffice}
                 </th>
                 <th className="text-center font-medium px-2 py-2 min-w-24 border-r text-muted-foreground whitespace-nowrap">
-                  Días {propYear ?? today.getFullYear()}
+                  Días {year}
                 </th>
                 {days.map(d => {
                   const weekend = isWeekend(d);

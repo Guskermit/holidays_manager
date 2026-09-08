@@ -9,7 +9,12 @@ import {
 } from "@/components/admin/analytics-dashboard";
 import { StaleSkillsNotifier } from "@/components/admin/stale-skills-notifier";
 
-export default async function AdminAnalyticsPage() {
+export default async function AdminAnalyticsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ year?: string }>;
+}) {
+  const params = await searchParams;
   const supabase = await createClient();
 
   const { data: authData, error: authError } = await supabase.auth.getClaims();
@@ -42,7 +47,7 @@ export default async function AdminAnalyticsPage() {
     supabase.from("skills").select("id, name, category").order("category, name"),
   ]);
 
-  const currentYear = new Date().getFullYear();
+  const currentYear = params.year ? parseInt(params.year, 10) : new Date().getFullYear();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 

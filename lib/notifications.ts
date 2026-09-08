@@ -215,3 +215,120 @@ export async function notifyManagersVacationRequested(params: {
     });
   }
 }
+
+/**
+ * Check if a manager/senior-manager has pending vacation requests from their
+ * direct reports, and generate per-client notifications.
+ *
+ * Called on dashboard load — creates one notification per project/client:
+ * "Tienes X notificaciones pendientes de aprobar para el cliente XXX"
+ *
+ * Deduplicates: won't create if an unread notification with the same
+ * client name already exists for this manager.
+ */
+export async function notifyManagerPendingApprovals(managerId: string): Promise<void> {
+  const supabase = await createClient();
+
+  // 1. Find direct reports (employees whose manager_id = this manager)
+  const { data: reports } = await supabase
+    .from("employees")
+    .select("id, name")
+    .eq("manager_id", managerId);
+
+  if (!reports || reports.length === 0) return;
+
+  const reportIds = reports.map((r) => r.id);
+
+  // 2. Find pending vacation requests from those reports
+  const { data: pendingRequests } = await supabase
+    .from("vacation_requests")
+    .select("id, employee_id")
+    .in("employee_id", reportIds)
+    .eq("status", "pending");
+
+  if (!pendingRequests || pendingRequests.length === 0) return;
+
+  // 3. Find which projects each report is assigned to
+  const { data: empProjects } = await supabase
+    .from("employee_projects")
+    .select("employee_id, project_id")
+    .in("employee_id", reportIds);
+
+  if (!empProjects || empProjects.length === 0) return;
+
+  // 4. Batch-fetch project names
+  const projectIds = [...new Set(empProjects.map((ep) => ep.project_id))];
+  const { data: projects } = await supabase
+    .from("projects")
+    .select("id_engagement, name")
+    .in("id_engagement", projectIds);
+
+  const projectMap = new Map(
+    (projects ?? []).map((p) => [p.id_engagement, p.name])
+  );
+
+  // 5. Build a map: employee_id → Set of project names
+  const empProjectNames = new Map<string, Set<string>>();
+  for (const ep of empProjects) {
+    const name = projectMap.get(ep.project_id);
+    if (!name) continue;
+    if (!empProjectNames.has(ep.employee_id)) {
+      empProjectNames.set(ep.employee_id, new Set());
+    }
+    empProjectNames.get(ep.employee_id)!.add(name);
+  }
+
+  // 6. Group pending requests by client/project name
+  const clientPendingCount = new Map<string, number>();
+  for (const req of pendingRequests) {
+    const clientNames = empProjectNames.get(req.employee_id);
+    if (!clientNames) continue;
+    for (const clientName of clientNames) {
+      clientPendingCount.set(clientName, (clientPendingCount.get(clientName) ?? 0) + 1);
+    }
+  }
+
+  if (clientPendingCount.size === 0) return;
+
+  // 7. Fetch existing unread notifications for this manager to deduplicate
+  const { data: existingRecipients } = await supabase
+    .from("notification_recipients")
+    .select(`
+      id,
+      is_read,
+      notification:notifications!inner (
+        id,
+        title,
+        is_active,
+        created_at
+      )
+    `)
+    .eq("employee_id", managerId)
+    .eq("is_read", false);
+
+  type NotifJoin = { id: string; title: string; is_active: boolean; created_at: string };
+  type RecipientRow = { id: string; is_read: boolean; notification: NotifJoin | NotifJoin[] };
+
+  const existingTitles = new Set<string>();
+  for (const r of (existingRecipients ?? []) as RecipientRow[]) {
+    const notif = Array.isArray(r.notification) ? r.notification[0] : r.notification;
+    if (notif?.is_active && notif?.title?.startsWith("📋 Tienes") && notif?.title?.includes("pendientes de aprobar")) {
+      existingTitles.add(notif.title);
+    }
+  }
+
+  // 8. Create notifications for each client (skip if already exists)
+  for (const [clientName, count] of clientPendingCount) {
+    const title = `📋 Tienes ${count} notificación${count !== 1 ? "es" : ""} pendientes de aprobar para el cliente ${clientName}`;
+
+    // Skip if an unread notification with the same title already exists
+    if (existingTitles.has(title)) continue;
+
+    await createEmployeeNotification({
+      title,
+      message: `Hay ${count} solicitud${count !== 1 ? "es" : ""} de vacaciones pendiente${count !== 1 ? "s" : ""} de tus reportes directos en el cliente ${clientName}.`,
+      employeeId: managerId,
+      createdBy: managerId,
+    });
+  }
+}

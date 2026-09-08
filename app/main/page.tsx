@@ -6,6 +6,8 @@ import { strings } from "@/lib/strings";
 import { getEffectiveEmployee } from "@/lib/impersonation";
 import { ImpersonationSelector } from "@/components/impersonation-selector";
 import { WeekEngagementList } from "@/components/week-engagement-list";
+import { NotificationDashboard } from "@/components/notification-dashboard";
+import { notifyManagerPendingApprovals } from "@/lib/notifications";
 
 /** Get Monday of the current week */
 function getMonday(d: Date): Date {
@@ -22,7 +24,12 @@ function fmtDate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-export default async function ProtectedPage() {
+export default async function ProtectedPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ year?: string }>;
+}) {
+  const params = await searchParams;
   const supabase = await createClient();
 
   const { data, error } = await supabase.auth.getClaims();
@@ -30,11 +37,11 @@ export default async function ProtectedPage() {
     redirect("/auth/login");
   }
 
-  const currentYear = new Date().getFullYear();
+  const currentYear = params.year ? parseInt(params.year, 10) : new Date().getFullYear();
 
   const { data: employee } = await supabase
     .from("employees")
-    .select("id, name, role")
+    .select("id, name, role, category")
     .eq("user_id", data.claims.sub)
     .single();
 
@@ -46,7 +53,7 @@ export default async function ProtectedPage() {
 
   // Fetch effective employee's data (may be impersonated)
   const { data: effectiveEmployee } = effectiveId !== employee?.id
-    ? await supabase.from("employees").select("id, name, role").eq("id", effectiveId).single()
+    ? await supabase.from("employees").select("id, name, role, category").eq("id", effectiveId).single()
     : { data: employee };
 
   const displayName = isImpersonating
@@ -72,6 +79,12 @@ export default async function ProtectedPage() {
     : { data: null };
 
   const isAdmin = effectiveEmployee?.role === "admin" || effectiveEmployee?.role === "super-admin";
+
+  // Notify managers/senior-managers about pending vacation approvals from their reports
+  const isManagerCategory = effectiveEmployee?.category === "Manager" || effectiveEmployee?.category === "Senior-Manager";
+  if (isManagerCategory && effectiveId) {
+    await notifyManagerPendingApprovals(effectiveId);
+  }
 
   // ── Imputaciones for current & next week ──────────────────
   const now = new Date();
@@ -197,9 +210,25 @@ export default async function ProtectedPage() {
       {/* Vacation summary */}
       {balance && (
         <div className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            {strings.dashboard.vacationSectionTitle(currentYear)}
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              {strings.dashboard.vacationSectionTitle(currentYear)}
+            </h2>
+            <div className="flex items-center gap-1 text-xs">
+              <Link
+                href={`/main?year=${currentYear - 1}`}
+                className="px-1.5 py-0.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← {currentYear - 1}
+              </Link>
+              <Link
+                href={`/main?year=${currentYear + 1}`}
+                className="px-1.5 py-0.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {currentYear + 1} →
+              </Link>
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="flex items-center gap-4 rounded-xl border p-4">
               <div className="flex items-center justify-center size-10 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
@@ -280,6 +309,9 @@ export default async function ProtectedPage() {
           )}
         </div>
       )}
+
+      {/* ── Notificaciones pendientes ───────────────────── */}
+      <NotificationDashboard />
 
       {/* ── Vacaciones ──────────────────────────────────── */}
       <div className="flex flex-col gap-4">

@@ -62,9 +62,13 @@ export function HolidaysManager({ holidays: initialHolidays, currentYear }: Prop
   const [newDate, setNewDate] = useState("");
   const [newName, setNewName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [importYear, setImportYear] = useState(currentYear);
   const [importStatus, setImportStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [importMsg, setImportMsg] = useState("");
   const [, startTransition] = useTransition();
+
+  // Available years for import: current year ± 2
+  const availableYears = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
 
   const filtered = holidays
     .filter((h) => h.scope === activeTab)
@@ -133,7 +137,7 @@ export function HolidaysManager({ holidays: initialHolidays, currentYear }: Prop
     setImportStatus("loading");
     setImportMsg("");
     startTransition(async () => {
-      const res = await importHolidaysFromApi(currentYear, activeTab);
+      const res = await importHolidaysFromApi(importYear, activeTab);
       if (res.error) {
         setImportStatus("error");
         setImportMsg(res.error);
@@ -174,6 +178,15 @@ export function HolidaysManager({ holidays: initialHolidays, currentYear }: Prop
 
       {/* Import button */}
       <div className="flex items-center gap-3 flex-wrap">
+        <select
+          value={importYear}
+          onChange={(e) => setImportYear(parseInt(e.target.value, 10))}
+          className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+        >
+          {availableYears.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
         <Button
           variant="outline"
           size="sm"
@@ -187,7 +200,7 @@ export function HolidaysManager({ holidays: initialHolidays, currentYear }: Prop
           <DownloadIcon className="size-3.5 mr-1.5" />
           {importStatus === "loading"
             ? "Importando…"
-            : `Importar festivos nacionales ${currentYear} desde API`}
+            : `Importar festivos nacionales ${importYear} desde API`}
         </Button>
         {importMsg && (
           <span className={cn(

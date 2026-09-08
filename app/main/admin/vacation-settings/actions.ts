@@ -21,6 +21,8 @@ export async function updateVacationSettings(
   if (emp?.role !== "admin" && emp?.role !== "super-admin") return { error: "Not authorized" };
 
   const currentYear = new Date().getFullYear();
+  // Propagate to current and next year (for cross-year vacation support)
+  const yearsToPropagate = [currentYear, currentYear + 1];
 
   for (const category of CATEGORIES) {
     const raw = formData.get(category) as string;
@@ -34,7 +36,7 @@ export async function updateVacationSettings(
 
     if (error) return { error: error.message };
 
-    // Propagate the new total_days to existing vacation_balances for this year,
+    // Propagate the new total_days to existing vacation_balances for current + next year,
     // but only for employees who do NOT have a custom_vacation_days override.
     const { data: affectedEmployees } = await supabase
       .from("employees")
@@ -47,7 +49,7 @@ export async function updateVacationSettings(
       await supabase
         .from("vacation_balances")
         .update({ total_days: days })
-        .eq("year", currentYear)
+        .in("year", yearsToPropagate)
         .in("employee_id", ids);
     }
   }
