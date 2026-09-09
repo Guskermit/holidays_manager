@@ -7,7 +7,7 @@ import { getEffectiveEmployee } from "@/lib/impersonation";
 import { ImpersonationSelector } from "@/components/impersonation-selector";
 import { WeekEngagementList } from "@/components/week-engagement-list";
 import { NotificationDashboard } from "@/components/notification-dashboard";
-import { notifyManagerPendingApprovals } from "@/lib/notifications";
+import { notifyManagerPendingApprovals, notifyAdminPendingVacationApprovals } from "@/lib/notifications";
 
 /** Get Monday of the current week */
 function getMonday(d: Date): Date {
@@ -84,6 +84,11 @@ export default async function ProtectedPage({
   const isManagerCategory = effectiveEmployee?.category === "Manager" || effectiveEmployee?.category === "Senior-Manager";
   if (isManagerCategory && effectiveId) {
     await notifyManagerPendingApprovals(effectiveId);
+  }
+
+  // Notify admins/super-admins about pending vacation requests from employees in their projects
+  if (isAdmin && effectiveId) {
+    await notifyAdminPendingVacationApprovals(effectiveId);
   }
 
   // ── Imputaciones for current & next week ──────────────────
