@@ -1,13 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useEffect, useState } from "react";
-import type {
-  MyImputacionesData,
-  MyEngagementData,
-  MyAbsenceData,
-  WeekInfo,
-  MonthGroup,
-} from "@/app/main/my-imputaciones/actions";
+import type { MyImputacionesData } from "@/app/main/my-imputaciones/actions";
 import { requestEngagement } from "@/app/main/my-imputaciones/actions";
 import {
   BriefcaseIcon,

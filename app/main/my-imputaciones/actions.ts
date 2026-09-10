@@ -67,11 +67,6 @@ const BASE_SUMMER_TARGET = 30;
 
 // ── Helpers ────────────────────────────────────────────────
 
-function isWeekend(d: Date): boolean {
-  const day = d.getDay();
-  return day === 0 || day === 6;
-}
-
 function dailyHours(d: Date): number {
   if (isSummer(d)) return 6;
   const day = d.getDay();
