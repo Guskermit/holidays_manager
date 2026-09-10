@@ -7,7 +7,6 @@ import {
   ChevronRightIcon,
   PlusIcon,
   Trash2Icon,
-  XIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { strings } from "@/lib/strings";

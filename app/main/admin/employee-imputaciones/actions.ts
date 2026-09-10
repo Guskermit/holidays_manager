@@ -1,10 +1,9 @@
 "use server";
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { createServiceClient } from "@/lib/supabase/service";
+
 
 type Office = "madrid" | "barcelona" | "valencia" | "malaga" | "zaragoza" | "sevilla";
 

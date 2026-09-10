@@ -24,8 +24,8 @@ export function WeekEngagementList({ engagements }: { engagements: Engagement[] 
 
   return (
     <div className="flex flex-col gap-1.5">
-      {engagements.map((imp) => (
-        <div key={imp.engagement_code} className="flex items-center justify-between text-xs gap-2">
+      {engagements.map((imp, idx) => (
+        <div key={`${imp.engagement_code}-${idx}`} className="flex items-center justify-between text-xs gap-2">
           <span className="truncate font-medium">
             <span className="text-muted-foreground mr-1.5">{imp.engagement_code}</span>
             {imp.engagement_name}
