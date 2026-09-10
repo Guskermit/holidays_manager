@@ -20,6 +20,7 @@ export async function getMyNotifications(): Promise<{
     created_by_name: string;
     target_type: string;
     target_name: string | null;
+    target_url: string | null;
   }[];
   error?: string;
   unreadCount?: number;
