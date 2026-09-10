@@ -11,6 +11,7 @@ import {
   notifyVacationApprovedInApp,
   notifyVacationRejectedInApp,
   notifyVacationCancelledInApp,
+  markVacationRequestNotificationsAsRead,
 } from "@/lib/notifications";
 
 async function getAdminEmployee() {
@@ -92,7 +93,11 @@ export async function approveVacationRequest(requestId: string): Promise<{ error
     isMedicalLeave: req.is_medical_leave,
   });
 
+  // Mark all manager notifications about this request as read
+  await markVacationRequestNotificationsAsRead(requestId);
+
   revalidatePath("/main/admin/vacation-requests");
+  revalidatePath("/main");
   return {};
 }
 
@@ -163,7 +168,11 @@ export async function rejectVacationRequest(
     reason,
   });
 
+  // Mark all manager notifications about this request as read
+  await markVacationRequestNotificationsAsRead(requestId);
+
   revalidatePath("/main/admin/vacation-requests");
+  revalidatePath("/main");
   return {};
 }
 

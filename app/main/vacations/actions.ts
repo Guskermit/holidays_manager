@@ -124,18 +124,22 @@ export async function requestVacation(
   }
 
   // Create the request — bootcamp, medical leave, and other days are auto-approved
-  const { error: insertError } = await supabase.from("vacation_requests").insert({
-    employee_id: employeeId,
-    start_date: startDate,
-    end_date: endDate,
-    days_requested: daysRequested,
-    status: isBootcamp || isMedicalLeave || isOther ? "approved" : "pending",
-    year: effectiveYear,
-    is_bootcamp: isBootcamp,
-    is_medical_leave: isMedicalLeave,
-    is_other: isOther,
-    other_reason: isOther ? otherReason.trim() : null,
-  });
+  const { data: insertedRequest, error: insertError } = await supabase
+    .from("vacation_requests")
+    .insert({
+      employee_id: employeeId,
+      start_date: startDate,
+      end_date: endDate,
+      days_requested: daysRequested,
+      status: isBootcamp || isMedicalLeave || isOther ? "approved" : "pending",
+      year: effectiveYear,
+      is_bootcamp: isBootcamp,
+      is_medical_leave: isMedicalLeave,
+      is_other: isOther,
+      other_reason: isOther ? otherReason.trim() : null,
+    })
+    .select("id")
+    .single();
 
   if (insertError) return { error: insertError.message };
 
@@ -162,6 +166,7 @@ export async function requestVacation(
       days: daysRequested,
       isBootcamp,
       isMedicalLeave,
+      vacationRequestId: insertedRequest?.id,
     });
   }
 

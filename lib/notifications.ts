@@ -3,9 +3,16 @@
  * that employees can see in the notification bell.
  *
  * These are separate from Slack notifications and work alongside them.
+ *
+ * IMPORTANT: Notifications are created using a service-role client
+ * (bypasses RLS) because the `notifications` table has an admin-only
+ * INSERT policy.  Non-admin users (e.g. employees requesting password
+ * recovery) must still be able to create notifications for their
+ * managers/admins.
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 function fmtDate(iso: string): string {
   return new Date(iso + "T00:00:00").toLocaleDateString("es-ES", {
@@ -17,16 +24,19 @@ function fmtDate(iso: string): string {
 
 /**
  * Create an in-app notification for a specific employee.
- * Uses the service role client to bypass RLS (called from server actions).
+ * Uses the service-role client to bypass RLS (the `notifications` table
+ * has an admin-only INSERT policy, but non-admin users need to create
+ * notifications — e.g. employees requesting password recovery).
  */
 export async function createEmployeeNotification(params: {
   title: string;
   message: string;
   employeeId: string;
   createdBy: string;
+  vacationRequestId?: string;
 }): Promise<void> {
-  const { title, message, employeeId, createdBy } = params;
-  const supabase = await createClient();
+  const { title, message, employeeId, createdBy, vacationRequestId } = params;
+  const supabase = createServiceClient();
 
   // Create the notification
   const { data: notification, error } = await supabase
@@ -39,6 +49,7 @@ export async function createEmployeeNotification(params: {
       target_id: employeeId,
       is_active: true,
       recurrence: "none",
+      ...(vacationRequestId ? { vacation_request_id: vacationRequestId } : {}),
     })
     .select("id")
     .single();
@@ -138,6 +149,7 @@ export async function notifyManagersVacationRequested(params: {
   days: number;
   isBootcamp?: boolean;
   isMedicalLeave?: boolean;
+  vacationRequestId?: string;
 }): Promise<void> {
   const {
     employeeId,
@@ -147,6 +159,7 @@ export async function notifyManagersVacationRequested(params: {
     days,
     isBootcamp,
     isMedicalLeave,
+    vacationRequestId,
   } = params;
   const supabase = await createClient();
 
@@ -222,6 +235,7 @@ export async function notifyManagersVacationRequested(params: {
       message,
       employeeId: managerId,
       createdBy: employeeId,
+      vacationRequestId,
     });
   }
 }
@@ -466,4 +480,44 @@ export async function notifyAdminPendingVacationApprovals(adminId: string): Prom
       createdBy: adminId,
     });
   }
+}
+
+/**
+ * Mark all unread notifications related to a vacation request as read
+ * for every manager/admin who received them.
+ *
+ * Called when any manager approves or rejects a vacation request so that
+ * the "Solicitud pendiente" notification disappears for all managers.
+ */
+export async function markVacationRequestNotificationsAsRead(
+  vacationRequestId: string
+): Promise<void> {
+  const supabase = createServiceClient();
+
+  // 1. Find notification IDs linked to this vacation request
+  const { data: notifRows } = await supabase
+    .from("notifications")
+    .select("id")
+    .eq("vacation_request_id", vacationRequestId);
+
+  if (!notifRows || notifRows.length === 0) return;
+
+  const notifIds = notifRows.map((n) => n.id);
+
+  // 2. Find unread recipients for those notifications
+  const { data: rows } = await supabase
+    .from("notification_recipients")
+    .select("id")
+    .eq("is_read", false)
+    .in("notification_id", notifIds);
+
+  if (!rows || rows.length === 0) return;
+
+  const ids = rows.map((r) => r.id);
+
+  // 3. Mark them all as read
+  await supabase
+    .from("notification_recipients")
+    .update({ is_read: true, read_at: new Date().toISOString() })
+    .in("id", ids);
 }
