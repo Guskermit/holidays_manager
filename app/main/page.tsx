@@ -388,6 +388,28 @@ export default async function ProtectedPage({
         </div>
       </div>
 
+      {/* ── Imputaciones ──────────────────────────────────── */}
+      <div className="flex flex-col gap-4">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          Imputaciones
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Link
+            href="/main/my-imputaciones"
+            className="group flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-indigo-500 transition-colors"
+          >
+            <div className="flex items-center justify-center size-12 rounded-lg bg-indigo-500/10 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+              <LayoutListIcon className="size-6" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <h2 className="text-lg font-semibold">Mis imputaciones</h2>
+              <p className="text-sm text-muted-foreground">Engagements, vacaciones, festivos y ausencias del año.</p>
+            </div>
+            <span className="text-sm text-indigo-600 font-medium group-hover:underline">Ver →</span>
+          </Link>
+        </div>
+      </div>
+
       {/* ── Skills ──────────────────────────────────────── */}
       <div className="flex flex-col gap-4">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">

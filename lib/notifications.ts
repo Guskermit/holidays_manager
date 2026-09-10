@@ -34,9 +34,14 @@ export async function createEmployeeNotification(params: {
   employeeId: string;
   createdBy: string;
   vacationRequestId?: string;
+  targetUrl?: string;
 }): Promise<void> {
-  const { title, message, employeeId, createdBy, vacationRequestId } = params;
-  const supabase = createServiceClient();
+  const { title, message, employeeId, createdBy, vacationRequestId, targetUrl } = params;
+
+  // Use service-role client if available (bypasses RLS), otherwise fall
+  // back to the regular authenticated client.
+  const svc = createServiceClient();
+  const supabase = svc ?? (await createClient());
 
   // Create the notification
   const { data: notification, error } = await supabase
@@ -50,6 +55,7 @@ export async function createEmployeeNotification(params: {
       is_active: true,
       recurrence: "none",
       ...(vacationRequestId ? { vacation_request_id: vacationRequestId } : {}),
+      ...(targetUrl ? { target_url: targetUrl } : {}),
     })
     .select("id")
     .single();
@@ -92,6 +98,7 @@ export async function notifyVacationApprovedInApp(params: {
     message,
     employeeId,
     createdBy: adminId,
+    targetUrl: "/main/vacations",
   });
 }
 
@@ -114,6 +121,7 @@ export async function notifyVacationRejectedInApp(params: {
     message: `Tus vacaciones del ${fmtDate(startDate)} al ${fmtDate(endDate)} han sido rechazadas.${reasonText}`,
     employeeId,
     createdBy: adminId,
+    targetUrl: "/main/vacations",
   });
 }
 
@@ -133,6 +141,7 @@ export async function notifyVacationCancelledInApp(params: {
     message: `Tus vacaciones del ${fmtDate(startDate)} al ${fmtDate(endDate)} han sido canceladas por un administrador.`,
     employeeId,
     createdBy: adminId,
+    targetUrl: "/main/vacations",
   });
 }
 
@@ -236,6 +245,7 @@ export async function notifyManagersVacationRequested(params: {
       employeeId: managerId,
       createdBy: employeeId,
       vacationRequestId,
+      targetUrl: "/main/admin/vacation-requests",
     });
   }
 }
@@ -353,6 +363,7 @@ export async function notifyManagerPendingApprovals(managerId: string): Promise<
       message: `Hay ${count} solicitud${count !== 1 ? "es" : ""} de vacaciones pendiente${count !== 1 ? "s" : ""} de tus reportes directos en el cliente ${clientName}.`,
       employeeId: managerId,
       createdBy: managerId,
+      targetUrl: "/main/admin/vacation-requests",
     });
   }
 }
@@ -478,6 +489,7 @@ export async function notifyAdminPendingVacationApprovals(adminId: string): Prom
       message: `Hay ${count} solicitud${count !== 1 ? "es" : ""} de vacaciones pendiente${count !== 1 ? "s" : ""} de empleados en el cliente ${clientName}.`,
       employeeId: adminId,
       createdBy: adminId,
+      targetUrl: "/main/admin/vacation-requests",
     });
   }
 }
@@ -492,7 +504,8 @@ export async function notifyAdminPendingVacationApprovals(adminId: string): Prom
 export async function markVacationRequestNotificationsAsRead(
   vacationRequestId: string
 ): Promise<void> {
-  const supabase = createServiceClient();
+  const svc = createServiceClient();
+  const supabase = svc ?? (await createClient());
 
   // 1. Find notification IDs linked to this vacation request
   const { data: notifRows } = await supabase

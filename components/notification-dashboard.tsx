@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { BellIcon, CheckCheckIcon, ExternalLinkIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { strings } from "@/lib/strings";
 import {
@@ -21,9 +22,11 @@ type NotificationItem = {
   created_by_name: string;
   target_type: string;
   target_name: string | null;
+  target_url: string | null;
 };
 
 export function NotificationDashboard() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,9 +50,13 @@ export function NotificationDashboard() {
     await fetchNotifications();
   };
 
-  const handleMarkRead = async (recipientId: string) => {
+  const handleMarkRead = async (recipientId: string, targetUrl?: string | null) => {
     await markAsRead(recipientId);
-    await fetchNotifications();
+    if (targetUrl) {
+      router.push(targetUrl);
+    } else {
+      await fetchNotifications();
+    }
   };
 
   // Don't render anything if no pending notifications
@@ -99,7 +106,7 @@ export function NotificationDashboard() {
             <div
               key={n.id}
               className="rounded-xl border p-4 bg-amber-500/5 hover:bg-amber-500/10 transition-colors cursor-pointer"
-              onClick={() => handleMarkRead(n.id)}
+              onClick={() => handleMarkRead(n.id, n.target_url)}
             >
               <div className="flex items-start gap-3">
                 <span className="size-2 rounded-full bg-amber-500 shrink-0 mt-1.5" />

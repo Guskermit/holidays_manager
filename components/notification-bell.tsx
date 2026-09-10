@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { BellIcon, CheckCheckIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { strings } from "@/lib/strings";
 import { getMyNotifications, markAsRead, markAllAsRead } from "@/app/main/notifications/actions";
@@ -17,9 +18,11 @@ type NotificationItem = {
   created_by_name: string;
   target_type: string;
   target_name: string | null;
+  target_url: string | null;
 };
 
 export function NotificationBell() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -46,9 +49,14 @@ export function NotificationBell() {
     await fetchNotifications();
   };
 
-  const handleMarkRead = async (recipientId: string) => {
+  const handleMarkRead = async (recipientId: string, targetUrl?: string | null) => {
     await markAsRead(recipientId);
-    await fetchNotifications();
+    setIsOpen(false);
+    if (targetUrl) {
+      router.push(targetUrl);
+    } else {
+      await fetchNotifications();
+    }
   };
 
   return (
@@ -112,7 +120,14 @@ export function NotificationBell() {
                     className={`px-4 py-3 border-b last:border-b-0 cursor-pointer hover:bg-muted/50 transition-colors ${
                       !n.is_read ? "bg-blue-50/50 dark:bg-blue-950/20" : ""
                     }`}
-                    onClick={() => !n.is_read && handleMarkRead(n.id)}
+                    onClick={() => {
+                      if (!n.is_read) {
+                        handleMarkRead(n.id, n.target_url);
+                      } else if (n.target_url) {
+                        setIsOpen(false);
+                        router.push(n.target_url);
+                      }
+                    }}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">

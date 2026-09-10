@@ -4,6 +4,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { getImpersonatedEmployeeId } from "@/lib/impersonation";
 
 // ── Get current employee's notifications ───────────────────
 
@@ -27,11 +28,26 @@ export async function getMyNotifications(): Promise<{
   const { data: authData, error: authError } = await supabase.auth.getClaims();
   if (authError || !authData?.claims) redirect("/auth/login");
 
-  const { data: employee } = await supabase
-    .from("employees")
-    .select("id")
-    .eq("user_id", authData.claims.sub)
-    .single();
+  // Check impersonation cookie first
+  const impersonatedId = await getImpersonatedEmployeeId();
+
+  let employee: { id: string } | null = null;
+
+  if (impersonatedId) {
+    const { data } = await supabase
+      .from("employees")
+      .select("id")
+      .eq("id", impersonatedId)
+      .single();
+    employee = data;
+  } else {
+    const { data } = await supabase
+      .from("employees")
+      .select("id")
+      .eq("user_id", authData.claims.sub)
+      .single();
+    employee = data;
+  }
 
   if (!employee) return { error: "Employee not found" };
 
@@ -49,6 +65,7 @@ export async function getMyNotifications(): Promise<{
         message,
         target_type,
         target_id,
+        target_url,
         created_at,
         created_by,
         is_active
@@ -102,6 +119,7 @@ export async function getMyNotifications(): Promise<{
       created_by_name: createdByName,
       target_type: notif.target_type,
       target_name: targetName,
+      target_url: notif.target_url ?? null,
     });
   }
 
