@@ -464,6 +464,13 @@ export const strings = {
       dashboardCardDesc:    "Gestiona los festivos nacionales y por centro de trabajo.",
       dashboardCardLink:    "Gestionar →",
     },
+
+    // Employee imputaciones (admin review)
+    adminEmpImpTitle:      "Revisión de imputaciones",
+    adminEmpImpSubtitle:   "Revisa y edita las imputaciones de cualquier empleado.",
+    adminEmpImpDashboardCard: "Revisión imputaciones",
+    adminEmpImpDashboardCardDesc: "Revisa y edita las imputaciones semanales de los empleados.",
+    adminEmpImpDashboardCardLink: "Ir a Revisión →",
   },
 
   // ── Skills ─────────────────────────────────────────────────

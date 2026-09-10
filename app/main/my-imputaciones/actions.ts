@@ -239,30 +239,49 @@ export async function getMyImputaciones(year?: number): Promise<{
       .in("id_engagement", clientIds);
     const clientMap = new Map((clientRows ?? []).map((c) => [c.id_engagement, c.name]));
 
+    // Group imputations by engagement_id so split records still appear as one row
+    const engGroups = new Map<string, {
+      weekHours: Map<number, number>;
+      startDate: string;
+      endDate: string | null;
+    }>();
+
     for (const imp of imputaciones) {
       const eng = engMap.get(imp.engagement_id);
       if (!eng) continue;
 
-      const weekHours = new Map<number, number>();
+      let group = engGroups.get(imp.engagement_id);
+      if (!group) {
+        group = {
+          weekHours: new Map<number, number>(),
+          startDate: imp.start_date,
+          endDate: imp.end_date,
+        };
+        engGroups.set(imp.engagement_id, group);
+      }
+
       const impStart = new Date(imp.start_date + "T00:00:00");
       const impEnd = imp.end_date ? new Date(imp.end_date + "T00:00:00") : yearEnd;
 
       for (let i = 0; i < weeks.length; i++) {
         const w = weeks[i];
         if (impStart <= w.end && impEnd >= w.start) {
-          weekHours.set(i, imp.weekly_hours);
+          group.weekHours.set(i, imp.weekly_hours);
           engagementWeekMap.set(`${imp.engagement_id}-${i}`, imp.weekly_hours);
         }
       }
+    }
 
+    for (const [engagementId, group] of engGroups) {
+      const eng = engMap.get(engagementId)!;
       engagements.push({
-        id: imp.engagement_id,
+        id: engagementId,
         clientName: clientMap.get(eng.client_id) ?? eng.client_id,
         engagementName: eng.name,
         engagementCode: eng.engagement_code,
-        startDate: imp.start_date,
-        endDate: imp.end_date,
-        weekHours,
+        startDate: group.startDate,
+        endDate: group.endDate,
+        weekHours: group.weekHours,
       });
     }
   }

@@ -194,7 +194,7 @@ export function MyImputacionesTable({ data }: Props) {
           {engagements.map((eng) => {
             const total = Array.from(eng.weekHours.values()).reduce((s, h) => s + h, 0);
             return (
-              <tr key={eng.id} className="border-t">
+              <tr key={`eng-${engIdx}`} className="border-t">
                 <td className="px-3 py-2 sticky left-0 bg-background z-10 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.08)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.3)]">
                   <div className="flex items-center gap-2">
                     <BriefcaseIcon className="size-3.5 text-indigo-500 shrink-0" />

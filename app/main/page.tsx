@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { FolderKanbanIcon, CalendarDaysIcon, LayoutListIcon, CheckCircle2Icon, ClockIcon, SunIcon, UsersIcon, ClipboardListIcon, BrainIcon, SearchIcon, TrendingUpIcon, SettingsIcon, BarChart2Icon, BookOpenIcon, TimerIcon, CalendarIcon, BotIcon, BellIcon, BriefcaseIcon } from "lucide-react";
+import { FolderKanbanIcon, CalendarDaysIcon, LayoutListIcon, CheckCircle2Icon, ClockIcon, SunIcon, UsersIcon, ClipboardListIcon, BrainIcon, SearchIcon, TrendingUpIcon, SettingsIcon, BarChart2Icon, BookOpenIcon, TimerIcon, CalendarIcon, BotIcon, BellIcon, BriefcaseIcon, UserCheckIcon } from "lucide-react";
 import { strings } from "@/lib/strings";
 import { getEffectiveEmployee } from "@/lib/impersonation";
 import { ImpersonationSelector } from "@/components/impersonation-selector";
@@ -713,6 +713,22 @@ export default async function ProtectedPage({
                 <p className="text-sm text-muted-foreground">{strings.imputaciones.dashboardCardDesc}</p>
               </div>
               <span className="text-sm text-violet-600 font-medium group-hover:underline">{strings.imputaciones.dashboardCardLink}</span>
+            </Link>
+
+            {/* Admin: Employee imputaciones review */}
+            <Link
+              href="/main/admin/employee-imputaciones"
+              className="group relative flex flex-col gap-4 rounded-xl border p-6 hover:bg-accent hover:border-violet-500 transition-colors"
+            >
+              <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-600">{strings.dashboard.adminBadge}</span>
+              <div className="flex items-center justify-center size-12 rounded-lg bg-violet-500/10 text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition-colors">
+                <UserCheckIcon className="size-6" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <h2 className="text-lg font-semibold">{strings.admin.adminEmpImpDashboardCard}</h2>
+                <p className="text-sm text-muted-foreground">{strings.admin.adminEmpImpDashboardCardDesc}</p>
+              </div>
+              <span className="text-sm text-violet-600 font-medium group-hover:underline">{strings.admin.adminEmpImpDashboardCardLink}</span>
             </Link>
           </div>
         </div>
