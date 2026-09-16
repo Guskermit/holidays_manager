@@ -66,7 +66,7 @@ export async function requestVacation(
         error: `No tienes suficientes días de Bootcamp. Te quedan ${remainingBootcamp} de ${BOOTCAMP_MAX_DAYS} días.`,
       };
     }
-  } else if (!isMedicalLeave) {
+  } else if (!isMedicalLeave && !isOther) {
     // Detect cross-year vacation (e.g. Dec 29 → Jan 5)
     const endDateObj = new Date(endDate + "T00:00:00");
     const endYear = endDateObj.getFullYear();
@@ -75,13 +75,15 @@ export async function requestVacation(
     // Compute category-based maximum days for the requested year
     const maxDays = await getCategoryDays(supabase, employee.category, employee.custom_vacation_days);
 
-    // Sum all approved + pending non-bootcamp days for the year
+    // Sum all approved + pending regular vacation days (excluding bootcamp, medical leave, and 'Otros')
     const { data: existingRequests } = await supabase
       .from("vacation_requests")
       .select("days_requested")
       .eq("employee_id", employeeId)
       .eq("year", year)
       .eq("is_bootcamp", false)
+      .eq("is_medical_leave", false)
+      .eq("is_other", false)
       .in("status", ["approved", "pending"]);
 
     const usedAndPending = (existingRequests ?? []).reduce(
@@ -102,6 +104,8 @@ export async function requestVacation(
         .eq("employee_id", employeeId)
         .eq("year", nextYear)
         .eq("is_bootcamp", false)
+        .eq("is_medical_leave", false)
+        .eq("is_other", false)
         .in("status", ["approved", "pending"]);
 
       const nextUsedAndPending = (nextYearRequests ?? []).reduce(
@@ -157,7 +161,7 @@ export async function requestVacation(
   });
 
   // In-app notification to managers of the employee's projects
-  if (!isBootcamp && !isMedicalLeave) {
+  if (!isBootcamp && !isMedicalLeave && !isOther) {
     await notifyManagersVacationRequested({
       employeeId,
       employeeName: emp?.name ?? "Empleado",
@@ -170,8 +174,8 @@ export async function requestVacation(
     });
   }
 
-  // Bootcamp and medical leave requests do NOT consume the regular vacation balance
-  if (!isBootcamp && !isMedicalLeave) {
+  // Bootcamp, medical leave, and 'Otros' requests do NOT consume the regular vacation balance
+  if (!isBootcamp && !isMedicalLeave && !isOther) {
     const maxDays = await getCategoryDays(supabase, employee.category, employee.custom_vacation_days);
 
     const { data: balance } = await supabase
@@ -218,7 +222,7 @@ export async function cancelVacationRequest(
 
   const { data: req } = await supabase
     .from("vacation_requests")
-    .select("id, status, start_date, days_requested, year, employee_id, is_bootcamp, is_medical_leave")
+    .select("id, status, start_date, days_requested, year, employee_id, is_bootcamp, is_medical_leave, is_other")
     .eq("id", requestId)
     .eq("employee_id", employee.id)
     .single();
@@ -244,8 +248,8 @@ export async function cancelVacationRequest(
 
   if (updErr) return { error: updErr.message };
 
-  // Bootcamp and medical leave requests do not touch the vacation balance
-  if (!req.is_bootcamp && !req.is_medical_leave) {
+  // Bootcamp, medical leave, and 'Otros' requests do not touch the vacation balance
+  if (!req.is_bootcamp && !req.is_medical_leave && !req.is_other) {
     const { data: bal } = await supabase
       .from("vacation_balances")
       .select("pending_days, used_days")

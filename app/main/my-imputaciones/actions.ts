@@ -77,7 +77,7 @@ function dailyHours(d: Date): number {
 // Fixed weekly commercial action hours by category
 const COMMERCIAL_HOURS: Record<string, { regular: number; summer: number }> = {
   "Senior-Manager": { regular: 21, summer: 15 },
-  Manager:          { regular: 29, summer: 21 },
+  Manager:          { regular: 13, summer: 9 },
 };
 
 function fmtDate(d: Date): string {

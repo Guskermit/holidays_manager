@@ -76,7 +76,7 @@ const BASE_SUMMER_TARGET = 30;
 
 const COMMERCIAL_HOURS: Record<string, { regular: number; summer: number }> = {
   "Senior-Manager": { regular: 21, summer: 15 },
-  Manager:          { regular: 29, summer: 21 },
+  Manager:          { regular: 13, summer: 9 },
 };
 
 const MONTH_NAMES = [
