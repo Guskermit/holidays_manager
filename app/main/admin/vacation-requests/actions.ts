@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { countWorkingDays, getHolidaysForOfficeFromDB, type Office } from "@/lib/holidays";
 import {
   notifyVacationApproved,
   notifyVacationRejected,
@@ -29,6 +30,27 @@ async function getAdminEmployee() {
   return { supabase, adminId: emp.id };
 }
 
+/** Recalculate working days for a vacation request, ignoring weekends + holidays */
+async function recalculateDays(
+  supabase: import("@supabase/supabase-js").SupabaseClient,
+  employeeId: string,
+  startDate: string,
+  endDate: string
+): Promise<number> {
+  const { data: emp } = await supabase
+    .from("employees")
+    .select("office")
+    .eq("id", employeeId)
+    .single();
+  const office = (emp?.office as Office) ?? "madrid";
+  const holidays = await getHolidaysForOfficeFromDB(office, supabase);
+  return countWorkingDays(
+    new Date(startDate + "T00:00:00"),
+    new Date(endDate + "T00:00:00"),
+    holidays
+  );
+}
+
 export async function approveVacationRequest(requestId: string): Promise<{ error?: string }> {
   const { supabase, adminId } = await getAdminEmployee();
   if (!supabase || !adminId) return { error: "Not authorized" };
@@ -51,6 +73,9 @@ export async function approveVacationRequest(requestId: string): Promise<{ error
 
   // Bootcamp, medical leave, and 'Otros' requests do not consume the vacation balance
   if (!req.is_bootcamp && !req.is_medical_leave && !req.is_other) {
+    // Recalculate actual working days server-side to ensure balance accuracy
+    const actualDays = await recalculateDays(supabase, req.employee_id, req.start_date, req.end_date);
+
     const { data: bal } = await supabase
       .from("vacation_balances")
       .select("used_days, pending_days")
@@ -62,8 +87,8 @@ export async function approveVacationRequest(requestId: string): Promise<{ error
       await supabase
         .from("vacation_balances")
         .update({
-          used_days: bal.used_days + req.days_requested,
-          pending_days: Math.max(0, bal.pending_days - req.days_requested),
+          used_days: bal.used_days + actualDays,
+          pending_days: Math.max(0, bal.pending_days - actualDays),
         })
         .eq("employee_id", req.employee_id)
         .eq("year", req.year);
@@ -131,6 +156,9 @@ export async function rejectVacationRequest(
 
   // Bootcamp, medical leave, and 'Otros' requests do not consume the vacation balance
   if (!req.is_bootcamp && !req.is_medical_leave && !req.is_other) {
+    // Recalculate actual working days server-side to ensure balance accuracy
+    const actualDays = await recalculateDays(supabase, req.employee_id, req.start_date, req.end_date);
+
     const { data: bal } = await supabase
       .from("vacation_balances")
       .select("pending_days")
@@ -141,7 +169,7 @@ export async function rejectVacationRequest(
     if (bal) {
       await supabase
         .from("vacation_balances")
-        .update({ pending_days: Math.max(0, bal.pending_days - req.days_requested) })
+        .update({ pending_days: Math.max(0, bal.pending_days - actualDays) })
         .eq("employee_id", req.employee_id)
         .eq("year", req.year);
     }
@@ -198,6 +226,9 @@ export async function cancelApprovedRequest(requestId: string): Promise<{ error?
 
   // Bootcamp, medical leave, and 'Otros' requests do not consume the vacation balance
   if (!req.is_bootcamp && !req.is_medical_leave && !req.is_other) {
+    // Recalculate actual working days server-side to ensure balance accuracy
+    const actualDays = await recalculateDays(supabase, req.employee_id, req.start_date, req.end_date);
+
     const { data: bal } = await supabase
       .from("vacation_balances")
       .select("used_days")
@@ -208,7 +239,7 @@ export async function cancelApprovedRequest(requestId: string): Promise<{ error?
     if (bal) {
       await supabase
         .from("vacation_balances")
-        .update({ used_days: Math.max(0, bal.used_days - req.days_requested) })
+        .update({ used_days: Math.max(0, bal.used_days - actualDays) })
         .eq("employee_id", req.employee_id)
         .eq("year", req.year);
     }

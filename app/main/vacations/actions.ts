@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getCategoryDays } from "@/lib/categories";
+import { countWorkingDays, getHolidaysForOfficeFromDB, type Office } from "@/lib/holidays";
 import { notifyVacationRequested } from "@/lib/slack";
 import { notifyManagersVacationRequested } from "@/lib/notifications";
 
@@ -28,13 +29,24 @@ export async function requestVacation(
 
   const { data: employee, error: empError } = await supabase
     .from("employees")
-    .select("id, category, custom_vacation_days")
+    .select("id, category, office, custom_vacation_days")
     .eq("id", employeeId)
     .eq("user_id", authData.claims.sub)
     .single();
 
   if (empError || !employee) {
     return { error: "Employee not found or access denied." };
+  }
+
+  // Recalculate actual working days server-side (ignore weekends + holidays)
+  const employeeOffice = (employee.office as Office) ?? "madrid";
+  const holidays = await getHolidaysForOfficeFromDB(employeeOffice, supabase);
+  const startDateObj = new Date(startDate + "T00:00:00");
+  const endDateObj = new Date(endDate + "T00:00:00");
+  const serverDaysRequested = countWorkingDays(startDateObj, endDateObj, holidays);
+
+  if (serverDaysRequested <= 0) {
+    return { error: "The selected range contains no working days." };
   }
 
   if (isBootcamp && isMedicalLeave) {
@@ -61,7 +73,7 @@ export async function requestVacation(
     );
     const remainingBootcamp = BOOTCAMP_MAX_DAYS - usedBootcamp;
 
-    if (daysRequested > remainingBootcamp) {
+    if (serverDaysRequested > remainingBootcamp) {
       return {
         error: `No tienes suficientes días de Bootcamp. Te quedan ${remainingBootcamp} de ${BOOTCAMP_MAX_DAYS} días.`,
       };
@@ -94,7 +106,7 @@ export async function requestVacation(
 
     // For cross-year vacations: if the start year has insufficient balance,
     // try using the next year's balance instead.
-    if (crossYear && daysRequested > remaining) {
+    if (crossYear && serverDaysRequested > remaining) {
       const nextYear = year + 1;
       const nextMaxDays = await getCategoryDays(supabase, employee.category, employee.custom_vacation_days);
 
@@ -114,13 +126,13 @@ export async function requestVacation(
       );
       const nextRemaining = nextMaxDays - nextUsedAndPending;
 
-      if (daysRequested <= nextRemaining) {
+      if (serverDaysRequested <= nextRemaining) {
         effectiveYear = nextYear;
         remaining = nextRemaining;
       }
     }
 
-    if (daysRequested > remaining) {
+    if (serverDaysRequested > remaining) {
       return {
         error: `Insufficient vacation balance. You have ${remaining} of ${maxDays} days remaining.`,
       };
@@ -134,7 +146,7 @@ export async function requestVacation(
       employee_id: employeeId,
       start_date: startDate,
       end_date: endDate,
-      days_requested: daysRequested,
+      days_requested: serverDaysRequested,
       status: isBootcamp || isMedicalLeave || isOther ? "approved" : "pending",
       year: effectiveYear,
       is_bootcamp: isBootcamp,
@@ -157,7 +169,7 @@ export async function requestVacation(
     employeeName: emp?.name ?? "Empleado",
     startDate,
     endDate,
-    days: daysRequested,
+    days: serverDaysRequested,
   });
 
   // In-app notification to managers of the employee's projects
@@ -167,7 +179,7 @@ export async function requestVacation(
       employeeName: emp?.name ?? "Empleado",
       startDate,
       endDate,
-      days: daysRequested,
+      days: serverDaysRequested,
       isBootcamp,
       isMedicalLeave,
       vacationRequestId: insertedRequest?.id,
@@ -188,7 +200,7 @@ export async function requestVacation(
     if (balance) {
       await supabase
         .from("vacation_balances")
-        .update({ pending_days: balance.pending_days + daysRequested })
+        .update({ pending_days: balance.pending_days + serverDaysRequested })
         .eq("employee_id", employeeId)
         .eq("year", effectiveYear);
     } else {
@@ -196,7 +208,7 @@ export async function requestVacation(
         employee_id: employeeId,
         year: effectiveYear,
         total_days: maxDays,
-        pending_days: daysRequested,
+        pending_days: serverDaysRequested,
       });
     }
   }
@@ -214,7 +226,7 @@ export async function cancelVacationRequest(
 
   const { data: employee } = await supabase
     .from("employees")
-    .select("id")
+    .select("id, office")
     .eq("user_id", authData.claims.sub)
     .single();
 
@@ -222,7 +234,7 @@ export async function cancelVacationRequest(
 
   const { data: req } = await supabase
     .from("vacation_requests")
-    .select("id, status, start_date, days_requested, year, employee_id, is_bootcamp, is_medical_leave, is_other")
+    .select("id, status, start_date, end_date, days_requested, year, employee_id, is_bootcamp, is_medical_leave, is_other")
     .eq("id", requestId)
     .eq("employee_id", employee.id)
     .single();
@@ -250,6 +262,15 @@ export async function cancelVacationRequest(
 
   // Bootcamp, medical leave, and 'Otros' requests do not touch the vacation balance
   if (!req.is_bootcamp && !req.is_medical_leave && !req.is_other) {
+    // Recalculate actual working days server-side to ensure balance accuracy
+    const employeeOffice = (employee.office as Office) ?? "madrid";
+    const holidays = await getHolidaysForOfficeFromDB(employeeOffice, supabase);
+    const actualDays = countWorkingDays(
+      new Date(req.start_date + "T00:00:00"),
+      new Date(req.end_date + "T00:00:00"),
+      holidays
+    );
+
     const { data: bal } = await supabase
       .from("vacation_balances")
       .select("pending_days, used_days")
@@ -260,8 +281,8 @@ export async function cancelVacationRequest(
     if (bal) {
       const patch =
         req.status === "pending"
-          ? { pending_days: Math.max(0, bal.pending_days - req.days_requested) }
-          : { used_days: Math.max(0, bal.used_days - req.days_requested) };
+          ? { pending_days: Math.max(0, bal.pending_days - actualDays) }
+          : { used_days: Math.max(0, bal.used_days - actualDays) };
 
       await supabase
         .from("vacation_balances")
