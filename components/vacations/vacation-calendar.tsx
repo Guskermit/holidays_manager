@@ -38,6 +38,7 @@ type Props = {
   holidays?: string[];
   requests: VacationRequest[];
   maxDays: number;
+  balance?: { total_days: number; used_days: number; pending_days: number } | null;
   readOnly?: boolean;
   onSubmit?: (
     employeeId: string,
@@ -98,6 +99,7 @@ export function VacationCalendar({
   holidays: holidaysProp,
   requests,
   maxDays,
+  balance,
   readOnly = false,
   onSubmit,
   onCancel,
@@ -318,8 +320,9 @@ export function VacationCalendar({
     return countWorkingDays(selStart, selEnd, holidays);
   }, [selStart, selEnd, holidays]);
 
-  const remaining =
-    maxDays - (requests
+  const remaining = balance
+    ? balance.total_days - balance.used_days - balance.pending_days
+    : maxDays - (requests
       .filter(r => !r.is_bootcamp && !r.is_medical_leave && !r.is_other && (r.status === "approved" || r.status === "pending"))
       .reduce((s, r) => s + r.days_requested, 0));
 
@@ -737,16 +740,21 @@ export function VacationCalendar({
           const solicitados = requests
             .filter(r => r.status !== "cancelled" && !r.is_bootcamp && !r.is_medical_leave && !r.is_other)
             .reduce((s, r) => s + r.days_requested, 0);
-          const aprobados = requests
-            .filter(r => r.status === "approved" && !r.is_bootcamp && !r.is_medical_leave && !r.is_other)
-            .reduce((s, r) => s + r.days_requested, 0);
-          const pendientes = requests
-            .filter(r => r.status === "pending" && !r.is_bootcamp && !r.is_medical_leave && !r.is_other)
-            .reduce((s, r) => s + r.days_requested, 0);
+          const aprobados = balance
+            ? balance.used_days
+            : requests
+              .filter(r => r.status === "approved" && !r.is_bootcamp && !r.is_medical_leave && !r.is_other)
+              .reduce((s, r) => s + r.days_requested, 0);
+          const pendientes = balance
+            ? balance.pending_days
+            : requests
+              .filter(r => r.status === "pending" && !r.is_bootcamp && !r.is_medical_leave && !r.is_other)
+              .reduce((s, r) => s + r.days_requested, 0);
           const disfrutados = requests
             .filter(r => r.status === "approved" && !r.is_bootcamp && !r.is_medical_leave && !r.is_other && new Date(r.end_date + "T00:00:00") < today)
             .reduce((s, r) => s + r.days_requested, 0);
-          const restantes = maxDays - aprobados - pendientes;
+          const totalDays = balance ? balance.total_days : maxDays;
+          const restantes = totalDays - aprobados - pendientes;
 
           return (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -760,7 +768,7 @@ export function VacationCalendar({
                 <div key={label} className="rounded-lg border bg-card p-3 flex flex-col gap-1">
                   <span className="text-xs text-muted-foreground">{label}</span>
                   <span className={`text-2xl font-bold ${color}`}>{value}</span>
-                  <span className="text-xs text-muted-foreground">{strings.vacations.statOf(maxDays)}</span>
+                  <span className="text-xs text-muted-foreground">{strings.vacations.statOf(totalDays)}</span>
                 </div>
               ))}
             </div>

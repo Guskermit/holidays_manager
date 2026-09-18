@@ -46,13 +46,22 @@ export default async function VacationsPage() {
 
   const maxDays = await getCategoryDays(supabase, employee.category, employee.custom_vacation_days);
 
-  const [{ data: requests }, holidaysSet] = await Promise.all([
+  const currentYear = new Date().getFullYear();
+
+  const [{ data: requests }, holidaysSet, { data: balance }] = await Promise.all([
     supabase
       .from("vacation_requests")
       .select("id, start_date, end_date, days_requested, status, year, is_bootcamp, is_medical_leave, is_other, other_reason")
       .eq("employee_id", employee.id)
+      .eq("year", currentYear)
       .order("start_date", { ascending: false }),
     getHolidaysForOfficeFromDB((employee.office as Office) ?? "madrid", supabase),
+    supabase
+      .from("vacation_balances")
+      .select("total_days, used_days, pending_days")
+      .eq("employee_id", employee.id)
+      .eq("year", currentYear)
+      .single(),
   ]);
   const holidays = [...holidaysSet];
 
@@ -92,6 +101,7 @@ export default async function VacationsPage() {
         holidays={holidays}
         requests={requests ?? []}
         maxDays={maxDays}
+        balance={balance}
         onSubmit={isImpersonating ? undefined : requestVacation}
         onCancel={isImpersonating ? undefined : cancelVacationRequest}
         readOnly={isImpersonating}
