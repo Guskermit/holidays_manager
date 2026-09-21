@@ -82,6 +82,7 @@ const MONTH_NAMES = strings.vacations.calendarMonths;
 
 export function VacationSummaryTable({ employees, projects, balances, year: propYear, month: propMonth, teams = [], teamAssignments, holidaysByOffice }: Props) {
   const today = new Date();
+  const todayStr = toDateString(today);
   const router = useRouter();
   const [year, setYear]   = useState(propYear ?? today.getFullYear());
   const [month, setMonth] = useState(propMonth ?? today.getMonth());
@@ -509,11 +510,13 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
                 {days.map(d => {
                   const weekend = isWeekend(d);
                   const ds = toDateString(d);
+                  const isToday = ds === todayStr;
                   return (
                     <th
                       key={ds}
                       className={cn(
                         "sticky top-0 bg-muted font-medium py-2 w-8 text-center border-r last:border-r-0",
+                        isToday && "bg-yellow-100 dark:bg-yellow-200/30",
                         weekend ? "text-muted-foreground/50" : "text-foreground"
                       )}
                     >
@@ -604,6 +607,7 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
                       const ds = toDateString(d);
                       const weekend = isWeekend(d);
                       const holiday = isHoliday(d, officeHolidays);
+                      const isToday = ds === todayStr;
                       const status: VacationRequest["status"] | undefined = dayMap.get(ds);
                       const isBootcampApproved = status === "approved" && bootcampSet.has(ds);
                       const isMedicalLeaveApproved = status === "approved" && medicalLeaveSet.has(ds);
@@ -627,7 +631,8 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
                           }
                           className={cn(
                             "border-r last:border-r-0 p-0.5 text-center",
-                            blocked && !status && "bg-muted/30"
+                            blocked && !status && "bg-muted/30",
+                            isToday && "bg-yellow-100 dark:bg-yellow-200/30"
                           )}
                         >
                           {status && (
