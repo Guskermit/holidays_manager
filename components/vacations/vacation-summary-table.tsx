@@ -482,28 +482,28 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
       {visibleEmployees.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">{strings.vacations.overviewEmpty}</p>
       ) : (
-        <div className="overflow-x-auto rounded-md border">
+        <div className="overflow-auto max-h-[calc(100vh-200px)] rounded-md border">
           <table className="text-xs border-collapse min-w-full">
-            <thead>
+            <thead className="z-20">
               <tr className="bg-muted/50">
                 {/* sticky employee name column */}
-                <th className="sticky left-0 z-10 bg-muted/80 backdrop-blur text-left font-medium px-3 py-2 min-w-40 border-r">
+                <th className="sticky top-0 left-0 z-20 bg-muted text-left font-medium px-3 py-2 min-w-40 border-r">
                   {strings.vacations.overviewColEmployee}
                 </th>
                 <th
-                  className="text-left font-medium px-2 py-2 min-w-24 border-r text-muted-foreground cursor-pointer hover:text-foreground select-none whitespace-nowrap"
+                  className="sticky top-0 bg-muted text-left font-medium px-2 py-2 min-w-24 border-r text-muted-foreground cursor-pointer hover:text-foreground select-none whitespace-nowrap"
                   onClick={() => toggleSort("category")}
                 >
                   {strings.vacations.overviewColCategory}
                   <SortIcon col="category" />
                 </th>
-                <th className="text-left font-medium px-2 py-2 min-w-32 border-r text-muted-foreground">
+                <th className="sticky top-0 bg-muted text-left font-medium px-2 py-2 min-w-32 border-r text-muted-foreground">
                   {strings.vacations.overviewColSpecs}
                 </th>
-                <th className="text-left font-medium px-2 py-2 min-w-20 border-r text-muted-foreground">
+                <th className="sticky top-0 bg-muted text-left font-medium px-2 py-2 min-w-20 border-r text-muted-foreground">
                   {strings.vacations.overviewColOffice}
                 </th>
-                <th className="text-center font-medium px-2 py-2 min-w-24 border-r text-muted-foreground whitespace-nowrap">
+                <th className="sticky top-0 bg-muted text-center font-medium px-2 py-2 min-w-24 border-r text-muted-foreground whitespace-nowrap">
                   Días {year}
                 </th>
                 {days.map(d => {
@@ -513,8 +513,8 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
                     <th
                       key={ds}
                       className={cn(
-                        "font-medium py-2 w-8 text-center border-r last:border-r-0",
-                        weekend ? "text-muted-foreground/50 bg-muted/30" : "text-foreground"
+                        "sticky top-0 bg-muted font-medium py-2 w-8 text-center border-r last:border-r-0",
+                        weekend ? "text-muted-foreground/50" : "text-foreground"
                       )}
                     >
                       <div>{d.getDate()}</div>
