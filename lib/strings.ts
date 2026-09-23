@@ -597,6 +597,8 @@ export const strings = {
     adminHoursSlackSending: "Enviando…",
     adminHoursSlackSent:    "Notificación enviada",
     adminHoursSlackError:   "Error al enviar la notificación",
+    adminHoursHideCompleted:"Ocultar completados",
+    adminHoursShowCompleted:"Mostrar todos",
     adminHoursAllComplete:  "Todos los empleados han completado sus horas esta semana.",
     // Admin monthly summary view
     adminMonthlyTitle:      "Resumen mensual Minor",

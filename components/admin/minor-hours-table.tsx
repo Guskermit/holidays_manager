@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { ChevronLeftIcon, ChevronRightIcon, BellIcon } from "lucide-react";
+import { useState, useTransition, useMemo } from "react";
+import { ChevronLeftIcon, ChevronRightIcon, BellIcon, EyeOffIcon, EyeIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { notifyIncompleteMinorHours } from "@/app/main/admin/minor/hours/actions";
@@ -83,6 +83,7 @@ export function MinorHoursTable({
   defaultWeekStart,
 }: Props) {
   const [notifyStatus, setNotifyStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [hideCompleted, setHideCompleted] = useState(false);
   const [, startTransition] = useTransition();
 
   const groups = groupByColor(subprojects);
@@ -96,6 +97,17 @@ export function MinorHoursTable({
     const total = subprojects.reduce((sum, sp) => sum + (e.hours[sp.id] ?? 0), 0);
     return total < e.weekly_hours;
   });
+
+  const completedCount = initialEmployees.length - incompleteEmployees.length;
+
+  const visibleEmployees = useMemo(() => {
+    if (!hideCompleted) return initialEmployees;
+    return initialEmployees.filter((e) => {
+      if (isEmployeeInactive(e)) return false;
+      const total = subprojects.reduce((sum, sp) => sum + (e.hours[sp.id] ?? 0), 0);
+      return total < e.weekly_hours;
+    });
+  }, [hideCompleted, initialEmployees, subprojects]);
 
   const handleNotify = () => {
     setNotifyStatus("sending");
@@ -171,17 +183,32 @@ export function MinorHoursTable({
             {notifyStatus === "error"   && strings.minor.adminHoursSlackError}
           </Button>
         )}
+
+        {completedCount > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setHideCompleted((v) => !v)}
+          >
+            {hideCompleted ? (
+              <EyeIcon className="size-4 mr-1.5" />
+            ) : (
+              <EyeOffIcon className="size-4 mr-1.5" />
+            )}
+            {hideCompleted ? strings.minor.adminHoursShowCompleted : strings.minor.adminHoursHideCompleted}
+          </Button>
+        )}
       </div>
 
       {initialEmployees.length === 0 ? (
         <p className="text-sm text-muted-foreground">{strings.minor.adminHoursNoEmployees}</p>
       ) : (
-        <div className="overflow-x-auto rounded-md border">
+        <div className="overflow-auto rounded-md border max-h-[70vh]">
           <table className="w-full text-sm">
-            <thead>
+            <thead className="sticky top-0 z-20">
               <tr className="bg-muted/50 border-b">
                 {/* Employee column */}
-                <th className="text-left font-medium px-4 py-3 whitespace-nowrap sticky left-0 bg-muted/50 z-10">
+                <th className="text-left font-medium px-4 py-3 whitespace-nowrap sticky left-0 bg-muted/50 z-20">
                   {strings.minor.adminHoursColEmployee}
                 </th>
 
@@ -208,13 +235,13 @@ export function MinorHoursTable({
                 )}
 
                 {/* Total column */}
-                <th className="text-center font-medium px-3 py-3 whitespace-nowrap">
+                <th className="text-center font-medium px-3 py-3 whitespace-nowrap sticky right-0 bg-muted/50 z-20">
                   {strings.minor.adminHoursColTotal}
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {initialEmployees.map((employee) => {
+              {visibleEmployees.map((employee) => {
                 const total = subprojects.reduce(
                   (sum, sp) => sum + (employee.hours[sp.id] ?? 0), 0
                 );
@@ -223,7 +250,7 @@ export function MinorHoursTable({
 
                 return (
                   <tr key={employee.id} className={cn("hover:bg-muted/30", inactive && "opacity-50")}>
-                    <td className="px-4 py-3 font-medium sticky left-0 bg-background whitespace-nowrap z-10">
+                    <td className="px-4 py-3 font-medium sticky left-0 bg-background whitespace-nowrap z-20">
                       {employee.name}
                       {inactive && (
                         <span className="ml-2 inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -251,7 +278,7 @@ export function MinorHoursTable({
                     )}
 
                     <td className={cn(
-                      "px-3 py-3 text-center font-semibold tabular-nums",
+                      "px-3 py-3 text-center font-semibold tabular-nums sticky right-0 bg-background z-20",
                       inactive && "text-muted-foreground",
                       !inactive && !isComplete && "text-red-500",
                       !inactive && isComplete  && "text-emerald-600",
