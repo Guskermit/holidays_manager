@@ -1,10 +1,21 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
-import { ChevronLeftIcon, ChevronRightIcon, BellIcon, EyeOffIcon, EyeIcon } from "lucide-react";
+import { useState, useTransition, useMemo, useCallback } from "react";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  BellIcon,
+  EyeOffIcon,
+  EyeIcon,
+  CalendarDaysIcon,
+  CalendarIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { notifyIncompleteMinorHours } from "@/app/main/admin/minor/hours/actions";
+import {
+  notifyIncompleteMinorHours,
+  getMonthlyMinorHours,
+} from "@/app/main/admin/minor/hours/actions";
 import { strings } from "@/lib/strings";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -19,6 +30,8 @@ type EmployeeRow = {
   hours: { [subprojectId: string]: number };
   exit_date?: string | null;
 };
+
+type MonthlyEmployeeRow = EmployeeRow & { weeksInMonth: number };
 
 type Props = {
   subprojects: Subproject[];
@@ -54,12 +67,30 @@ function nextWeekIso(iso: string): string {
   return toIso(d);
 }
 
+function prevMonthIso(iso: string): string {
+  const d = parseIso(iso);
+  d.setMonth(d.getMonth() - 1);
+  return toIso(d);
+}
+
+function nextMonthIso(iso: string): string {
+  const d = parseIso(iso);
+  d.setMonth(d.getMonth() + 1);
+  return toIso(d);
+}
+
 function weekLabel(iso: string): string {
   const monday = parseIso(iso);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
   const fmt = (d: Date) => `${d.getDate()} ${MONTH_NAMES[d.getMonth()]}`;
   return `${fmt(monday)} – ${fmt(sunday)} ${sunday.getFullYear()}`;
+}
+
+function monthLabel(iso: string): string {
+  const d = parseIso(iso);
+  const monthName = MONTH_NAMES[d.getMonth()];
+  return `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${d.getFullYear()}`;
 }
 
 // Group subprojects by color preserving first-seen order
@@ -84,6 +115,9 @@ export function MinorHoursTable({
 }: Props) {
   const [notifyStatus, setNotifyStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [hideCompleted, setHideCompleted] = useState(false);
+  const [viewMode, setViewMode] = useState<"weekly" | "monthly">("weekly");
+  const [monthlyEmployees, setMonthlyEmployees] = useState<MonthlyEmployeeRow[]>([]);
+  const [loadingMonthly, setLoadingMonthly] = useState(false);
   const [, startTransition] = useTransition();
 
   const groups = groupByColor(subprojects);
@@ -92,22 +126,54 @@ export function MinorHoursTable({
   const isEmployeeInactive = (e: EmployeeRow) =>
     !!e.exit_date && e.exit_date <= todayIso;
 
-  const incompleteEmployees = initialEmployees.filter((e) => {
+  const isWeekly = viewMode === "weekly";
+  const activeEmployees = isWeekly ? initialEmployees : monthlyEmployees;
+
+  const getTarget = useCallback(
+    (e: EmployeeRow) => {
+      if (isWeekly) return e.weekly_hours;
+      const me = e as MonthlyEmployeeRow;
+      return (me.weeksInMonth ?? 4) * e.weekly_hours;
+    },
+    [isWeekly],
+  );
+
+  const incompleteEmployees = activeEmployees.filter((e) => {
     if (isEmployeeInactive(e)) return false;
     const total = subprojects.reduce((sum, sp) => sum + (e.hours[sp.id] ?? 0), 0);
-    return total < e.weekly_hours;
+    return total < getTarget(e);
   });
 
-  const completedCount = initialEmployees.length - incompleteEmployees.length;
+  const completedCount = activeEmployees.length - incompleteEmployees.length;
 
   const visibleEmployees = useMemo(() => {
-    if (!hideCompleted) return initialEmployees;
-    return initialEmployees.filter((e) => {
+    if (!hideCompleted) return activeEmployees;
+    return activeEmployees.filter((e) => {
       if (isEmployeeInactive(e)) return false;
       const total = subprojects.reduce((sum, sp) => sum + (e.hours[sp.id] ?? 0), 0);
-      return total < e.weekly_hours;
+      return total < getTarget(e);
     });
-  }, [hideCompleted, initialEmployees, subprojects]);
+  }, [hideCompleted, activeEmployees, subprojects, getTarget]);
+
+  const fetchMonthly = useCallback(async () => {
+    setLoadingMonthly(true);
+    const result = await getMonthlyMinorHours(defaultWeekStart);
+    if (result.data) {
+      setMonthlyEmployees(result.data);
+    } else {
+      setMonthlyEmployees([]);
+    }
+    setLoadingMonthly(false);
+  }, [defaultWeekStart]);
+
+  const toggleView = () => {
+    if (viewMode === "weekly") {
+      setViewMode("monthly");
+      fetchMonthly();
+    } else {
+      setViewMode("weekly");
+    }
+  };
 
   const handleNotify = () => {
     setNotifyStatus("sending");
@@ -116,7 +182,7 @@ export function MinorHoursTable({
       name: e.name,
       email: e.email,
       hoursLogged: subprojects.reduce((sum, sp) => sum + (e.hours[sp.id] ?? 0), 0),
-      hoursTarget: e.weekly_hours,
+      hoursTarget: getTarget(e),
     }));
 
     startTransition(async () => {
@@ -142,65 +208,101 @@ export function MinorHoursTable({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Week navigator + notify button */}
+      {/* Navigator + actions bar */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
             size="icon"
-            onClick={() => navigate(prevWeekIso(defaultWeekStart))}
-            title={strings.minor.adminHoursPrevWeek}
+            onClick={() =>
+              navigate(isWeekly ? prevWeekIso(defaultWeekStart) : prevMonthIso(defaultWeekStart))
+            }
+            title={isWeekly ? strings.minor.adminHoursPrevWeek : strings.minor.adminHoursPrevWeek}
           >
             <ChevronLeftIcon className="size-4" />
           </Button>
           <span className="text-base font-semibold min-w-[240px] text-center">
-            {strings.minor.adminHoursWeekOf(weekLabel(defaultWeekStart))}
+            {isWeekly
+              ? strings.minor.adminHoursWeekOf(weekLabel(defaultWeekStart))
+              : strings.minor.adminHoursMonthOf(monthLabel(defaultWeekStart))}
           </span>
           <Button
             variant="outline"
             size="icon"
-            onClick={() => navigate(nextWeekIso(defaultWeekStart))}
-            title={strings.minor.adminHoursNextWeek}
+            onClick={() =>
+              navigate(isWeekly ? nextWeekIso(defaultWeekStart) : nextMonthIso(defaultWeekStart))
+            }
+            title={isWeekly ? strings.minor.adminHoursNextWeek : strings.minor.adminHoursNextWeek}
           >
             <ChevronRightIcon className="size-4" />
           </Button>
         </div>
 
-        {incompleteEmployees.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
-            variant="outline"
-            onClick={handleNotify}
-            disabled={notifyStatus === "sending"}
-            className={cn(
-              notifyStatus === "sent"  && "border-emerald-500 text-emerald-700",
-              notifyStatus === "error" && "border-red-500 text-red-600",
-            )}
-          >
-            <BellIcon className="size-4 mr-1.5" />
-            {notifyStatus === "idle"    && strings.minor.adminHoursSlackButton}
-            {notifyStatus === "sending" && strings.minor.adminHoursSlackSending}
-            {notifyStatus === "sent"    && strings.minor.adminHoursSlackSent}
-            {notifyStatus === "error"   && strings.minor.adminHoursSlackError}
-          </Button>
-        )}
-
-        {completedCount > 0 && (
-          <Button
-            variant="outline"
+            variant={viewMode === "monthly" ? "default" : "outline"}
             size="sm"
-            onClick={() => setHideCompleted((v) => !v)}
+            onClick={toggleView}
+            disabled={loadingMonthly}
           >
-            {hideCompleted ? (
-              <EyeIcon className="size-4 mr-1.5" />
+            {viewMode === "weekly" ? (
+              <CalendarDaysIcon className="size-4 mr-1.5" />
             ) : (
-              <EyeOffIcon className="size-4 mr-1.5" />
+              <CalendarIcon className="size-4 mr-1.5" />
             )}
-            {hideCompleted ? strings.minor.adminHoursShowCompleted : strings.minor.adminHoursHideCompleted}
+            {viewMode === "weekly"
+              ? strings.minor.adminHoursViewMonthly
+              : strings.minor.adminHoursViewWeekly}
           </Button>
-        )}
+
+          {incompleteEmployees.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={handleNotify}
+              disabled={notifyStatus === "sending"}
+              className={cn(
+                notifyStatus === "sent" && "border-emerald-500 text-emerald-700",
+                notifyStatus === "error" && "border-red-500 text-red-600",
+              )}
+            >
+              <BellIcon className="size-4 mr-1.5" />
+              {notifyStatus === "idle" && strings.minor.adminHoursSlackButton}
+              {notifyStatus === "sending" && strings.minor.adminHoursSlackSending}
+              {notifyStatus === "sent" && strings.minor.adminHoursSlackSent}
+              {notifyStatus === "error" && strings.minor.adminHoursSlackError}
+            </Button>
+          )}
+
+          {completedCount > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setHideCompleted((v) => !v)}
+            >
+              {hideCompleted ? (
+                <EyeIcon className="size-4 mr-1.5" />
+              ) : (
+                <EyeOffIcon className="size-4 mr-1.5" />
+              )}
+              {hideCompleted
+                ? strings.minor.adminHoursShowCompleted
+                : strings.minor.adminHoursHideCompleted}
+            </Button>
+          )}
+        </div>
       </div>
 
-      {initialEmployees.length === 0 ? (
+      {/* Monthly target hint */}
+      {!isWeekly && monthlyEmployees.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {strings.minor.adminHoursTargetMonthly(
+            monthlyEmployees[0]?.weeksInMonth ?? 4,
+            monthlyEmployees[0]?.weekly_hours ?? 42,
+          )}
+        </p>
+      )}
+
+      {activeEmployees.length === 0 && !loadingMonthly ? (
         <p className="text-sm text-muted-foreground">{strings.minor.adminHoursNoEmployees}</p>
       ) : (
         <div className="overflow-auto rounded-md border max-h-[70vh]">
@@ -241,12 +343,13 @@ export function MinorHoursTable({
               </tr>
             </thead>
             <tbody className="divide-y">
-              {visibleEmployees.map((employee) => {
+              {(loadingMonthly ? [] : visibleEmployees).map((employee) => {
                 const total = subprojects.reduce(
                   (sum, sp) => sum + (employee.hours[sp.id] ?? 0), 0
                 );
+                const target = getTarget(employee);
                 const inactive = isEmployeeInactive(employee);
-                const isComplete = inactive || total >= employee.weekly_hours;
+                const isComplete = inactive || total >= target;
 
                 return (
                   <tr key={employee.id} className={cn("hover:bg-muted/30", inactive && "opacity-50")}>
@@ -281,25 +384,39 @@ export function MinorHoursTable({
                       "px-3 py-3 text-center font-semibold tabular-nums sticky right-0 bg-background z-20",
                       inactive && "text-muted-foreground",
                       !inactive && !isComplete && "text-red-500",
-                      !inactive && isComplete  && "text-emerald-600",
+                      !inactive && isComplete && "text-emerald-600",
                     )}>
                       {inactive ? "—" : total % 1 === 0 ? total : total.toFixed(1)}
                       {!inactive && !isComplete && (
                         <span className="block text-[10px] font-normal">
-                          / {employee.weekly_hours}
+                          / {target}
                         </span>
                       )}
                     </td>
                   </tr>
                 );
               })}
+              {loadingMonthly && (
+                <tr>
+                  <td
+                    colSpan={groups.reduce((n, g) => n + g.items.length, 0) + 2}
+                    className="px-4 py-8 text-center text-muted-foreground"
+                  >
+                    Cargando datos mensuales…
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       )}
 
-      {initialEmployees.length > 0 && incompleteEmployees.length === 0 && (
-        <p className="text-sm text-emerald-600">{strings.minor.adminHoursAllComplete}</p>
+      {activeEmployees.length > 0 && incompleteEmployees.length === 0 && !loadingMonthly && (
+        <p className="text-sm text-emerald-600">
+          {isWeekly
+            ? strings.minor.adminHoursAllComplete
+            : "Todos los empleados han completado sus horas este mes."}
+        </p>
       )}
     </div>
   );

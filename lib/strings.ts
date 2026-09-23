@@ -600,6 +600,10 @@ export const strings = {
     adminHoursHideCompleted:"Ocultar completados",
     adminHoursShowCompleted:"Mostrar todos",
     adminHoursAllComplete:  "Todos los empleados han completado sus horas esta semana.",
+    adminHoursViewWeekly:   "Vista semanal",
+    adminHoursViewMonthly:  "Vista mensual",
+    adminHoursMonthOf:      (month: string) => month,
+    adminHoursTargetMonthly:(weeks: number, weekly: number) => `${weeks} semanas × ${weekly}h = ${weeks * weekly}h/mes`,
     // Admin monthly summary view
     adminMonthlyTitle:      "Resumen mensual Minor",
     adminMonthlySubtitle:   "Vista anual con una columna por mes y total de horas por subproyecto, sumando a todos los empleados participantes.",
