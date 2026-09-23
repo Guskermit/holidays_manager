@@ -102,17 +102,27 @@ export default async function MinorMonthlySummaryAdminPage({
   const yearValue = getYearParamValue(yearParam);
   const { start, end } = getYearRange(yearValue);
 
-  const [{ data: subprojects }, { data: hoursRows }] = await Promise.all([
-    supabase
-      .from("minor_subprojects")
-      .select("id, name, color")
-      .order("name"),
-    supabase
+  const { data: subprojects } = await supabase
+    .from("minor_subprojects")
+    .select("id, name, color")
+    .order("name");
+
+  // Paginate through minor_hours to bypass the 1000-row server-side limit
+  const PAGE_SIZE = 1000;
+  let offset = 0;
+  let hoursRows: { subproject_id: string; employee_id: string; hours: number; week_start: string }[] = [];
+  while (true) {
+    const { data: page } = await supabase
       .from("minor_hours")
       .select("subproject_id, employee_id, hours, week_start")
       .gte("week_start", start)
-      .lte("week_start", end),
-  ]);
+      .lte("week_start", end)
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (!page || page.length === 0) break;
+    hoursRows = hoursRows.concat(page);
+    if (page.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
 
   const summaryMap = new Map<string, {
     monthlyHours: number[];
