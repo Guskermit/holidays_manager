@@ -47,23 +47,34 @@ export default async function VacationsPage() {
   const maxDays = await getCategoryDays(supabase, employee.category, employee.custom_vacation_days);
 
   const currentYear = new Date().getFullYear();
+  // The calendar allows selecting dates up to Jan 31 of the next year,
+  // so both years must be loaded to validate/display the correct balance.
+  const visibleYears = [currentYear, currentYear + 1];
 
-  const [{ data: requests }, holidaysSet, { data: balance }] = await Promise.all([
+  const [{ data: requests }, holidaysSet, { data: balances }] = await Promise.all([
     supabase
       .from("vacation_requests")
       .select("id, start_date, end_date, days_requested, status, year, is_bootcamp, is_medical_leave, is_other, other_reason")
       .eq("employee_id", employee.id)
-      .eq("year", currentYear)
+      .in("year", visibleYears)
       .order("start_date", { ascending: false }),
     getHolidaysForOfficeFromDB((employee.office as Office) ?? "madrid", supabase),
     supabase
       .from("vacation_balances")
-      .select("total_days, used_days, pending_days")
+      .select("year, total_days, used_days, pending_days")
       .eq("employee_id", employee.id)
-      .eq("year", currentYear)
-      .single(),
+      .in("year", visibleYears),
   ]);
   const holidays = [...holidaysSet];
+
+  const balancesByYear: Record<number, { total_days: number; used_days: number; pending_days: number }> = {};
+  for (const b of balances ?? []) {
+    balancesByYear[b.year] = {
+      total_days: b.total_days,
+      used_days: b.used_days,
+      pending_days: b.pending_days,
+    };
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -101,7 +112,7 @@ export default async function VacationsPage() {
         holidays={holidays}
         requests={requests ?? []}
         maxDays={maxDays}
-        balance={balance}
+        balances={balancesByYear}
         onSubmit={isImpersonating ? undefined : requestVacation}
         onCancel={isImpersonating ? undefined : cancelVacationRequest}
         readOnly={isImpersonating}

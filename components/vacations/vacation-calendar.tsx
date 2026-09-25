@@ -38,7 +38,7 @@ type Props = {
   holidays?: string[];
   requests: VacationRequest[];
   maxDays: number;
-  balance?: { total_days: number; used_days: number; pending_days: number } | null;
+  balances?: Record<number, { total_days: number; used_days: number; pending_days: number }> | null;
   readOnly?: boolean;
   onSubmit?: (
     employeeId: string,
@@ -99,7 +99,7 @@ export function VacationCalendar({
   holidays: holidaysProp,
   requests,
   maxDays,
-  balance,
+  balances,
   readOnly = false,
   onSubmit,
   onCancel,
@@ -113,6 +113,9 @@ export function VacationCalendar({
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() };
   });
+  // Year whose balance/request list is shown when there is no active selection.
+  // Updated on selection so the panel keeps showing the requested year afterwards.
+  const [viewYear, setViewYear] = useState(currentYear);
   const [rangeStart, setRangeStart] = useState<Date | null>(null);
   const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
   const [hovered, setHovered] = useState<Date | null>(null);
@@ -295,6 +298,7 @@ export function VacationCalendar({
       // Start new selection — also reset error
       setRangeStart(date);
       setRangeEnd(null);
+      setViewYear(date.getFullYear());
       setSubmitError(null);
       setSuccessMsg(null);
     } else {
@@ -309,6 +313,7 @@ export function VacationCalendar({
       if (date < rangeStart) {
         setRangeEnd(rangeStart);
         setRangeStart(date);
+        setViewYear(date.getFullYear());
       } else {
         setRangeEnd(date);
       }
@@ -320,15 +325,49 @@ export function VacationCalendar({
     return countWorkingDays(selStart, selEnd, holidays);
   }, [selStart, selEnd, holidays]);
 
-  const remaining = balance
-    ? balance.total_days - balance.used_days - balance.pending_days
-    : maxDays - (requests
-      .filter(r => !r.is_bootcamp && !r.is_medical_leave && !r.is_other && (r.status === "approved" || r.status === "pending"))
-      .reduce((s, r) => s + r.days_requested, 0));
+  // Year being displayed: the year of the current selection, or the last one selected.
+  const activeYear = selStart ? selStart.getFullYear() : viewYear;
+  const endYear = selEnd ? selEnd.getFullYear() : activeYear;
+
+  const activeBalance = balances?.[activeYear] ?? null;
+  const activeRequests = useMemo(
+    () => requests.filter((r) => r.year === activeYear),
+    [requests, activeYear]
+  );
+
+  const regularRequestsFor = (year: number) =>
+    requests.filter(
+      (r) =>
+        r.year === year &&
+        !r.is_bootcamp &&
+        !r.is_medical_leave &&
+        !r.is_other &&
+        (r.status === "approved" || r.status === "pending")
+    );
+
+  // Each year starts with its own full quota; balances never carry over.
+  const remainingFor = (year: number) => {
+    const yearBalance = balances?.[year];
+    if (yearBalance) {
+      return yearBalance.total_days - yearBalance.used_days - yearBalance.pending_days;
+    }
+    const used = regularRequestsFor(year).reduce((s, r) => s + r.days_requested, 0);
+    return maxDays - used;
+  };
+
+  // Mirrors the server rule: a cross-year request is charged to the start year,
+  // or entirely to the next year when the start year has no balance left.
+  let remaining = remainingFor(activeYear);
+  if (endYear > activeYear && daysSelected > remaining) {
+    const nextRemaining = remainingFor(endYear);
+    if (daysSelected <= nextRemaining) {
+      remaining = nextRemaining;
+    }
+  }
 
   const BOOTCAMP_MAX = 2;
   const remainingBootcamp =
-    BOOTCAMP_MAX - (requests
+    BOOTCAMP_MAX - (activeRequests
       .filter(r => r.is_bootcamp && (r.status === "approved" || r.status === "pending"))
       .reduce((s, r) => s + r.days_requested, 0));
 
@@ -737,23 +776,23 @@ export function VacationCalendar({
         {(() => {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
-          const solicitados = requests
+          const solicitados = activeRequests
             .filter(r => r.status !== "cancelled" && !r.is_bootcamp && !r.is_medical_leave && !r.is_other)
             .reduce((s, r) => s + r.days_requested, 0);
-          const aprobados = balance
-            ? balance.used_days
-            : requests
+          const aprobados = activeBalance
+            ? activeBalance.used_days
+            : activeRequests
               .filter(r => r.status === "approved" && !r.is_bootcamp && !r.is_medical_leave && !r.is_other)
               .reduce((s, r) => s + r.days_requested, 0);
-          const pendientes = balance
-            ? balance.pending_days
-            : requests
+          const pendientes = activeBalance
+            ? activeBalance.pending_days
+            : activeRequests
               .filter(r => r.status === "pending" && !r.is_bootcamp && !r.is_medical_leave && !r.is_other)
               .reduce((s, r) => s + r.days_requested, 0);
-          const disfrutados = requests
+          const disfrutados = activeRequests
             .filter(r => r.status === "approved" && !r.is_bootcamp && !r.is_medical_leave && !r.is_other && new Date(r.end_date + "T00:00:00") < today)
             .reduce((s, r) => s + r.days_requested, 0);
-          const totalDays = balance ? balance.total_days : maxDays;
+          const totalDays = activeBalance ? activeBalance.total_days : maxDays;
           const restantes = totalDays - aprobados - pendientes;
 
           return (
@@ -776,14 +815,17 @@ export function VacationCalendar({
         })()}
 
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">{strings.vacations.requestsTitle}</h2>
+          <h2 className="text-base font-semibold">
+            {strings.vacations.requestsTitle}
+            <span className="ml-2 text-sm font-normal text-muted-foreground">{activeYear}</span>
+          </h2>
         </div>
 
         {cancelError && (
           <p className="text-sm text-destructive">{cancelError}</p>
         )}
 
-        {requests.length === 0 ? (
+        {activeRequests.length === 0 ? (
           <p className="text-sm text-muted-foreground">{strings.vacations.requestsEmpty}</p>
         ) : (
           <div className="flex flex-col gap-3">
@@ -816,7 +858,7 @@ export function VacationCalendar({
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {requests.map((r) => {
+                  {activeRequests.map((r) => {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
                     const startDate = new Date(r.start_date + "T00:00:00");
