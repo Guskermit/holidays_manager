@@ -147,6 +147,119 @@ curl "http://localhost:4000/api/notifications/send?title=Alerta&message=Tu+licen
 
 ---
 
+## Endpoint 3 — Get Employee Time-Off
+
+```
+GET /api/employees/{email}/time-off
+```
+
+Returns the vacations, official holidays and non-working days of an employee, looked up by their email. Weekends are **not** included in `non_working_days`.
+
+### Path Params
+
+| Param   | Type   | Description                                       |
+| ------- | ------ | ------------------------------------------------- |
+| `email` | string | **Required.** Employee email (URL-encoded if needed, e.g. `ana%40acme.com`) |
+
+### Query Params
+
+| Param  | Type   | Description                                                     |
+| ------ | ------ | --------------------------------------------------------------- |
+| `year` | string | Optional. Year to query. Defaults to the current year (2000–2100) |
+
+### Example
+
+```bash
+curl "http://localhost:4000/api/employees/ana%40acme.com/time-off?year=2026"
+```
+
+### Response (200 OK)
+
+```json
+{
+  "employee": {
+    "id": "emp-uuid-1",
+    "name": "Ana García",
+    "email": "ana@acme.com",
+    "office": "madrid",
+    "category": "Senior"
+  },
+  "year": 2026,
+  "vacations": [
+    {
+      "start_date": "2026-08-10",
+      "end_date": "2026-08-21",
+      "days_requested": 10,
+      "status": "approved",
+      "type": "vacation",
+      "other_reason": null
+    },
+    {
+      "start_date": "2026-05-04",
+      "end_date": "2026-05-05",
+      "days_requested": 2,
+      "status": "pending",
+      "type": "bootcamp",
+      "other_reason": null
+    }
+  ],
+  "public_holidays": [
+    { "date": "2026-01-01", "name": "Año Nuevo", "scope": "national" },
+    { "date": "2026-05-15", "name": "San Isidro", "scope": "madrid" }
+  ],
+  "non_working_days": ["2026-01-01", "2026-05-15", "2026-08-10", "2026-08-11"]
+}
+```
+
+### Field Reference — `employee`
+
+| Field      | Type           | Description                                       |
+| ---------- | -------------- | ------------------------------------------------- |
+| `id`       | uuid           | Employee ID                                      |
+| `name`     | string         | Full name                                         |
+| `email`    | string         | Employee email                                    |
+| `office`   | string \| null | `madrid`, `barcelona`, `valencia`, `malaga`, `zaragoza`, `sevilla` |
+| `category` | string         | Employee category                                 |
+
+### Field Reference — `vacations[]`
+
+| Field            | Type           | Description                                                            |
+| ---------------- | -------------- | ---------------------------------------------------------------------- |
+| `start_date`     | string         | Time-off start (`YYYY-MM-DD`)                                          |
+| `end_date`       | string         | Time-off end (`YYYY-MM-DD`)                                            |
+| `days_requested` | number         | Working days requested                                                 |
+| `status`         | string         | `approved` or `pending` (rejected/cancelled are excluded)              |
+| `type`           | string         | `vacation`, `bootcamp`, `medical_leave` or `other`                     |
+| `other_reason`   | string \| null | Free-text reason when `type` is `other`, otherwise `null`              |
+
+### Field Reference — `public_holidays[]`
+
+| Field   | Type   | Description                                          |
+| ------- | ------ | ---------------------------------------------------- |
+| `date`  | string | Holiday date (`YYYY-MM-DD`)                          |
+| `name`  | string | Holiday name                                         |
+| `scope` | string | `national` or the employee's office                  |
+
+### Field Reference — `non_working_days`
+
+Sorted array of `YYYY-MM-DD` dates the employee does not work: official holidays (national + office) plus **approved** time-off ranges. Weekends are always excluded.
+
+### Errors
+
+| Status | Cause                                    |
+| ------ | ---------------------------------------- |
+| 400    | Missing email or invalid `year` param    |
+| 404    | No employee found for the provided email |
+| 500    | Database error                           |
+
+### Notes
+
+- Holidays are resolved against the employee's office: national holidays plus office-specific ones.
+- Pending vacations are returned in `vacations[]` but do **not** count towards `non_working_days` — only approved ones do.
+- If the employee has no office, only national holidays are returned.
+
+---
+
 ## Environment Variables Required
 
 ```env
@@ -154,7 +267,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<anon-key>
 ```
 
-> ℹ️ Both endpoints use the **publishable (anon) key** and rely on public RLS policies from migration `20260826000003_api_public_read_policies.sql`.
+> ℹ️ All endpoints use the **publishable (anon) key** and rely on public RLS policies from migrations `20260826000003_api_public_read_policies.sql` and `20261108000001_api_time_off_read_policies.sql`.
 
 ---
 
@@ -228,6 +341,35 @@ async function sendNotification(params: {
   return res.json();
 }
 
+// ── Employee time-off ────────────────────────────────────
+interface TimeOffResponse {
+  employee: {
+    id: string;
+    name: string;
+    email: string;
+    office: string | null;
+    category: string;
+  };
+  year: number;
+  vacations: {
+    start_date: string;
+    end_date: string;
+    days_requested: number;
+    status: "approved" | "pending";
+    type: "vacation" | "bootcamp" | "medical_leave" | "other";
+    other_reason: string | null;
+  }[];
+  public_holidays: { date: string; name: string; scope: string }[];
+  non_working_days: string[]; // "YYYY-MM-DD", weekends excluded
+}
+
+async function getTimeOff(email: string, year?: number): Promise<TimeOffResponse> {
+  const qs = year ? `?year=${year}` : "";
+  const res = await fetch(`${API}/api/employees/${encodeURIComponent(email)}/time-off${qs}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
 // ── Usage examples ───────────────────────────────────────
 const eng = await getEngagement("ENG-2026-001");
 console.log(`${eng.engagement.name} — ${eng.employees.length} employees`);
@@ -238,6 +380,9 @@ const notif = await sendNotification({
   employees: ["emp-uuid-1", "emp-uuid-2"],  // get IDs from engagements endpoint
 });
 console.log(`Notified ${notif.recipients_notified} employees`);
+
+const timeOff = await getTimeOff("ana@acme.com", 2026);
+console.log(`${timeOff.employee.name}: ${timeOff.non_working_days.length} non-working days`);
 ```
 
 ### Python
@@ -277,6 +422,14 @@ notif = send_notification(
     employees=["emp-uuid-1", "emp-uuid-2"],
 )
 print(f"Notified {notif['recipients_notified']} employees")
+
+def get_time_off(email: str, year: int = None) -> dict:
+    res = requests.get(f"{API}/api/employees/{email}/time-off", params={"year": year} if year else None)
+    res.raise_for_status()
+    return res.json()
+
+time_off = get_time_off("ana@acme.com", 2026)
+print(f"{time_off['employee']['name']}: {len(time_off['non_working_days'])} non-working days")
 ```
 
 ### cURL
@@ -287,13 +440,18 @@ curl http://localhost:4000/api/engagements/ENG-2026-001 | jq
 
 # Send notification
 curl "http://localhost:4000/api/notifications/send?title=Alerta&message=Urgente&employees=emp-uuid-1" | jq
+
+# Get employee time-off by email
+curl "http://localhost:4000/api/employees/ana%40acme.com/time-off?year=2026" | jq
 ```
 
 ---
 
 ## General Notes
 
-- Both endpoints are **unsecured** (no auth token required).
+- All endpoints are **unsecured** (no auth token required).
+- `/api/*` paths bypass the login redirect in the middleware so they work without a session.
 - Engagements: employees sorted by category — Senior-Manager → Manager → Senior → Staff → Externo → Socio → Intern.
 - Notifications: the notification appears in the recipient's bell icon inside the app.
-- For the consuming project: copy the TypeScript interfaces (`EngagementResponse`, `NotificationResponse`) directly into your codebase.
+- Time-off: holidays are resolved against the employee's office; `non_working_days` excludes weekends and only counts approved time-off.
+- For the consuming project: copy the TypeScript interfaces (`EngagementResponse`, `NotificationResponse`, `TimeOffResponse`) directly into your codebase.

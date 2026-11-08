@@ -43,7 +43,11 @@ export async function updateSession(request: NextRequest) {
   // the battle-tested approach for middleware session validation.
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Public API endpoints (see WEBSERVICE-API.md) must work without a session.
+  const isPublicApi = request.nextUrl.pathname.startsWith("/api");
+
   if (
+    !isPublicApi &&
     request.nextUrl.pathname !== "/" &&
     !user &&
     !request.nextUrl.pathname.startsWith("/login") &&
@@ -59,6 +63,7 @@ export async function updateSession(request: NextRequest) {
   // Allow access to /auth/* routes so they can log out or see the pending page.
   if (
     user &&
+    !isPublicApi &&
     !request.nextUrl.pathname.startsWith("/auth")
   ) {
     const { data: employee } = await supabase
