@@ -191,16 +191,14 @@ curl "http://localhost:4000/api/employees/ana%40acme.com/time-off?year=2026"
       "end_date": "2026-08-21",
       "days_requested": 10,
       "status": "approved",
-      "type": "vacation",
-      "other_reason": null
+      "type": "vacation"
     },
     {
       "start_date": "2026-05-04",
       "end_date": "2026-05-05",
       "days_requested": 2,
       "status": "pending",
-      "type": "bootcamp",
-      "other_reason": null
+      "type": "bootcamp"
     }
   ],
   "public_holidays": [
@@ -230,7 +228,6 @@ curl "http://localhost:4000/api/employees/ana%40acme.com/time-off?year=2026"
 | `days_requested` | number         | Working days requested                                                 |
 | `status`         | string         | `approved` or `pending` (rejected/cancelled are excluded)              |
 | `type`           | string         | `vacation`, `bootcamp`, `medical_leave` or `other`                     |
-| `other_reason`   | string \| null | Free-text reason when `type` is `other`, otherwise `null`              |
 
 ### Field Reference — `public_holidays[]`
 
@@ -357,7 +354,6 @@ interface TimeOffResponse {
     days_requested: number;
     status: "approved" | "pending";
     type: "vacation" | "bootcamp" | "medical_leave" | "other";
-    other_reason: string | null;
   }[];
   public_holidays: { date: string; name: string; scope: string }[];
   non_working_days: string[]; // "YYYY-MM-DD", weekends excluded

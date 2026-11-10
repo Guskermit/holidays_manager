@@ -103,7 +103,7 @@ export async function GET(
   const { data: vacations, error: vacErr } = await supabase
     .from("vacation_requests")
     .select(
-      "start_date, end_date, days_requested, status, is_bootcamp, is_medical_leave, is_other, other_reason, year"
+      "start_date, end_date, days_requested, status, is_bootcamp, is_medical_leave, is_other, year"
     )
     .eq("employee_id", employee.id)
     .eq("year", year)
@@ -163,7 +163,6 @@ export async function GET(
       days_requested: v.days_requested,
       status: v.status,
       type: vacationType(v),
-      other_reason: v.is_other ? v.other_reason : null,
     })),
     public_holidays: (holidays ?? []).map((h) => ({
       date: h.date,
@@ -171,5 +170,5 @@ export async function GET(
       scope: h.scope,
     })),
     non_working_days: Array.from(nonWorkingSet).sort(),
-  });
+  },{headers: { "Access-Control-Allow-Origin": "*" }}); // Cache for 1 hour
 }
