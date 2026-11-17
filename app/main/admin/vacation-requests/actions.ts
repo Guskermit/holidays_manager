@@ -76,22 +76,105 @@ export async function approveVacationRequest(requestId: string): Promise<{ error
     // Recalculate actual working days server-side to ensure balance accuracy
     const actualDays = await recalculateDays(supabase, req.employee_id, req.start_date, req.end_date);
 
-    const { data: bal } = await supabase
-      .from("vacation_balances")
-      .select("used_days, pending_days")
-      .eq("employee_id", req.employee_id)
-      .eq("year", req.year)
-      .single();
+    // Handle cross-year vacation: start year (previous calendar year) takes priority
+    const startDateObj = new Date(req.start_date + "T00:00:00");
+    const endDateObj = new Date(req.end_date + "T00:00:00");
+    const startYear = startDateObj.getFullYear();
+    const endYear = endDateObj.getFullYear();
 
-    if (bal) {
-      await supabase
+    // If there's a cross-year vacation (end date is in next calendar year)
+    if (startYear < endYear) {
+      // Try to deduct from previous year first (start year)
+      const prevResult = await supabase
         .from("vacation_balances")
-        .update({
-          used_days: bal.used_days + actualDays,
-          pending_days: Math.max(0, bal.pending_days - actualDays),
-        })
+        .select("used_days, pending_days")
         .eq("employee_id", req.employee_id)
-        .eq("year", req.year);
+        .eq("year", startYear)
+        .single();
+
+      if (prevResult.error || !prevResult.data) {
+        // No balance record found in previous year, skip deduction
+        return {};
+      }
+
+      const prevData = prevResult.data;
+      // Determine how many days can be deducted from previous year (min of actual days and remaining balance)
+      const prevYearRemaining = Math.min(prevData.pending_days, actualDays);
+
+      if (prevYearRemaining > 0) {
+        // Deduct from previous year
+        await supabase
+          .from("vacation_balances")
+          .update({
+            used_days: prevData.used_days + prevYearRemaining,
+            pending_days: Math.max(0, prevData.pending_days - prevYearRemaining),
+          })
+          .eq("employee_id", req.employee_id)
+          .eq("year", startYear);
+
+        // Remaining days will be deducted from next year if any left
+        const remainingDays = actualDays - prevYearRemaining;
+        if (remainingDays > 0) {
+          const nextResult = await supabase
+            .from("vacation_balances")
+            .select("used_days, pending_days")
+            .eq("employee_id", req.employee_id)
+            .eq("year", endYear)
+            .single();
+
+          if (!nextResult.error && nextResult.data) {
+            const nextData = nextResult.data;
+            const daysToDeductFromNextYear = Math.min(remainingDays, nextData.pending_days);
+            await supabase
+              .from("vacation_balances")
+              .update({
+                used_days: nextData.used_days + daysToDeductFromNextYear,
+                pending_days: Math.max(0, nextData.pending_days - daysToDeductFromNextYear),
+              })
+              .eq("employee_id", req.employee_id)
+              .eq("year", endYear);
+          }
+        }
+      } else {
+        // No balance in previous year, deduct from next year (endYear)
+        const nextResult = await supabase
+          .from("vacation_balances")
+          .select("used_days, pending_days")
+          .eq("employee_id", req.employee_id)
+          .eq("year", endYear)
+          .single();
+
+        if (!nextResult.error && nextResult.data) {
+          const nextData = nextResult.data;
+          await supabase
+            .from("vacation_balances")
+            .update({
+              used_days: nextData.used_days + actualDays,
+              pending_days: Math.max(0, nextData.pending_days - actualDays),
+            })
+            .eq("employee_id", req.employee_id)
+            .eq("year", endYear);
+        }
+      }
+    } else {
+      // Single year vacation - use the original year field (req.year)
+      const bal = await supabase
+        .from("vacation_balances")
+        .select("used_days, pending_days")
+        .eq("employee_id", req.employee_id)
+        .eq("year", req.year)
+        .single();
+
+      if (bal?.data) {
+        await supabase
+          .from("vacation_balances")
+          .update({
+            used_days: bal.data.used_days + actualDays,
+            pending_days: Math.max(0, bal.data.pending_days - actualDays),
+          })
+          .eq("employee_id", req.employee_id)
+          .eq("year", req.year);
+      }
     }
   }
 
@@ -159,19 +242,63 @@ export async function rejectVacationRequest(
     // Recalculate actual working days server-side to ensure balance accuracy
     const actualDays = await recalculateDays(supabase, req.employee_id, req.start_date, req.end_date);
 
-    const { data: bal } = await supabase
-      .from("vacation_balances")
-      .select("pending_days")
-      .eq("employee_id", req.employee_id)
-      .eq("year", req.year)
-      .single();
+    // Handle cross-year vacation: start year (previous calendar year) takes priority
+    const startDateObj = new Date(req.start_date + "T00:00:00");
+    const endDateObj = new Date(req.end_date + "T00:00:00");
+    const startYear = startDateObj.getFullYear();
+    const endYear = endDateObj.getFullYear();
 
-    if (bal) {
-      await supabase
+    // If there's a cross-year vacation (end date is in next calendar year)
+    if (startYear < endYear) {
+      // Try to deduct from previous year first (start year)
+      const prevResult = await supabase
         .from("vacation_balances")
-        .update({ pending_days: Math.max(0, bal.pending_days - actualDays) })
+        .select("pending_days")
         .eq("employee_id", req.employee_id)
-        .eq("year", req.year);
+        .eq("year", startYear)
+        .single();
+
+      if (!prevResult.error && prevResult.data?.pending_days > 0) {
+        // Deduct from previous year
+        const prevData = prevResult.data;
+        await supabase
+          .from("vacation_balances")
+          .update({ pending_days: Math.max(0, prevData.pending_days - actualDays) })
+          .eq("employee_id", req.employee_id)
+          .eq("year", startYear);
+      } else {
+        // No balance in previous year, try next year
+        const nextResult = await supabase
+          .from("vacation_balances")
+          .select("pending_days")
+          .eq("employee_id", req.employee_id)
+          .eq("year", endYear)
+          .single();
+
+        if (!nextResult.error && nextResult.data?.pending_days > 0) {
+          await supabase
+            .from("vacation_balances")
+            .update({ pending_days: Math.max(0, nextResult.data.pending_days - actualDays) })
+            .eq("employee_id", req.employee_id)
+            .eq("year", endYear);
+        }
+      }
+    } else {
+      // Single year vacation - use the original year field (req.year)
+      const balResult = await supabase
+        .from("vacation_balances")
+        .select("pending_days")
+        .eq("employee_id", req.employee_id)
+        .eq("year", req.year)
+        .single();
+
+      if (!balResult.error && balResult.data?.pending_days > 0) {
+        await supabase
+          .from("vacation_balances")
+          .update({ pending_days: Math.max(0, balResult.data.pending_days - actualDays) })
+          .eq("employee_id", req.employee_id)
+          .eq("year", req.year);
+      }
     }
   }
 

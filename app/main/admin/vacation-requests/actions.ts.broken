@@ -1,0 +1,376 @@
+﻿"use server";
+
+import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+import { countWorkingDays, getHolidaysForOfficeFromDB, type Office } from "@/lib/holidays";
+import {
+  notifyVacationApproved,
+  notifyVacationRejected,
+  notifyVacationCancelled,
+} from "@/lib/slack";
+import {
+  notifyVacationApprovedInApp,
+  notifyVacationRejectedInApp,
+  notifyVacationCancelledInApp,
+  markVacationRequestNotificationsAsRead,
+} from "@/lib/notifications";
+
+async function getAdminEmployee() {
+  const supabase = await createClient();
+  const { data: authData } = await supabase.auth.getClaims();
+  if (!authData?.claims) return { supabase: null, adminId: null };
+
+  const { data: emp } = await supabase
+    .from("employees")
+    .select("id, role")
+    .eq("user_id", authData.claims.sub)
+    .single();
+
+  if (emp?.role !== "admin" && emp?.role !== "super-admin") return { supabase: null, adminId: null };
+  return { supabase, adminId: emp.id };
+}
+
+/** Recalculate working days for a vacation request, ignoring weekends + holidays */
+async function recalculateDays(
+  supabase: import("@supabase/supabase-js").SupabaseClient,
+  employeeId: string,
+  startDate: string,
+  endDate: string
+): Promise<number> {
+  const { data: emp } = await supabase
+    .from("employees")
+    .select("office")
+    .eq("id", employeeId)
+    .single();
+  const office = (emp?.office as Office) ?? "madrid";
+  const holidays = await getHolidaysForOfficeFromDB(office, supabase);
+  return countWorkingDays(
+    new Date(startDate + "T00:00:00"),
+    new Date(endDate + "T00:00:00"),
+    holidays
+  );
+}
+
+export async function approveVacationRequest(requestId: string): Promise<{ error?: string }> {
+  const { supabase, adminId } = await getAdminEmployee();
+  if (!supabase || !adminId) return { error: "Not authorized" };
+
+  const { data: req } = await supabase
+    .from("vacation_requests")
+    .select("id, status, days_requested, year, employee_id, start_date, end_date, is_bootcamp, is_medical_leave, is_other")
+    .eq("id", requestId)
+    .single();
+
+  if (!req) return { error: "Request not found" };
+  if (req.status !== "pending") return { error: "Only pending requests can be approved" };
+
+  const { error: updErr } = await supabase
+    .from("vacation_requests")
+    .update({ status: "approved", approved_by: adminId, resolved_at: new Date().toISOString() })
+    .eq("id", requestId);
+
+  if (updErr) return { error: updErr.message };
+
+  // Bootcamp, medical leave, and 'Otros' requests do not consume the vacation balance
+  if (!req.is_bootcamp && !req.is_medical_leave && !req.is_other) {
+    // Recalculate actual working days server-side to ensure balance accuracy
+    const actualDays = await recalculateDays(supabase, req.employee_id, req.start_date, req.end_date);
+
+    // Handle cross-year vacation: start year (previous calendar year) takes priority
+    const startDateObj = new Date(req.start_date + "T00:00:00");
+    const endDateObj = new Date(req.end_date + "T00:00:00");
+    const startYear = startDateObj.getFullYear();
+    const endYear = endDateObj.getFullYear();
+
+    // If there's a cross-year vacation (end date is in next calendar year)
+    if (startYear < endYear) {
+      // Try to deduct from previous year first (start year)
+      const prevResult = await supabase
+        .from("vacation_balances")
+        .select("used_days, pending_days")
+        .eq("employee_id", req.employee_id)
+        .eq("year", startYear)
+        .single();
+
+      if (prevResult.error || !prevResult.data) {
+        // No balance record found in previous year, skip deduction
+        return {};
+      }
+
+      const prevData = prevResult.data;
+      // Determine how many days can be deducted from previous year (min of actual days and remaining balance)
+      const prevYearRemaining = Math.min(prevData.pending_days, actualDays);
+
+      if (prevYearRemaining > 0) {
+        // Deduct from previous year
+        await supabase
+          .from("vacation_balances")
+          .update({
+            used_days: prevData.used_days + prevYearRemaining,
+            pending_days: Math.max(0, prevData.pending_days - prevYearRemaining),
+          })
+          .eq("employee_id", req.employee_id)
+          .eq("year", startYear);
+
+        // Remaining days will be deducted from next year if any left
+        const remainingDays = actualDays - prevYearRemaining;
+        if (remainingDays > 0) {
+          const nextResult = await supabase
+            .from("vacation_balances")
+            .select("used_days, pending_days")
+            .eq("employee_id", req.employee_id)
+            .eq("year", endYear)
+            .single();
+
+          if (!nextResult.error && nextResult.data) {
+            const nextData = nextResult.data;
+            const daysToDeductFromNextYear = Math.min(remainingDays, nextData.pending_days);
+            await supabase
+              .from("vacation_balances")
+              .update({
+                used_days: nextData.used_days + daysToDeductFromNextYear,
+                pending_days: Math.max(0, nextData.pending_days - daysToDeductFromNextYear),
+              })
+              .eq("employee_id", req.employee_id)
+              .eq("year", endYear);
+          }
+        }
+      } else {
+      // Single year vacation - use the original year field (req.year)
+      const bal = await supabase
+        .from("vacation_balances")
+        .select("used_days, pending_days")
+        .eq("employee_id", req.employee_id)
+        .eq("year", req.year)
+        .single();
+
+      if (bal?.data) {
+        await supabase
+          .from("vacation_balances")
+          .update({
+            used_days: bal.data.used_days + actualDays,
+            pending_days: Math.max(0, bal.data.pending_days - actualDays),
+          })
+          .eq("employee_id", req.employee_id)
+          .eq("year", req.year);
+      }
+    }
+  }
+
+  const { data: emp } = await supabase
+    .from("employees")
+    .select("name")
+    .eq("id", req.employee_id)
+    .single();
+  await notifyVacationApproved({
+    employeeName: emp?.name ?? "Empleado",
+    startDate: req.start_date,
+    endDate: req.end_date,
+    days: req.days_requested,
+  });
+
+  // In-app notification for the employee
+  await notifyVacationApprovedInApp({
+    employeeId: req.employee_id,
+    adminId,
+    startDate: req.start_date,
+    endDate: req.end_date,
+    days: req.days_requested,
+    isBootcamp: req.is_bootcamp,
+    isMedicalLeave: req.is_medical_leave,
+  });
+
+  // Mark all manager notifications about this request as read
+  await markVacationRequestNotificationsAsRead(requestId);
+
+  revalidatePath("/main/admin/vacation-requests");
+  revalidatePath("/main");
+  return {};
+}
+
+export async function rejectVacationRequest(
+  requestId: string,
+  reason: string
+): Promise<{ error?: string }> {
+  const { supabase, adminId } = await getAdminEmployee();
+  if (!supabase || !adminId) return { error: "Not authorized" };
+
+  const { data: req } = await supabase
+    .from("vacation_requests")
+    .select("id, status, days_requested, year, employee_id, start_date, end_date, is_bootcamp, is_medical_leave, is_other")
+    .eq("id", requestId)
+    .single();
+
+  if (!req) return { error: "Request not found" };
+  if (req.status !== "pending") return { error: "Only pending requests can be rejected" };
+
+  const { error: updErr } = await supabase
+    .from("vacation_requests")
+    .update({
+      status: "rejected",
+      approved_by: adminId,
+      resolved_at: new Date().toISOString(),
+      rejection_reason: reason || null,
+    })
+    .eq("id", requestId);
+
+  if (updErr) return { error: updErr.message };
+
+  // Bootcamp, medical leave, and 'Otros' requests do not consume the vacation balance
+  if (!req.is_bootcamp && !req.is_medical_leave && !req.is_other) {
+    // Recalculate actual working days server-side to ensure balance accuracy
+    const actualDays = await recalculateDays(supabase, req.employee_id, req.start_date, req.end_date);
+
+    // Handle cross-year vacation: start year (previous calendar year) takes priority
+    const startDateObj = new Date(req.start_date + "T00:00:00");
+    const endDateObj = new Date(req.end_date + "T00:00:00");
+    const startYear = startDateObj.getFullYear();
+    const endYear = endDateObj.getFullYear();
+
+    // If there's a cross-year vacation (end date is in next calendar year)
+    if (startYear < endYear) {
+      // Try to deduct from previous year first (start year)
+      const prevResult = await supabase
+        .from("vacation_balances")
+        .select("pending_days")
+        .eq("employee_id", req.employee_id)
+        .eq("year", startYear)
+        .single();
+
+      if (!prevResult.error && prevResult.data?.pending_days > 0) {
+        // Deduct from previous year
+        const prevData = prevResult.data;
+        await supabase
+          .from("vacation_balances")
+          .update({ pending_days: Math.max(0, prevData.pending_days - actualDays) })
+          .eq("employee_id", req.employee_id)
+          .eq("year", startYear);
+      } else {
+        // No balance in previous year, try next year
+        const nextResult = await supabase
+          .from("vacation_balances")
+          .select("pending_days")
+          .eq("employee_id", req.employee_id)
+          .eq("year", endYear)
+          .single();
+
+        if (!nextResult.error && nextResult.data?.pending_days > 0) {
+          await supabase
+            .from("vacation_balances")
+            .update({ pending_days: Math.max(0, nextResult.data.pending_days - actualDays) })
+            .eq("employee_id", req.employee_id)
+            .eq("year", endYear);
+        }
+      }
+    } else {
+      // Single year vacation - use the original year field (req.year)
+      const bal = await supabase
+        .from("vacation_balances")
+        .select("pending_days")
+        .eq("employee_id", req.employee_id)
+        .eq("year", req.year)
+        .single();
+
+      if (bal?.data?.pending_days > 0) {
+        await supabase
+          .from("vacation_balances")
+          .update({ pending_days: Math.max(0, bal.data.pending_days - actualDays) })
+          .eq("employee_id", req.employee_id)
+          .eq("year", req.year);
+      }
+    }
+  }
+
+  const { data: emp } = await supabase
+    .from("employees")
+    .select("name")
+    .eq("id", req.employee_id)
+    .single();
+  await notifyVacationRejected({
+    employeeName: emp?.name ?? "Empleado",
+    startDate: req.start_date,
+    endDate: req.end_date,
+    reason: reason || null,
+  });
+
+  // In-app notification for the employee
+  await notifyVacationRejectedInApp({
+    employeeId: req.employee_id,
+    adminId,
+    startDate: req.start_date,
+    endDate: req.end_date,
+    reason,
+  });
+
+  // Mark all manager notifications about this request as read
+  await markVacationRequestNotificationsAsRead(requestId);
+
+  revalidatePath("/main/admin/vacation-requests");
+  revalidatePath("/main");
+  return {};
+}
+
+export async function cancelApprovedRequest(requestId: string): Promise<{ error?: string }> {
+  const { supabase, adminId } = await getAdminEmployee();
+  if (!supabase || !adminId) return { error: "Not authorized" };
+
+  const { data: req } = await supabase
+    .from("vacation_requests")
+    .select("id, status, days_requested, year, employee_id, start_date, end_date, is_bootcamp, is_medical_leave, is_other")
+    .eq("id", requestId)
+    .single();
+
+  if (!req) return { error: "Request not found" };
+  if (req.status !== "approved") return { error: "Only approved requests can be cancelled" };
+
+  const { error: updErr } = await supabase
+    .from("vacation_requests")
+    .update({ status: "cancelled", resolved_at: new Date().toISOString() })
+    .eq("id", requestId);
+
+  if (updErr) return { error: updErr.message };
+
+  // Bootcamp, medical leave, and 'Otros' requests do not consume the vacation balance
+  if (!req.is_bootcamp && !req.is_medical_leave && !req.is_other) {
+    // Recalculate actual working days server-side to ensure balance accuracy
+    const actualDays = await recalculateDays(supabase, req.employee_id, req.start_date, req.end_date);
+
+    const { data: bal } = await supabase
+      .from("vacation_balances")
+      .select("used_days")
+      .eq("employee_id", req.employee_id)
+      .eq("year", req.year)
+      .single();
+
+    if (bal) {
+      await supabase
+        .from("vacation_balances")
+        .update({ used_days: Math.max(0, bal.used_days - actualDays) })
+        .eq("employee_id", req.employee_id)
+        .eq("year", req.year);
+    }
+  }
+
+  const { data: emp } = await supabase
+    .from("employees")
+    .select("name")
+    .eq("id", req.employee_id)
+    .single();
+  await notifyVacationCancelled({
+    employeeName: emp?.name ?? "Empleado",
+    startDate: req.start_date,
+    endDate: req.end_date,
+    days: req.days_requested,
+  });
+
+  // In-app notification for the employee
+  await notifyVacationCancelledInApp({
+    employeeId: req.employee_id,
+    adminId,
+    startDate: req.start_date,
+    endDate: req.end_date,
+  });
+
+  revalidatePath("/main/admin/vacation-requests");
+  return {};
+}
