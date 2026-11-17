@@ -349,6 +349,8 @@ export const strings = {
     colDays:              "Days",
     colYear:              "Year",
     colStatus:            "Status",
+    prevYear:             "Año anterior",
+    nextYear:             "Año siguiente",
     cancelButton:         "Cancel request",
     cancelConfirm:        "Are you sure you want to cancel this vacation request?",
     statusPending:        "Pending",

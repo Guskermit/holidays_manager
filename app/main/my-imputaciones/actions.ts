@@ -286,29 +286,76 @@ export async function getMyImputaciones(year?: number): Promise<{
     }
   }
 
-  // ── 2. Fetch approved vacations for the year ─────────
+  // ── 2. Fetch vacation requests (current year + next year with label) ─────────
   const yearStartStr = fmtDate(yearStart);
   const yearEndStr = fmtDate(yearEnd);
 
-  const { data: vacations } = await supabase
+  const { data: currentVacations } = await supabase
     .from("vacation_requests")
-    .select("start_date, end_date, status, is_bootcamp, is_medical_leave, is_other, other_reason")
+    .select("start_date, end_date, status, is_bootcamp, is_medical_leave, is_other, other_reason, year")
     .eq("employee_id", employee.id)
     .eq("year", effectiveYear)
     .in("status", ["approved", "pending"]);
 
+  const { data: nextVacations } = await supabase
+    .from("vacation_requests")
+    .select("start_date, end_date, status, is_bootcamp, is_medical_leave, is_other, other_reason, year")
+    .eq("employee_id", employee.id)
+    .eq("year", effectiveYear + 1)
+    .in("status", ["approved", "pending"]);
+
+  type VacationRow = {
+    start_date: string;
+    end_date: string;
+    status: string;
+    is_bootcamp: boolean;
+    is_medical_leave: boolean;
+    is_other: boolean;
+    other_reason: string | null;
+    year: number | string;
+  };
+  const allVacations: Array<VacationRow & { isNextYear?: boolean; label: string }> = [];
+
+  // Add current year vacations
+  for (const v of currentVacations ?? []) {
+    allVacations.push({ ...v, label: `20${effectiveYear}` });
+  }
+
+  // Add next year vacations with (20XX) label
+  for (const v of nextVacations ?? []) {
+    allVacations.push({
+      ...v,
+      isNextYear: true,
+      label: `(20${effectiveYear + 1})`
+    });
+  }
+
   const absences: MyAbsenceData[] = [];
   const absenceWeekMap = new Map<string, number>();
 
-  for (const v of vacations ?? []) {
+  for (const v of allVacations) {
+    // Determine which year this vacation belongs to based on its year field and date range
+    let vacationYear = Number(v.year);
+
+    // If it's a rollover vacation (started in previous year), it belongs to the previous year's balance
+    const absStart = new Date(v.start_date);
+    if (!v.isNextYear && absStart.getFullYear() < effectiveYear) {
+      vacationYear = effectiveYear - 1; // This is a rollover from prev year
+    }
+
+    // Skip if this vacation belongs to a different year (not the current or next year we're displaying)
+    if (vacationYear !== effectiveYear && vacationYear !== effectiveYear + 1) {
+      continue;
+    }
+
     const vStart = v.start_date < yearStartStr ? yearStartStr : v.start_date;
     const vEnd = v.end_date > yearEndStr ? yearEndStr : v.end_date;
 
     let type: AbsenceType = "vacation";
-    let label = "Vacaciones";
-    if (v.is_bootcamp) { type = "bootcamp"; label = "Bootcamp"; }
-    else if (v.is_medical_leave) { type = "medical"; label = "Baja médica"; }
-    else if (v.is_other) { type = "other"; label = v.other_reason || "Otros"; }
+    const label = v.label;
+    if (v.is_bootcamp) { type = "bootcamp"; }
+    else if (v.is_medical_leave) { type = "medical"; }
+    else if (v.is_other) { type = "other"; }
 
     const weekHours = new Map<number, number>();
 

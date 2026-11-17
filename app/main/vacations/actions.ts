@@ -5,8 +5,58 @@ import { getCategoryDays } from "@/lib/categories";
 import { countWorkingDays, getHolidaysForOfficeFromDB, type Office } from "@/lib/holidays";
 import { notifyVacationRequested } from "@/lib/slack";
 import { notifyManagersVacationRequested } from "@/lib/notifications";
+import { startsInJanuary, splitJanuaryDays } from "@/lib/vacation-years";
 
 const BOOTCAMP_MAX_DAYS = 2;
+
+/** Remaining days on a balance row, or null when no row exists. */
+async function getBalanceRemaining(
+  supabase: import("@supabase/supabase-js").SupabaseClient,
+  employeeId: string,
+  year: number
+): Promise<number | null> {
+  const { data } = await supabase
+    .from("vacation_balances")
+    .select("total_days, used_days, pending_days")
+    .eq("employee_id", employeeId)
+    .eq("year", year)
+    .single();
+  if (!data) return null;
+  return data.total_days - data.used_days - data.pending_days;
+}
+
+/** Add pending days to a balance row, creating the row when missing. */
+async function chargePendingDays(
+  supabase: import("@supabase/supabase-js").SupabaseClient,
+  employeeId: string,
+  year: number,
+  days: number,
+  totalDays: number
+): Promise<void> {
+  if (days <= 0) return;
+
+  const { data: balance } = await supabase
+    .from("vacation_balances")
+    .select("pending_days")
+    .eq("employee_id", employeeId)
+    .eq("year", year)
+    .single();
+
+  if (balance) {
+    await supabase
+      .from("vacation_balances")
+      .update({ pending_days: balance.pending_days + days })
+      .eq("employee_id", employeeId)
+      .eq("year", year);
+  } else {
+    await supabase.from("vacation_balances").insert({
+      employee_id: employeeId,
+      year,
+      total_days: totalDays,
+      pending_days: days,
+    });
+  }
+}
 
 export async function requestVacation(
   employeeId: string,
@@ -22,6 +72,8 @@ export async function requestVacation(
   const supabase = await createClient();
   // year may be overridden for cross-year vacations
   let effectiveYear = year;
+  // January requests may charge part of the previous year's balance
+  let prevYearDays = 0;
 
   // Verify the employee belongs to the current user
   const { data: authData } = await supabase.auth.getClaims();
@@ -83,59 +135,78 @@ export async function requestVacation(
     const endDateObj = new Date(endDate + "T00:00:00");
     const endYear = endDateObj.getFullYear();
     const crossYear = endYear > year;
+    // January-only request: consume previous year balance first, then this year
+    const januarySplit = !crossYear && startsInJanuary(startDate);
 
     // Compute category-based maximum days for the requested year
     const maxDays = await getCategoryDays(supabase, employee.category, employee.custom_vacation_days);
 
-    // Sum all approved + pending regular vacation days (excluding bootcamp, medical leave, and 'Otros')
-    const { data: existingRequests } = await supabase
-      .from("vacation_requests")
-      .select("days_requested")
-      .eq("employee_id", employeeId)
-      .eq("year", year)
-      .eq("is_bootcamp", false)
-      .eq("is_medical_leave", false)
-      .eq("is_other", false)
-      .in("status", ["approved", "pending"]);
+    if (januarySplit) {
+      const prevYear = year - 1;
+      const remainingPrev = (await getBalanceRemaining(supabase, employeeId, prevYear)) ?? 0;
+      const remainingCurr =
+        (await getBalanceRemaining(supabase, employeeId, year)) ?? maxDays;
+      const available = remainingPrev + remainingCurr;
 
-    const usedAndPending = (existingRequests ?? []).reduce(
-      (sum, r) => sum + r.days_requested,
-      0
-    );
-    let remaining = maxDays - usedAndPending;
+      if (serverDaysRequested > available) {
+        return {
+          error: `Insufficient vacation balance. You have ${available} of ${maxDays} days remaining.`,
+        };
+      }
 
-    // For cross-year vacations: if the start year has insufficient balance,
-    // try using the next year's balance instead.
-    if (crossYear && serverDaysRequested > remaining) {
-      const nextYear = year + 1;
-      const nextMaxDays = await getCategoryDays(supabase, employee.category, employee.custom_vacation_days);
-
-      const { data: nextYearRequests } = await supabase
+      const split = splitJanuaryDays(serverDaysRequested, remainingPrev);
+      prevYearDays = split.prevYearDays;
+    } else {
+      // Sum all approved + pending regular vacation days (excluding bootcamp, medical leave, and 'Otros')
+      const { data: existingRequests } = await supabase
         .from("vacation_requests")
         .select("days_requested")
         .eq("employee_id", employeeId)
-        .eq("year", nextYear)
+        .eq("year", year)
         .eq("is_bootcamp", false)
         .eq("is_medical_leave", false)
         .eq("is_other", false)
         .in("status", ["approved", "pending"]);
 
-      const nextUsedAndPending = (nextYearRequests ?? []).reduce(
+      const usedAndPending = (existingRequests ?? []).reduce(
         (sum, r) => sum + r.days_requested,
         0
       );
-      const nextRemaining = nextMaxDays - nextUsedAndPending;
+      let remaining = maxDays - usedAndPending;
 
-      if (serverDaysRequested <= nextRemaining) {
-        effectiveYear = nextYear;
-        remaining = nextRemaining;
+      // For cross-year vacations: if the start year has insufficient balance,
+      // try using the next year's balance instead.
+      if (crossYear && serverDaysRequested > remaining) {
+        const nextYear = year + 1;
+        const nextMaxDays = await getCategoryDays(supabase, employee.category, employee.custom_vacation_days);
+
+        const { data: nextYearRequests } = await supabase
+          .from("vacation_requests")
+          .select("days_requested")
+          .eq("employee_id", employeeId)
+          .eq("year", nextYear)
+          .eq("is_bootcamp", false)
+          .eq("is_medical_leave", false)
+          .eq("is_other", false)
+          .in("status", ["approved", "pending"]);
+
+        const nextUsedAndPending = (nextYearRequests ?? []).reduce(
+          (sum, r) => sum + r.days_requested,
+          0
+        );
+        const nextRemaining = nextMaxDays - nextUsedAndPending;
+
+        if (serverDaysRequested <= nextRemaining) {
+          effectiveYear = nextYear;
+          remaining = nextRemaining;
+        }
       }
-    }
 
-    if (serverDaysRequested > remaining) {
-      return {
-        error: `Insufficient vacation balance. You have ${remaining} of ${maxDays} days remaining.`,
-      };
+      if (serverDaysRequested > remaining) {
+        return {
+          error: `Insufficient vacation balance. You have ${remaining} of ${maxDays} days remaining.`,
+        };
+      }
     }
   }
 
@@ -149,6 +220,7 @@ export async function requestVacation(
       days_requested: serverDaysRequested,
       status: isBootcamp || isMedicalLeave || isOther ? "approved" : "pending",
       year: effectiveYear,
+      prev_year_days: prevYearDays,
       is_bootcamp: isBootcamp,
       is_medical_leave: isMedicalLeave,
       is_other: isOther,
@@ -189,28 +261,12 @@ export async function requestVacation(
   // Bootcamp, medical leave, and 'Otros' requests do NOT consume the regular vacation balance
   if (!isBootcamp && !isMedicalLeave && !isOther) {
     const maxDays = await getCategoryDays(supabase, employee.category, employee.custom_vacation_days);
+    const currentYearDays = serverDaysRequested - prevYearDays;
 
-    const { data: balance } = await supabase
-      .from("vacation_balances")
-      .select("pending_days, total_days")
-      .eq("employee_id", employeeId)
-      .eq("year", effectiveYear)
-      .single();
-
-    if (balance) {
-      await supabase
-        .from("vacation_balances")
-        .update({ pending_days: balance.pending_days + serverDaysRequested })
-        .eq("employee_id", employeeId)
-        .eq("year", effectiveYear);
-    } else {
-      await supabase.from("vacation_balances").insert({
-        employee_id: employeeId,
-        year: effectiveYear,
-        total_days: maxDays,
-        pending_days: serverDaysRequested,
-      });
-    }
+    // January: charge leftover days to the previous year first
+    await chargePendingDays(supabase, employeeId, year - 1, prevYearDays, maxDays);
+    // Remainder (or full amount for non-January) on the request year
+    await chargePendingDays(supabase, employeeId, effectiveYear, currentYearDays, maxDays);
   }
 
   return {};
@@ -234,7 +290,7 @@ export async function cancelVacationRequest(
 
   const { data: req } = await supabase
     .from("vacation_requests")
-    .select("id, status, start_date, end_date, days_requested, year, employee_id, is_bootcamp, is_medical_leave, is_other")
+    .select("id, status, start_date, end_date, days_requested, year, prev_year_days, employee_id, is_bootcamp, is_medical_leave, is_other")
     .eq("id", requestId)
     .eq("employee_id", employee.id)
     .single();
@@ -271,25 +327,33 @@ export async function cancelVacationRequest(
       holidays
     );
 
-    const { data: bal } = await supabase
-      .from("vacation_balances")
-      .select("pending_days, used_days")
-      .eq("employee_id", employee.id)
-      .eq("year", req.year)
-      .single();
-
-    if (bal) {
-      const patch =
-        req.status === "pending"
-          ? { pending_days: Math.max(0, bal.pending_days - actualDays) }
-          : { used_days: Math.max(0, bal.used_days - actualDays) };
-
-      await supabase
+    const releaseDays = (year: number, days: number) => {
+      if (days <= 0) return Promise.resolve();
+      return supabase
         .from("vacation_balances")
-        .update(patch)
+        .select("pending_days, used_days")
         .eq("employee_id", employee.id)
-        .eq("year", req.year);
-    }
+        .eq("year", year)
+        .single()
+        .then(async ({ data: bal }) => {
+          if (!bal) return;
+          const patch =
+            req.status === "pending"
+              ? { pending_days: Math.max(0, bal.pending_days - days) }
+              : { used_days: Math.max(0, bal.used_days - days) };
+          await supabase
+            .from("vacation_balances")
+            .update(patch)
+            .eq("employee_id", employee.id)
+            .eq("year", year);
+        });
+    };
+
+    // Release from the same years that were charged (January split-aware)
+    const prevDays = Math.min(req.prev_year_days ?? 0, actualDays);
+    const currentDays = actualDays - prevDays;
+    await releaseDays(req.year - 1, prevDays);
+    await releaseDays(req.year, currentDays);
   }
 
   return {};

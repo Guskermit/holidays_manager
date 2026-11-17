@@ -46,24 +46,20 @@ export default async function VacationsPage() {
 
   const maxDays = await getCategoryDays(supabase, employee.category, employee.custom_vacation_days);
 
-  const currentYear = new Date().getFullYear();
-  // The calendar allows selecting dates up to Jan 31 of the next year,
-  // so both years must be loaded to validate/display the correct balance.
-  const visibleYears = [currentYear, currentYear + 1];
-
+  // Fetch every year's requests and balances so the list can be browsed year
+  // by year with the arrows, and so January requests charged to the previous
+  // year (prev_year_days) are always available.
   const [{ data: requests }, holidaysSet, { data: balances }] = await Promise.all([
     supabase
       .from("vacation_requests")
-      .select("id, start_date, end_date, days_requested, status, year, is_bootcamp, is_medical_leave, is_other, other_reason")
+      .select("id, start_date, end_date, days_requested, status, year, prev_year_days, is_bootcamp, is_medical_leave, is_other, other_reason")
       .eq("employee_id", employee.id)
-      .in("year", visibleYears)
       .order("start_date", { ascending: false }),
     getHolidaysForOfficeFromDB((employee.office as Office) ?? "madrid", supabase),
     supabase
       .from("vacation_balances")
       .select("year, total_days, used_days, pending_days")
-      .eq("employee_id", employee.id)
-      .in("year", visibleYears),
+      .eq("employee_id", employee.id),
   ]);
   const holidays = [...holidaysSet];
 

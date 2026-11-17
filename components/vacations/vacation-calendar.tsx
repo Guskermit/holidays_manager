@@ -18,6 +18,7 @@ import { ChevronLeftIcon, ChevronRightIcon, Trash2Icon } from "lucide-react";
 import { strings } from "@/lib/strings";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { daysInBalanceYear } from "@/lib/vacation-years";
 
   type VacationRequest = {
   id: string;
@@ -26,6 +27,7 @@ import { Label } from "@/components/ui/label";
   days_requested: number;
   status: "pending" | "approved" | "rejected" | "cancelled";
   year: number;
+  prev_year_days?: number;
   is_bootcamp?: boolean;
   is_medical_leave?: boolean;
   is_other?: boolean;
@@ -325,51 +327,89 @@ export function VacationCalendar({
     return countWorkingDays(selStart, selEnd, holidays);
   }, [selStart, selEnd, holidays]);
 
-  // Year being displayed: the year of the current selection, or the last one selected.
+  // Year of the selection being built (drives the request form's balances).
   const activeYear = selStart ? selStart.getFullYear() : viewYear;
   const endYear = selEnd ? selEnd.getFullYear() : activeYear;
 
-  const activeBalance = balances?.[activeYear] ?? null;
-  const activeRequests = useMemo(
-    () => requests.filter((r) => r.year === activeYear),
-    [requests, activeYear]
+  // The request list/stats follow viewYear: set when a date is clicked, or
+  // changed independently with the year arrows in the list header.
+  const listBalance = balances?.[viewYear] ?? null;
+  // A request appears in a year's list only when its days are charged to that
+  // year's balance: its own accounting year, or the previous year through the
+  // January rule (e.g. Jan 4-5 2027 with prev_year_days = 2 counts in 2026 only).
+  const listRequests = useMemo(
+    () => requests.filter((r) => daysInBalanceYear(r, viewYear) > 0),
+    [requests, viewYear]
   );
+
+  // Years browsable with the list arrows: current + next year, plus every year
+  // with requests or balances (including years charged via the January rule).
+  const availableYears = useMemo(() => {
+    const years = new Set<number>([currentYear, currentYear + 1]);
+    for (const r of requests) {
+      years.add(r.year);
+      if ((r.prev_year_days ?? 0) > 0) years.add(r.year - 1);
+    }
+    for (const y of Object.keys(balances ?? {})) years.add(Number(y));
+    return [...years].sort((a, b) => a - b);
+  }, [requests, balances, currentYear]);
+
+  const yearIndex = availableYears.indexOf(viewYear);
+  const prevYear = yearIndex > 0 ? availableYears[yearIndex - 1] : null;
+  const nextYear =
+    yearIndex >= 0 && yearIndex < availableYears.length - 1
+      ? availableYears[yearIndex + 1]
+      : null;
 
   const regularRequestsFor = (year: number) =>
     requests.filter(
       (r) =>
-        r.year === year &&
+        daysInBalanceYear(r, year) > 0 &&
         !r.is_bootcamp &&
         !r.is_medical_leave &&
         !r.is_other &&
         (r.status === "approved" || r.status === "pending")
     );
 
-  // Each year starts with its own full quota; balances never carry over.
+  // Each year starts with its own full quota. January requests may also
+  // consume leftover days from the previous calendar year first.
   const remainingFor = (year: number) => {
     const yearBalance = balances?.[year];
     if (yearBalance) {
       return yearBalance.total_days - yearBalance.used_days - yearBalance.pending_days;
     }
-    const used = regularRequestsFor(year).reduce((s, r) => s + r.days_requested, 0);
+    const used = regularRequestsFor(year).reduce((s, r) => s + daysInBalanceYear(r, year), 0);
     return maxDays - used;
   };
 
-  // Mirrors the server rule: a cross-year request is charged to the start year,
-  // or entirely to the next year when the start year has no balance left.
-  let remaining = remainingFor(activeYear);
-  if (endYear > activeYear && daysSelected > remaining) {
+  // Mirrors the server rule:
+  // - January-only request: previous year balance first, then this year.
+  // - Cross-year request: start year first, or entirely to the next year
+  //   when the start year has no balance left.
+  const startsInJan = selStart ? selStart.getMonth() === 0 : false;
+  let remaining: number;
+  if (startsInJan) {
+    // Available = leftover from year-1 + full remaining of the request year
+    remaining = remainingFor(activeYear - 1) + remainingFor(activeYear);
+  } else if (endYear > activeYear && daysSelected > remainingFor(activeYear)) {
     const nextRemaining = remainingFor(endYear);
-    if (daysSelected <= nextRemaining) {
-      remaining = nextRemaining;
-    }
+    remaining = daysSelected <= nextRemaining ? nextRemaining : remainingFor(activeYear);
+  } else {
+    remaining = remainingFor(activeYear);
   }
 
   const BOOTCAMP_MAX = 2;
+  // Bootcamp quota is validated per accounting year (mirrors the server rule).
   const remainingBootcamp =
-    BOOTCAMP_MAX - (activeRequests
-      .filter(r => r.is_bootcamp && (r.status === "approved" || r.status === "pending"))
-      .reduce((s, r) => s + r.days_requested, 0));
+    BOOTCAMP_MAX -
+    requests
+      .filter(
+        (r) =>
+          r.year === activeYear &&
+          r.is_bootcamp &&
+          (r.status === "approved" || r.status === "pending")
+      )
+      .reduce((s, r) => s + r.days_requested, 0);
 
   const handleSubmit = async () => {
     if (!selStart || !onSubmit) return;
@@ -776,23 +816,23 @@ export function VacationCalendar({
         {(() => {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
-          const solicitados = activeRequests
+          const solicitados = listRequests
             .filter(r => r.status !== "cancelled" && !r.is_bootcamp && !r.is_medical_leave && !r.is_other)
-            .reduce((s, r) => s + r.days_requested, 0);
-          const aprobados = activeBalance
-            ? activeBalance.used_days
-            : activeRequests
+            .reduce((s, r) => s + daysInBalanceYear(r, viewYear), 0);
+          const aprobados = listBalance
+            ? listBalance.used_days
+            : listRequests
               .filter(r => r.status === "approved" && !r.is_bootcamp && !r.is_medical_leave && !r.is_other)
-              .reduce((s, r) => s + r.days_requested, 0);
-          const pendientes = activeBalance
-            ? activeBalance.pending_days
-            : activeRequests
+              .reduce((s, r) => s + daysInBalanceYear(r, viewYear), 0);
+          const pendientes = listBalance
+            ? listBalance.pending_days
+            : listRequests
               .filter(r => r.status === "pending" && !r.is_bootcamp && !r.is_medical_leave && !r.is_other)
-              .reduce((s, r) => s + r.days_requested, 0);
-          const disfrutados = activeRequests
+              .reduce((s, r) => s + daysInBalanceYear(r, viewYear), 0);
+          const disfrutados = listRequests
             .filter(r => r.status === "approved" && !r.is_bootcamp && !r.is_medical_leave && !r.is_other && new Date(r.end_date + "T00:00:00") < today)
-            .reduce((s, r) => s + r.days_requested, 0);
-          const totalDays = activeBalance ? activeBalance.total_days : maxDays;
+            .reduce((s, r) => s + daysInBalanceYear(r, viewYear), 0);
+          const totalDays = listBalance ? listBalance.total_days : maxDays;
           const restantes = totalDays - aprobados - pendientes;
 
           return (
@@ -817,15 +857,37 @@ export function VacationCalendar({
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">
             {strings.vacations.requestsTitle}
-            <span className="ml-2 text-sm font-normal text-muted-foreground">{activeYear}</span>
+            <span className="ml-2 text-sm font-normal text-muted-foreground">{viewYear}</span>
           </h2>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={prevYear === null}
+              onClick={() => prevYear !== null && setViewYear(prevYear)}
+              title={strings.vacations.prevYear}
+            >
+              <ChevronLeftIcon className="size-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={nextYear === null}
+              onClick={() => nextYear !== null && setViewYear(nextYear)}
+              title={strings.vacations.nextYear}
+            >
+              <ChevronRightIcon className="size-4" />
+            </Button>
+          </div>
         </div>
 
         {cancelError && (
           <p className="text-sm text-destructive">{cancelError}</p>
         )}
 
-        {activeRequests.length === 0 ? (
+        {listRequests.length === 0 ? (
           <p className="text-sm text-muted-foreground">{strings.vacations.requestsEmpty}</p>
         ) : (
           <div className="flex flex-col gap-3">
@@ -858,7 +920,7 @@ export function VacationCalendar({
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {activeRequests.map((r) => {
+                  {listRequests.map((r) => {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
                     const startDate = new Date(r.start_date + "T00:00:00");
@@ -892,8 +954,10 @@ export function VacationCalendar({
                           day: "2-digit", month: "short", year: "numeric",
                         })}
                       </td>
-                      <td className="px-4 py-2 font-medium">{r.days_requested}</td>
-                      <td className="px-4 py-2 text-muted-foreground">{r.year}</td>
+                      <td className="px-4 py-2 font-medium">
+                        {daysInBalanceYear(r, viewYear)}
+                      </td>
+                      <td className="px-4 py-2 text-muted-foreground">{viewYear}</td>
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-2 flex-wrap">
                           <Badge variant={STATUS_VARIANT[r.status]}>

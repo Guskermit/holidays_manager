@@ -97,7 +97,7 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [teamFilter, setTeamFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [specFilter, setSpecFilter] = useState<string>("all");
+  const [specFilter, setSpecFilter] = useState<string[]>([]); // Array para selección múltiple (OR)
   const [sortCol, setSortCol] = useState<"name" | "category">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
@@ -178,8 +178,12 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
     if (categoryFilter !== "all") {
       result = result.filter(e => e.category === categoryFilter);
     }
-    if (specFilter !== "all") {
-      result = result.filter(e => e.specializations.includes(specFilter));
+    if (specFilter.length > 0) {
+      // Funciona como OR: muestra empleados que tengan AL MENOS UNA de las especialidades seleccionadas
+      const selectedSpecs = specFilter.map(s => s.trim());
+      result = result.filter(e =>
+        selectedSpecs.some(spec => e.specializations.includes(spec))
+      );
     }
     // Sort
     result = [...result].sort((a, b) => {
@@ -382,37 +386,44 @@ export function VacationSummaryTable({ employees, projects, balances, year: prop
         </div>
       )}
 
-      {/* ── Specialization filter ── */}
+      {/* ── Specialization filter (múltiple selección - OR) ── */}
       {allSpecs.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium shrink-0">{strings.vacations.overviewFilterSpec}</span>
+          {/* Botón "Deseleccionar todo" */}
           <button
             type="button"
-            onClick={() => setSpecFilter("all")}
+            onClick={() => setSpecFilter([])}
             className={cn(
-              "px-3 py-1.5 rounded-full text-sm border transition-colors",
-              specFilter === "all"
-                ? "bg-primary text-primary-foreground border-primary"
+              "px-2.5 py-1 rounded-full text-xs border transition-colors flex items-center gap-1",
+              specFilter.length === 0 && !projectTeams.length && !categoryFilter.startsWith("all")
+                ? "bg-primary text-primary-foreground border-primary" // seleccionado (ninguno)
                 : "border-input hover:bg-accent"
             )}
           >
             {strings.vacations.overviewFilterAllSpecs}
           </button>
-          {allSpecs.map(spec => (
-            <button
-              key={spec}
-              type="button"
-              onClick={() => setSpecFilter(spec)}
-              className={cn(
-                "px-3 py-1.5 rounded-full text-sm border transition-colors",
-                specFilter === spec
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "border-input hover:bg-accent"
-              )}
-            >
-              {spec}
-            </button>
-          ))}
+          {/* Checkboxes para cada especialización */}
+          {allSpecs.map(spec => {
+            const isSelected = specFilter.includes(spec);
+            return (
+              <label key={spec} className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => {
+                    if (isSelected) {
+                      setSpecFilter(prev => prev.filter(s => s !== spec));
+                    } else {
+                      setSpecFilter(prev => [...prev, spec]);
+                    }
+                  }}
+                  className="rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <span className="text-sm">{spec}</span>
+              </label>
+            );
+          })}
         </div>
       )}
 

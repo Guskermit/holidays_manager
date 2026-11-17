@@ -271,6 +271,13 @@ export function MyImputacionesTable({ data }: Props) {
             const config = ABSENCE_ICONS[abs.type] ?? ABSENCE_ICONS.other;
             const Icon = config.icon;
             const totalHours = Array.from(abs.weekHours.values()).reduce((s, h) => s + h, 0);
+            
+            // Check if this is a rollover vacation (starts before year end but spans into next year)
+            const absStart = new Date(abs.startDate);
+            const absEnd = new Date(abs.endDate);
+            const currentYearDate = weeks[0].start.getFullYear();
+            const isRollover = absStart.getFullYear() < currentYearDate && absEnd.getFullYear() > currentYearDate;
+
             return (
               <tr key={`abs-${absIdx}`} className="border-t">
                 <td className="px-3 py-2 sticky left-0 bg-background z-10 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.08)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.3)]">
@@ -279,7 +286,14 @@ export function MyImputacionesTable({ data }: Props) {
                       <Icon className="size-3" />
                     </span>
                     <div>
-                      <div className="font-medium">{abs.label}</div>
+                      <div className="font-medium flex items-center gap-2">
+                        {abs.label}
+                        {isRollover && (
+                          <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded-full">
+                            del año anterior
+                          </span>
+                        )}
+                      </div>
                       <div className="text-[10px] text-muted-foreground">
                         {new Date(abs.startDate + "T00:00:00").toLocaleDateString("es-ES", { day: "2-digit", month: "short" })}
                         {" – "}

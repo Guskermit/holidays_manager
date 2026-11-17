@@ -128,9 +128,12 @@ Registra cada solicitud de vacaciones de un empleado, su estado y la resolución
 | `resolved_at` | `timestamptz` | Fecha de resolución (nullable) |
 | `rejection_reason` | `text` | Motivo de rechazo (nullable) |
 | `notes` | `text` | Observaciones del empleado (nullable) |
-| `year` | `integer` NOT NULL | Año al que corresponden las vacaciones |
+| `year` | `integer` | Año al que corresponden las vacaciones |
+| `prev_year_days` | `integer` NOT NULL DEFAULT 0 | Días de la solicitud cobrados al saldo del año anterior (regla de enero) |
 | `created_at` | `timestamptz` | Fecha de creación |
 | `updated_at` | `timestamptz` | Fecha de última modificación |
+
+**Regla de enero:** si la solicitud empieza en enero del año N, los días se descuentan primero del saldo restante del año N−1 (`prev_year_days`) y solo después del año N. Si no quedan días del año anterior, todo se descuenta del año N.
 
 ---
 

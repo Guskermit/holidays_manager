@@ -145,7 +145,7 @@ async function main() {
   // 5. Fetch ALL relevant vacation requests (non-cancelled, non-bootcamp, non-medical, non-other)
   const { data: requests, error: rErr } = await supabase
     .from("vacation_requests")
-    .select("id, employee_id, start_date, end_date, status, year, is_bootcamp, is_medical_leave, is_other")
+    .select("id, employee_id, start_date, end_date, days_requested, status, year, prev_year_days, is_bootcamp, is_medical_leave, is_other")
     .not("status", "eq", "cancelled")
     .eq("is_bootcamp", false)
     .eq("is_medical_leave", false)
@@ -162,14 +162,6 @@ async function main() {
   const empMap = new Map();
   for (const emp of employees) {
     empMap.set(emp.id, emp);
-  }
-
-  // Build lookup: employee_id → year → requests[]
-  const reqByEmpYear = new Map();
-  for (const req of requests) {
-    const key = `${req.employee_id}:${req.year}`;
-    if (!reqByEmpYear.has(key)) reqByEmpYear.set(key, []);
-    reqByEmpYear.get(key).push(req);
   }
 
   // 6. Recalculate each balance
@@ -197,23 +189,24 @@ async function main() {
       expectedTotal = catOverride ?? CATEGORY_DAYS[emp.category] ?? CATEGORY_DAYS["Staff"];
     }
 
-    // Recalculate used_days and pending_days from requests
-    const key = `${emp.id}:${bal.year}`;
-    const empReqs = reqByEmpYear.get(key) || [];
-
+    // Recalculate used_days and pending_days from requests (January split-aware)
     let newUsed = 0;
     let newPending = 0;
 
-    for (const req of empReqs) {
-      const start = new Date(req.start_date + "T00:00:00");
-      const end = new Date(req.end_date + "T00:00:00");
-      const days = countWorkingDays(start, end, holidays);
+    for (const req of requests) {
+      if (req.employee_id !== emp.id) continue;
+      const days = req.days_requested;
+      const prevDays = Math.min(req.prev_year_days || 0, days);
 
-      if (req.status === "approved") {
-        newUsed += days;
-      } else if (req.status === "pending") {
-        newPending += days;
-      }
+      // Days belonging to this balance year
+      let daysForYear = 0;
+      if (req.year === bal.year) daysForYear = days - prevDays;
+      else if (req.year === bal.year + 1 && prevDays > 0) daysForYear = prevDays;
+      else continue;
+
+      if (daysForYear <= 0) continue;
+      if (req.status === "approved") newUsed += daysForYear;
+      else if (req.status === "pending") newPending += daysForYear;
     }
 
     // Compare with current values

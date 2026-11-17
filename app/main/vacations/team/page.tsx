@@ -90,7 +90,7 @@ export default async function TeamVacationPage({
   const { data: rawEmployees } = await supabase
     .from("employees")
     .select(
-      `id, name, office, category, employee_specializations ( specializations ( name ) ), vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status, days_requested, year, is_bootcamp, is_medical_leave, is_other, other_reason )`
+      `id, name, office, category, employee_specializations ( specializations ( name ) ), vacation_requests!vacation_requests_employee_id_fkey ( id, start_date, end_date, status, days_requested, year, prev_year_days, is_bootcamp, is_medical_leave, is_other, other_reason )`
     )
     .in("id", uniqueColleagueIds)
     .or(`exit_date.is.null,exit_date.gt.${new Date().toISOString().split("T")[0]}`)
@@ -132,10 +132,16 @@ export default async function TeamVacationPage({
     let usedDays = 0;
     let pendingDays = 0;
     for (const req of (emp.vacation_requests ?? []) as any[]) {
-      if (req.year !== currentYear) continue;
       if (req.is_bootcamp || req.is_medical_leave || req.is_other) continue;
-      if (req.status === "approved") usedDays += req.days_requested ?? 0;
-      else if (req.status === "pending") pendingDays += req.days_requested ?? 0;
+      // January splits: days may belong to year-1 even when req.year is the next year
+      const prevDays = req.prev_year_days ?? 0;
+      let daysForYear = 0;
+      if (req.year === currentYear) daysForYear = (req.days_requested ?? 0) - prevDays;
+      else if (req.year === currentYear + 1) daysForYear = prevDays;
+      else continue;
+      if (daysForYear <= 0) continue;
+      if (req.status === "approved") usedDays += daysForYear;
+      else if (req.status === "pending") pendingDays += daysForYear;
     }
     balances.set(emp.id, { totalDays: total, usedDays, pendingDays });
   }
