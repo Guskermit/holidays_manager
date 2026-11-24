@@ -91,7 +91,7 @@ export default async function ProtectedPage({
     await notifyAdminPendingVacationApprovals(effectiveId);
   }
 
-  // ── Imputaciones for current & next week ──────────────────
+  // ── Imputaciones for current & next week (consola) ──────
   const now = new Date();
   const thisMonday = getMonday(now);
   const nextMonday = new Date(thisMonday);
@@ -100,6 +100,7 @@ export default async function ProtectedPage({
   nextSunday.setDate(nextSunday.getDate() + 6);
 
   const thisMondayStr = fmtDate(thisMonday);
+  const nextMondayStr = fmtDate(nextMonday);
   const nextSundayStr = fmtDate(nextSunday);
 
   type WeekImputacion = {
@@ -112,52 +113,34 @@ export default async function ProtectedPage({
   const nextWeekImputaciones: WeekImputacion[] = [];
 
   if (effectiveId) {
-    // Fetch ALL imputaciones for this employee, then filter in JS
-    const { data: imps } = await supabase
-      .from("employee_imputations")
-      .select("engagement_id, start_date, end_date, weekly_hours")
-      .eq("employee_id", effectiveId);
+    // Rows pushed by the consola (PUT /api/imputaciones), keyed by week start
+    const { data: consoleRows } = await supabase
+      .from("employee_console_imputations")
+      .select("engagement_code, horas, lunes")
+      .eq("employee_id", effectiveId)
+      .in("lunes", [thisMondayStr, nextMondayStr]);
 
-    // Batch-fetch engagement names/codes for all engagement_ids found
-    const engIds = [...new Set((imps ?? []).map((i: { engagement_id: string }) => i.engagement_id))];
-    const engMap: Record<string, { name: string; engagement_code: string }> = {};
-    if (engIds.length > 0) {
+    // Resolve engagement names by code (unknown codes render as code only)
+    const codes = [...new Set((consoleRows ?? []).map((r) => r.engagement_code))];
+    const engNameByCode: Record<string, string> = {};
+    if (codes.length > 0) {
       const { data: engs } = await supabase
         .from("engagements")
-        .select("id, name, engagement_code")
-        .in("id", engIds);
+        .select("engagement_code, name")
+        .in("engagement_code", codes);
       for (const e of engs ?? []) {
-        engMap[e.id] = { name: e.name, engagement_code: e.engagement_code };
+        engNameByCode[e.engagement_code] = e.name;
       }
     }
 
-    const thisSundayStr = fmtDate(new Date(thisMonday.getTime() + 6 * 86400000));
-    const nextWeekEndStr = fmtDate(new Date(nextMonday.getTime() + 6 * 86400000));
-
-    for (const imp of (imps ?? []) as { engagement_id: string; start_date: string; end_date: string | null; weekly_hours: number }[]) {
-      const eng = engMap[imp.engagement_id];
-      if (!eng) continue;
-
-      const impStart = imp.start_date as string;
-      const impEnd = (imp.end_date as string | null) ?? "9999-12-31";
-
-      // Check overlap with this week
-      if (impStart <= thisSundayStr && impEnd >= thisMondayStr) {
-        thisWeekImputaciones.push({
-          engagement_name: eng.name,
-          engagement_code: eng.engagement_code,
-          weekly_hours: imp.weekly_hours,
-        });
-      }
-
-      // Check overlap with next week
-      if (impStart <= nextWeekEndStr && impEnd >= fmtDate(nextMonday)) {
-        nextWeekImputaciones.push({
-          engagement_name: eng.name,
-          engagement_code: eng.engagement_code,
-          weekly_hours: imp.weekly_hours,
-        });
-      }
+    for (const row of consoleRows ?? []) {
+      const item: WeekImputacion = {
+        engagement_name: engNameByCode[row.engagement_code] ?? "",
+        engagement_code: row.engagement_code,
+        weekly_hours: row.horas,
+      };
+      if (row.lunes === thisMondayStr) thisWeekImputaciones.push(item);
+      else if (row.lunes === nextMondayStr) nextWeekImputaciones.push(item);
     }
   }
 

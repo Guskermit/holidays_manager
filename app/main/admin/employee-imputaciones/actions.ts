@@ -2,7 +2,6 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
 
 
 type Office = "madrid" | "barcelona" | "valencia" | "malaga" | "zaragoza" | "sevilla";
@@ -57,16 +56,6 @@ export type AdminImputacionesData = {
   absenceWeekMap: Map<string, number>;
   engagementWeekMap: Map<string, number>;
   weekTotals: Map<number, number>;
-};
-
-export type EngagementOption = {
-  id: string;
-  name: string;
-  code: string;
-  clientId: string;
-  clientName: string;
-  startDate: string | null;
-  endDate: string | null;
 };
 
 // ── Constants ──────────────────────────────────────────────
@@ -178,42 +167,6 @@ export async function getEmployeesForDropdown(): Promise<{
   };
 }
 
-// ── Get all engagement options ─────────────────────────────
-
-export async function getAllEngagementOptions(): Promise<{
-  data?: EngagementOption[];
-  error?: string;
-}> {
-  const supabase = await requireAdmin();
-
-  const { data: engagements, error } = await supabase
-    .from("engagements")
-    .select("id, name, engagement_code, client_id, start_date, end_date")
-    .order("name");
-
-  if (error) return { error: error.message };
-
-  const clientIds = [...new Set((engagements ?? []).map((e) => e.client_id).filter(Boolean))];
-  const { data: clients } = await supabase
-    .from("projects")
-    .select("id_engagement, name")
-    .in("id_engagement", clientIds);
-
-  const clientMap = new Map((clients ?? []).map((c) => [c.id_engagement, c.name]));
-
-  const options: EngagementOption[] = (engagements ?? []).map((e) => ({
-    id: e.id,
-    name: e.name,
-    code: e.engagement_code,
-    clientId: e.client_id,
-    clientName: clientMap.get(e.client_id) ?? e.client_id,
-    startDate: e.start_date,
-    endDate: e.end_date,
-  }));
-
-  return { data: options };
-}
-
 // ── Get full imputaciones data for an employee ─────────────
 
 export async function getAdminEmployeeImputaciones(
@@ -277,23 +230,24 @@ export async function getAdminEmployeeImputaciones(
     }
   }
 
-  // Fetch engagements
-  const { data: imputaciones } = await supabase
-    .from("employee_imputations")
-    .select("engagement_id, start_date, end_date, weekly_hours")
-    .eq("employee_id", employeeId);
+  // Fetch engagements from the consola (per-week rows, read-only)
+  const { data: consoleRows } = await supabase
+    .from("employee_console_imputations")
+    .select("engagement_code, lunes, viernes, horas")
+    .eq("employee_id", employeeId)
+    .order("lunes");
 
   const engagements: AdminEngagementData[] = [];
   const engagementWeekMap = new Map<string, number>();
 
-  if (imputaciones && imputaciones.length > 0) {
-    const engagementIds = [...new Set(imputaciones.map((i) => i.engagement_id))];
+  if (consoleRows && consoleRows.length > 0) {
+    const codes = [...new Set(consoleRows.map((r) => r.engagement_code))];
     const { data: engRows } = await supabase
       .from("engagements")
       .select("id, name, engagement_code, client_id")
-      .in("id", engagementIds);
+      .in("engagement_code", codes);
 
-    const engMap = new Map((engRows ?? []).map((e) => [e.id, e]));
+    const engMap = new Map((engRows ?? []).map((e) => [e.engagement_code, e]));
     const clientIds = [...new Set((engRows ?? []).map((e) => e.client_id).filter(Boolean))];
     const { data: clientRows } = await supabase
       .from("projects")
@@ -301,49 +255,49 @@ export async function getAdminEmployeeImputaciones(
       .in("id_engagement", clientIds);
     const clientMap = new Map((clientRows ?? []).map((c) => [c.id_engagement, c.name]));
 
-    // Group imputations by engagement_id so split records still appear as one row
-    const engGroups = new Map<string, {
+    // Map week start (Monday) → week index for the selected year
+    const weekIdxByStart = new Map<string, number>();
+    for (let i = 0; i < weeks.length; i++) {
+      weekIdxByStart.set(fmtDate(weeks[i].start), i);
+    }
+
+    // Group rows by engagement code so it appears as one row
+    const groups = new Map<string, {
       weekHours: Map<number, number>;
       startDate: string;
-      endDate: string | null;
+      endDate: string;
     }>();
 
-    for (const imp of imputaciones) {
-      const eng = engMap.get(imp.engagement_id);
-      if (!eng) continue;
-
-      let group = engGroups.get(imp.engagement_id);
+    for (const row of consoleRows) {
+      let group = groups.get(row.engagement_code);
       if (!group) {
         group = {
           weekHours: new Map<number, number>(),
-          startDate: imp.start_date,
-          endDate: imp.end_date,
+          startDate: row.lunes,
+          endDate: row.viernes,
         };
-        engGroups.set(imp.engagement_id, group);
+        groups.set(row.engagement_code, group);
       }
+      if (row.lunes < group.startDate) group.startDate = row.lunes;
+      if (row.viernes > group.endDate) group.endDate = row.viernes;
 
-      const impStart = new Date(imp.start_date + "T00:00:00");
-      const impEnd = imp.end_date ? new Date(imp.end_date + "T00:00:00") : yearEnd;
-
-      for (let i = 0; i < weeks.length; i++) {
-        const w = weeks[i];
-        if (impStart <= w.end && impEnd >= w.start) {
-          group.weekHours.set(i, imp.weekly_hours);
-          engagementWeekMap.set(`${imp.engagement_id}-${i}`, imp.weekly_hours);
-        }
-      }
+      const idx = weekIdxByStart.get(row.lunes);
+      if (idx === undefined) continue; // week outside the selected year
+      group.weekHours.set(idx, row.horas);
+      engagementWeekMap.set(`${row.engagement_code}-${idx}`, row.horas);
     }
 
-    for (const [engagementId, group] of engGroups) {
-      const eng = engMap.get(engagementId)!;
+    for (const [code, group] of groups) {
+      const eng = engMap.get(code);
+      const firstHours = group.weekHours.size > 0 ? [...group.weekHours.values()][0] : 0;
       engagements.push({
-        id: engagementId,
-        clientName: clientMap.get(eng.client_id) ?? eng.client_id,
-        engagementName: eng.name,
-        engagementCode: eng.engagement_code,
+        id: code,
+        clientName: eng ? (clientMap.get(eng.client_id) ?? eng.client_id) : "",
+        engagementName: eng ? eng.name : code,
+        engagementCode: code,
         startDate: group.startDate,
         endDate: group.endDate,
-        weeklyHours: [...group.weekHours.values()][0] ?? 0,
+        weeklyHours: firstHours,
         weekHours: group.weekHours,
       });
     }
@@ -470,195 +424,4 @@ export async function getAdminEmployeeImputaciones(
       weekTotals,
     },
   };
-}
-
-// ── Update engagement weekly hours for an employee ─────────
-// Splits the imputation so only the edited week gets new hours.
-
-export async function updateEmployeeEngagementHours(
-  employeeId: string,
-  engagementId: string,
-  newWeeklyHours: number,
-  weekIdx: number,
-  year: number
-): Promise<{ success?: boolean; error?: string }> {
-  const supabase = await requireAdmin();
-
-  if (newWeeklyHours < 0) return { error: "Las horas no pueden ser negativas." };
-
-  // Calculate the exact dates of the edited week
-  const yearStart = new Date(year, 0, 1);
-  const firstMonday = getMonday(yearStart);
-  const editedWeekStart = addDays(firstMonday, weekIdx * 7);
-  const editedWeekEnd = addDays(editedWeekStart, 6);
-
-  // Fetch all imputations for this employee-engagement pair
-  const { data: imputaciones, error: fetchErr } = await supabase
-    .from("employee_imputations")
-    .select("id, start_date, end_date, weekly_hours")
-    .eq("employee_id", employeeId)
-    .eq("engagement_id", engagementId);
-
-  if (fetchErr) return { error: fetchErr.message };
-  if (!imputaciones || imputaciones.length === 0) return { error: "No hay imputaciones para modificar." };
-
-  // Process each imputation that covers the edited week
-  const toDelete: string[] = [];
-  const toInsert: { employee_id: string; engagement_id: string; start_date: string; end_date: string | null; weekly_hours: number }[] = [];
-
-  for (const imp of imputaciones) {
-    const impStart = new Date(imp.start_date + "T00:00:00");
-    const impEnd = imp.end_date ? new Date(imp.end_date + "T00:00:00") : new Date(year, 11, 31);
-
-    // Does this imputation cover the edited week?
-    if (impStart > editedWeekEnd || impEnd < editedWeekStart) {
-      // No — keep it as-is
-      continue;
-    }
-
-    // Yes — we need to split it. Delete the original.
-    toDelete.push(imp.id);
-
-    const origHours = imp.weekly_hours;
-
-    // Part 1: weeks before the edited week (if any)
-    const part1End = addDays(editedWeekStart, -1);
-    if (impStart <= part1End) {
-      toInsert.push({
-        employee_id: employeeId,
-        engagement_id: engagementId,
-        start_date: fmtDate(impStart),
-        end_date: fmtDate(part1End),
-        weekly_hours: origHours,
-      });
-    }
-
-    // Part 2: the edited week itself (only if newWeeklyHours > 0)
-    if (newWeeklyHours > 0) {
-      toInsert.push({
-        employee_id: employeeId,
-        engagement_id: engagementId,
-        start_date: fmtDate(editedWeekStart),
-        end_date: fmtDate(editedWeekEnd),
-        weekly_hours: newWeeklyHours,
-      });
-    }
-
-    // Part 3: weeks after the edited week (if any)
-    const part3Start = addDays(editedWeekEnd, 1);
-    if (impEnd >= part3Start) {
-      toInsert.push({
-        employee_id: employeeId,
-        engagement_id: engagementId,
-        start_date: fmtDate(part3Start),
-        end_date: imp.end_date ? imp.end_date : fmtDate(impEnd),
-        weekly_hours: origHours,
-      });
-    }
-  }
-
-  // Execute: delete originals, insert splits
-  if (toDelete.length > 0) {
-    const { error: delErr } = await supabase
-      .from("employee_imputations")
-      .delete()
-      .in("id", toDelete);
-    if (delErr) return { error: delErr.message };
-  }
-
-  if (toInsert.length > 0) {
-    const { error: insErr } = await supabase
-      .from("employee_imputations")
-      .insert(toInsert);
-    if (insErr) return { error: insErr.message };
-  }
-
-  revalidatePath("/main/admin/employee-imputaciones");
-  return { success: true };
-}
-
-// ── Add a new engagement to an employee ────────────────────
-
-export async function addEmployeeEngagement(
-  employeeId: string,
-  engagementId: string,
-  startDate: string,
-  endDate: string | null,
-  weeklyHours: number
-): Promise<{ success?: boolean; error?: string }> {
-  const supabase = await requireAdmin();
-
-  if (weeklyHours <= 0) return { error: "Las horas deben ser mayores a 0." };
-
-  // Check if already assigned
-  const { data: existing } = await supabase
-    .from("employee_imputations")
-    .select("id")
-    .eq("employee_id", employeeId)
-    .eq("engagement_id", engagementId)
-    .single();
-
-  if (existing) {
-    return { error: "Este empleado ya tiene este engagement asignado." };
-  }
-
-  // Get the engagement's client
-  const { data: engagement } = await supabase
-    .from("engagements")
-    .select("client_id")
-    .eq("id", engagementId)
-    .single();
-
-  if (!engagement) return { error: "Engagement no encontrado." };
-
-  // Auto-associate employee to the client if not already
-  const { data: existingProject } = await supabase
-    .from("employee_projects")
-    .select("id")
-    .eq("employee_id", employeeId)
-    .eq("project_id", engagement.client_id)
-    .single();
-
-  if (!existingProject) {
-    await supabase.from("employee_projects").insert({
-      employee_id: employeeId,
-      project_id: engagement.client_id,
-    });
-  }
-
-  // Create the imputation
-  const { error } = await supabase
-    .from("employee_imputations")
-    .insert({
-      employee_id: employeeId,
-      engagement_id: engagementId,
-      start_date: startDate,
-      end_date: endDate,
-      weekly_hours: weeklyHours,
-    });
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/main/admin/employee-imputaciones");
-  return { success: true };
-}
-
-// ── Remove an engagement from an employee ──────────────────
-
-export async function removeEmployeeEngagement(
-  employeeId: string,
-  engagementId: string
-): Promise<{ success?: boolean; error?: string }> {
-  const supabase = await requireAdmin();
-
-  const { error } = await supabase
-    .from("employee_imputations")
-    .delete()
-    .eq("employee_id", employeeId)
-    .eq("engagement_id", engagementId);
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/main/admin/employee-imputaciones");
-  return { success: true };
 }

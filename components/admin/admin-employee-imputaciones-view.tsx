@@ -5,21 +5,14 @@ import {
   SearchIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  PlusIcon,
-  Trash2Icon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { strings } from "@/lib/strings";
 import {
   getEmployeesForDropdown,
   getAdminEmployeeImputaciones,
-  getAllEngagementOptions,
-  updateEmployeeEngagementHours,
-  addEmployeeEngagement,
-  removeEmployeeEngagement,
   type EmployeeOption,
   type AdminImputacionesData,
-  type EngagementOption,
 } from "@/app/main/admin/employee-imputaciones/actions";
 
 // ── Month colors ──────────────────────────────────────────
@@ -62,22 +55,6 @@ export function AdminEmployeeImputacionesView() {
   const [loadingData, setLoadingData] = useState(false);
   const [year, setYear] = useState(new Date().getFullYear());
 
-  // Engagement options for adding new rows
-  const [engagementOptions, setEngagementOptions] = useState<EngagementOption[]>([]);
-  const [showAddRow, setShowAddRow] = useState(false);
-  const [addEngagementId, setAddEngagementId] = useState("");
-  const [addStartDate, setAddStartDate] = useState("");
-  const [addEndDate, setAddEndDate] = useState("");
-  const [addWeeklyHours, setAddWeeklyHours] = useState<number>(20);
-
-  // Editing state
-  const [editingCell, setEditingCell] = useState<{ engagementId: string; weekIdx: number } | null>(null);
-  const [editValue, setEditValue] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  // Pending local edits: key = `${engagementId}-${weekIdx}`, value = new hours
-  const [pendingEdits, setPendingEdits] = useState<Map<string, number>>(new Map());
-
   // Fetch employees on mount
   useEffect(() => {
     getEmployeesForDropdown().then((result) => {
@@ -85,15 +62,6 @@ export function AdminEmployeeImputacionesView() {
       setLoadingEmployees(false);
     });
   }, []);
-
-  // Fetch engagement options when add row is opened
-  useEffect(() => {
-    if (showAddRow && engagementOptions.length === 0) {
-      getAllEngagementOptions().then((result) => {
-        if (result.data) setEngagementOptions(result.data);
-      });
-    }
-  }, [showAddRow]);
 
   // Fetch imputaciones data when employee or year changes
   const fetchData = useCallback(async (empId: string, yr: number) => {
@@ -128,129 +96,9 @@ export function AdminEmployeeImputacionesView() {
       e.email.toLowerCase().includes(employeeSearch.toLowerCase())
   );
 
-  // Handle cell edit start
-  const startEdit = (engagementId: string, weekIdx: number, currentValue: number) => {
-    setEditingCell({ engagementId, weekIdx });
-    setEditValue(currentValue > 0 ? String(currentValue) : "");
-  };
-
-  // Helper: get effective hours for a cell (pending edit > server value)
-  const getEffectiveHours = useCallback((engagementId: string, weekIdx: number): number => {
-    const key = `${engagementId}-${weekIdx}`;
-    if (pendingEdits.has(key)) return pendingEdits.get(key)!;
-    const eng = data?.engagements.find((e) => e.id === engagementId);
-    return eng?.weekHours.get(weekIdx) ?? 0;
-  }, [pendingEdits, data]);
-
-  // Handle cell edit confirm (local only, no server call)
-  const confirmEdit = () => {
-    if (!editingCell) return;
-    const newHours = parseFloat(editValue) || 0;
-    const key = `${editingCell.engagementId}-${editingCell.weekIdx}`;
-    const originalVal = data?.engagements
-      .find((e) => e.id === editingCell.engagementId)
-      ?.weekHours.get(editingCell.weekIdx) ?? 0;
-
-    // Only add to pending if value actually changed
-    setPendingEdits((prev) => {
-      const next = new Map(prev);
-      if (newHours === originalVal) {
-        next.delete(key);
-      } else {
-        next.set(key, newHours);
-      }
-      return next;
-    });
-
-    setEditingCell(null);
-    setEditValue("");
-  };
-
-  // Handle saving all pending changes to server
-  const handleSavePendingChanges = async () => {
-    if (!selectedEmployeeId || pendingEdits.size === 0) return;
-    setSaving(true);
-
-    let hasError = false;
-    for (const [key, newHours] of pendingEdits) {
-      const lastDash = key.lastIndexOf("-");
-      const engagementId = key.substring(0, lastDash);
-      const weekIdx = parseInt(key.substring(lastDash + 1), 10);
-      const result = await updateEmployeeEngagementHours(
-        selectedEmployeeId,
-        engagementId,
-        newHours,
-        weekIdx,
-        year
-      );
-      if (result.error) {
-        alert(result.error);
-        hasError = true;
-        break;
-      }
-    }
-
-    setPendingEdits(new Map());
-    if (!hasError) {
-      await fetchData(selectedEmployeeId, year);
-    }
-    setSaving(false);
-  };
-
-  // Handle adding a new engagement
-  const handleAddEngagement = async () => {
-    if (!selectedEmployeeId || !addEngagementId) return;
-    if (!addStartDate) {
-      alert("La fecha de inicio es obligatoria.");
-      return;
-    }
-
-    setSaving(true);
-    const result = await addEmployeeEngagement(
-      selectedEmployeeId,
-      addEngagementId,
-      addStartDate,
-      addEndDate || null,
-      addWeeklyHours
-    );
-
-    if (result.error) {
-      alert(result.error);
-    } else {
-      setShowAddRow(false);
-      setAddEngagementId("");
-      setAddStartDate("");
-      setAddEndDate("");
-      setAddWeeklyHours(20);
-      await fetchData(selectedEmployeeId, year);
-    }
-    setSaving(false);
-  };
-
-  // Handle removing an engagement
-  const handleRemoveEngagement = async (engagementId: string) => {
-    if (!selectedEmployeeId) return;
-    if (!confirm("¿Eliminar este engagement del empleado?")) return;
-
-    setSaving(true);
-    const result = await removeEmployeeEngagement(selectedEmployeeId, engagementId);
-    if (result.error) {
-      alert(result.error);
-    } else {
-      await fetchData(selectedEmployeeId, year);
-    }
-    setSaving(false);
-  };
-
-  // Handle keyboard in edit mode
-  const handleEditKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      confirmEdit();
-    } else if (e.key === "Escape") {
-      setEditingCell(null);
-      setEditValue("");
-    }
-  };
+  // Read-only helper: hours for an engagement cell
+  const getHours = (engagementId: string, weekIdx: number): number =>
+    data?.engagements.find((e) => e.id === engagementId)?.weekHours.get(weekIdx) ?? 0;
 
   const selectedEmployee = employees.find((e) => e.id === selectedEmployeeId);
 
@@ -349,143 +197,6 @@ export function AdminEmployeeImputacionesView() {
               <ChevronRightIcon className="size-4" />
             </Button>
           </div>
-
-          <div className="flex items-center gap-2">
-            {pendingEdits.size > 0 && (
-              <Button
-                size="sm"
-                onClick={handleSavePendingChanges}
-                disabled={saving}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
-                {saving ? strings.common.loading : `Guardar cambios (${pendingEdits.size})`}
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAddRow(!showAddRow)}
-            >
-              <PlusIcon className="size-4 mr-1" />
-              {strings.imputaciones.newImputacionButton}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Add engagement form */}
-      {showAddRow && data && (
-        <div className="rounded-lg border bg-card p-4 flex flex-col gap-3">
-          <h3 className="font-semibold text-sm">
-            {strings.imputaciones.newImputacionTitle}
-          </h3>
-          <div className="flex flex-wrap items-end gap-3">
-            {/* Engagement selector */}
-            <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
-              <label className="text-xs font-medium text-muted-foreground">
-                {strings.imputaciones.imputacionEngagementLabel}
-              </label>
-              <select
-                value={addEngagementId}
-                onChange={(e) => {
-                  setAddEngagementId(e.target.value);
-                  const eng = engagementOptions.find((o) => o.id === e.target.value);
-                  if (eng) {
-                    setAddStartDate(eng.startDate ?? "");
-                    setAddEndDate(eng.endDate ?? "");
-                  }
-                }}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="">
-                  {strings.imputaciones.imputacionEngagementPlaceholder}
-                </option>
-                {engagementOptions.map((eng) => (
-                  <option key={eng.id} value={eng.id}>
-                    {eng.clientName} → {eng.name} ({eng.code})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Start date */}
-            <div className="flex flex-col gap-1 min-w-[140px]">
-              <label className="text-xs font-medium text-muted-foreground">
-                {strings.imputaciones.imputacionStartDate}
-              </label>
-              <input
-                type="date"
-                value={addStartDate}
-                onChange={(e) => setAddStartDate(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              />
-            </div>
-
-            {/* End date */}
-            <div className="flex flex-col gap-1 min-w-[140px]">
-              <label className="text-xs font-medium text-muted-foreground">
-                {strings.imputaciones.imputacionEndDate}
-              </label>
-              <input
-                type="date"
-                value={addEndDate}
-                onChange={(e) => setAddEndDate(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              />
-            </div>
-
-            {/* Weekly hours */}
-            <div className="flex flex-col gap-1 min-w-[100px]">
-              <label className="text-xs font-medium text-muted-foreground">
-                {strings.imputaciones.imputacionWeeklyHours}
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.5"
-                value={addWeeklyHours}
-                onChange={(e) => setAddWeeklyHours(parseFloat(e.target.value) || 0)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm tabular-nums focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              />
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                onClick={handleAddEngagement}
-                disabled={saving || !addEngagementId || !addStartDate}
-              >
-                {saving ? strings.common.loading : strings.imputaciones.imputacionSaveButton}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setShowAddRow(false);
-                  setAddEngagementId("");
-                  setAddStartDate("");
-                  setAddEndDate("");
-                  setAddWeeklyHours(20);
-                }}
-              >
-                {strings.common.cancel}
-              </Button>
-            </div>
-          </div>
-          {addEngagementId && (
-            <p className="text-xs text-muted-foreground">
-              {(() => {
-                const eng = engagementOptions.find((o) => o.id === addEngagementId);
-                if (!eng) return null;
-                const isAssigned = data?.engagements.some((e) => e.id === addEngagementId);
-                if (isAssigned) {
-                  return "⚠️ Este engagement ya está asignado al empleado.";
-                }
-                return `ℹ️ Si ${data?.employeeName} no está asignado al cliente "${eng.clientName}", se asociará automáticamente.`;
-              })()}
-            </p>
-          )}
         </div>
       )}
 
@@ -558,70 +269,39 @@ export function AdminEmployeeImputacionesView() {
             <tbody>
               {/* Engagement rows */}
               {data.engagements.map((eng, engIdx) => {
-                const rowTotal = data.weeks.reduce((s, _, i) => s + getEffectiveHours(eng.id, i), 0);
+                const rowTotal = data.weeks.reduce((s, _, i) => s + getHours(eng.id, i), 0);
                 return (
                   <tr key={`eng-${engIdx}`} className="hover:bg-muted/20">
                     <td className="sticky left-0 z-10 bg-background border-r px-3 py-2 min-w-[200px]">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-xs truncate">
-                            {eng.clientName} → {eng.engagementName}
+                            {eng.clientName ? `${eng.clientName} → ` : ""}
+                            {eng.engagementName}
                           </p>
                           <p className="text-[10px] text-muted-foreground">
-                            {eng.engagementCode} · {eng.weeklyHours}h/sem
+                            {eng.engagementCode}
                           </p>
                         </div>
                       </div>
                     </td>
                     {data.weeks.map((_, weekIdx) => {
-                      const val = getEffectiveHours(eng.id, weekIdx);
-                      const isEditing =
-                        editingCell?.engagementId === eng.id &&
-                        editingCell?.weekIdx === weekIdx;
-                      const isPending = pendingEdits.has(`${eng.id}-${weekIdx}`);
-
+                      const val = getHours(eng.id, weekIdx);
                       return (
                         <td
                           key={weekIdx}
-                          className={`border px-0.5 py-1 text-center text-xs tabular-nums ${
-                            isEditing ? "ring-2 ring-ring ring-inset" : ""
-                          } ${
-                            isPending ? "bg-amber-100/60 dark:bg-amber-900/20" : ""
-                          }`}
-                          onClick={() => !isEditing && startEdit(eng.id, weekIdx, val)}
+                          className="border px-1 py-1 text-center text-xs tabular-nums"
                         >
-                          {isEditing ? (
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.5"
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={confirmEdit}
-                              onKeyDown={handleEditKeyDown}
-                              className="w-full h-7 text-center text-xs bg-background border rounded outline-none tabular-nums"
-                              autoFocus
-                            />
-                          ) : (
-                            <span className={`cursor-pointer block py-0.5 ${isPending ? "font-bold" : ""}`}>
-                              {val > 0 ? (val % 1 === 0 ? val : val.toFixed(1)) : ""}
-                            </span>
-                          )}
+                          <span className="block py-0.5">
+                            {val > 0 ? (val % 1 === 0 ? val : val.toFixed(1)) : ""}
+                          </span>
                         </td>
                       );
                     })}
                     <td className="border px-2 py-1 text-center text-xs font-semibold tabular-nums bg-muted/30">
                       {rowTotal > 0 ? (rowTotal % 1 === 0 ? rowTotal : rowTotal.toFixed(1)) : "—"}
                     </td>
-                    <td className="border px-1 py-1 text-center">
-                      <button
-                        onClick={() => handleRemoveEngagement(eng.id)}
-                        className="p-1 text-muted-foreground hover:text-red-500 transition-colors"
-                        title="Eliminar"
-                      >
-                        <Trash2Icon className="size-3" />
-                      </button>
-                    </td>
+                    <td className="border" />
                   </tr>
                 );
               })}
@@ -697,7 +377,7 @@ export function AdminEmployeeImputacionesView() {
                   </p>
                 </td>
                 {data.weeks.map((_, weekIdx) => {
-                  const engTotal = data.engagements.reduce((s, e) => s + getEffectiveHours(e.id, weekIdx), 0);
+                  const engTotal = data.engagements.reduce((s, e) => s + getHours(e.id, weekIdx), 0);
                   const commHrs = data.commercialHours?.get(weekIdx) ?? 0;
                   const absHrs = data.absences.reduce((s, a) => s + (a.weekHours.get(weekIdx) ?? 0), 0);
                   const combined = engTotal + commHrs + absHrs;
@@ -714,7 +394,7 @@ export function AdminEmployeeImputacionesView() {
                   {(() => {
                     let total = 0;
                     for (let i = 0; i < data.weeks.length; i++) {
-                      const engTotal = data.engagements.reduce((s, e) => s + getEffectiveHours(e.id, i), 0);
+                      const engTotal = data.engagements.reduce((s, e) => s + getHours(e.id, i), 0);
                       const absHrs = data.absences.reduce((s, a) => s + (a.weekHours.get(i) ?? 0), 0);
                       total += engTotal + (data.commercialHours?.get(i) ?? 0) + absHrs;
                     }
@@ -763,7 +443,7 @@ export function AdminEmployeeImputacionesView() {
                 </td>
                 {data.weeks.map((_, weekIdx) => {
                   const target = data.weekTargetHours.get(weekIdx) ?? 0;
-                  const engTotal = data.engagements.reduce((s, e) => s + getEffectiveHours(e.id, weekIdx), 0);
+                  const engTotal = data.engagements.reduce((s, e) => s + getHours(e.id, weekIdx), 0);
                   const commHrs = data.commercialHours?.get(weekIdx) ?? 0;
                   const absHrs = data.absences.reduce((s, a) => s + (a.weekHours.get(weekIdx) ?? 0), 0);
                   const diff = engTotal + commHrs + absHrs - target;
@@ -787,7 +467,7 @@ export function AdminEmployeeImputacionesView() {
                     let totalDiff = 0;
                     for (let i = 0; i < data.weeks.length; i++) {
                       const target = data.weekTargetHours.get(i) ?? 0;
-                      const engTotal = data.engagements.reduce((s, e) => s + getEffectiveHours(e.id, i), 0);
+                      const engTotal = data.engagements.reduce((s, e) => s + getHours(e.id, i), 0);
                       const commHrs = data.commercialHours?.get(i) ?? 0;
                       const absHrs = data.absences.reduce((s, a) => s + (a.weekHours.get(i) ?? 0), 0);
                       totalDiff += engTotal + commHrs + absHrs - target;
