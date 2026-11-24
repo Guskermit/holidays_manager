@@ -276,7 +276,7 @@ Required header (one of):
 
 ### Semantics
 
-- **Upsert only, no deletes.** Rows are keyed by `(email, lunes, engagement_code)`; re-sending the same file updates hours in place. Rows not present in the payload are left untouched.
+- **Week replacement per employee.** For each `(email, lunes)` present in the payload, any existing imputations for that employee and week are deleted first and replaced with the incoming records. Weeks or employees not present in the payload are left untouched.
 - Unknown **emails** or **engagement codes** are stored anyway (`employee_id` stays `null` for unknown emails) and reported in `incidencias` with HTTP **207**.
 - The `forzado` / `pendiente` flags are ignored (not stored).
 - Week key (`lunes`) = the `lunes` field when provided, otherwise the Monday of the ISO week containing `semana`.

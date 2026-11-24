@@ -13,9 +13,12 @@ import { createServiceClient } from "@/lib/supabase/service";
  * Auth: secret token in header `x-api-key: <token>` or
  * `Authorization: Bearer <token>` (env IMPUTACIONES_API_TOKEN).
  *
- * Semantics: upsert only (no deletes). Rows are keyed by
- * (email, lunes, engagement_code). Unknown emails / engagement
- * codes are stored anyway and reported as incidences (HTTP 207).
+ * Semantics: week replacement per employee. For each (email, lunes)
+ * present in the payload, existing rows for that employee and week
+ * are deleted first, and replaced with the incoming engagements. Rows
+ * for weeks or employees not present in the payload are left untouched.
+ * Unknown emails / engagement codes are stored anyway and reported
+ * as incidences (HTTP 207).
  *
  * Example:
  *   curl -X PUT https://host/api/imputaciones \
@@ -183,6 +186,7 @@ export async function PUT(request: NextRequest) {
   const rows: ConsoleRow[] = [];
   const emails: string[] = [];
   const engagementCodes: string[] = [];
+  const weeksToDelete = new Map<string, Set<string>>();
 
   for (let p = 0; p < payload.personas.length; p++) {
     const person = payload.personas[p] as PayloadPerson;
@@ -240,6 +244,13 @@ export async function PUT(request: NextRequest) {
       } else {
         viernes = addDays(lunes, 4);
       }
+
+      let emailSet = weeksToDelete.get(lunes);
+      if (!emailSet) {
+        emailSet = new Set<string>();
+        weeksToDelete.set(lunes, emailSet);
+      }
+      emailSet.add(email);
 
       for (let e = 0; e < week.engagements.length; e++) {
         const eng = week.engagements[e] as PayloadEngagement;
@@ -341,9 +352,36 @@ export async function PUT(request: NextRequest) {
     for (const eng of engagements ?? []) knownCodes.add(eng.engagement_code);
   }
 
+  // ── Delete previous records for the arriving (email, lunes) weeks ──
+  for (const [lunes, emailSet] of weeksToDelete.entries()) {
+    const emailsForWeek = [...emailSet];
+    for (let i = 0; i < emailsForWeek.length; i += 200) {
+      const chunk = emailsForWeek.slice(i, i + 200);
+      const { error: deleteError } = await supabase
+        .from("employee_console_imputations")
+        .delete()
+        .eq("lunes", lunes)
+        .in("email", chunk);
+
+      if (deleteError) {
+        return jsonResponse(
+          { error: `Error deleting existing imputations: ${deleteError.message}` },
+          500
+        );
+      }
+    }
+  }
+
   // ── Upsert in chunks ─────────────────────────────────────
-  for (let i = 0; i < rows.length; i += UPSERT_CHUNK_SIZE) {
-    const chunk = rows.slice(i, i + UPSERT_CHUNK_SIZE);
+  const rowMap = new Map<string, ConsoleRow>();
+  for (const row of rows) {
+    const key = `${row.email}|${row.lunes}|${row.engagement_code}`;
+    rowMap.set(key, row);
+  }
+  const deduplicatedRows = [...rowMap.values()];
+
+  for (let i = 0; i < deduplicatedRows.length; i += UPSERT_CHUNK_SIZE) {
+    const chunk = deduplicatedRows.slice(i, i + UPSERT_CHUNK_SIZE);
     const { error } = await supabase
       .from("employee_console_imputations")
       .upsert(chunk, {
@@ -375,7 +413,7 @@ export async function PUT(request: NextRequest) {
     {
       status: hasIncidences ? "partial" : "ok",
       personas: payload.personas.length,
-      filas: rows.length,
+      filas: deduplicatedRows.length,
       incidencias,
     },
     hasIncidences ? 207 : 200
