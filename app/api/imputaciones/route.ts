@@ -69,6 +69,24 @@ type ConsoleRow = {
 
 const UPSERT_CHUNK_SIZE = 500;
 
+// ── CORS ───────────────────────────────────────────────────
+
+const CORS_HEADERS: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "PUT, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, x-api-key, Authorization",
+  "Access-Control-Max-Age": "86400",
+};
+
+function jsonResponse(body: unknown, status: number = 200): NextResponse {
+  return NextResponse.json(body, { status, headers: CORS_HEADERS });
+}
+
+/** Preflight for cross-origin browser calls. */
+export function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+}
+
 // ── Auth helpers ───────────────────────────────────────────
 
 function getProvidedToken(request: NextRequest): string | null {
@@ -120,7 +138,7 @@ function addDays(dateStr: string, days: number): string {
 }
 
 function badRequest(error: string): NextResponse {
-  return NextResponse.json({ error }, { status: 400 });
+  return jsonResponse({ error }, 400);
 }
 
 // ── PUT ────────────────────────────────────────────────────
@@ -129,15 +147,15 @@ export async function PUT(request: NextRequest) {
   // ── Token auth ───────────────────────────────────────────
   const expectedToken = process.env.IMPUTACIONES_API_TOKEN;
   if (!expectedToken) {
-    return NextResponse.json(
+    return jsonResponse(
       { error: "Server misconfiguration: IMPUTACIONES_API_TOKEN is not set" },
-      { status: 500 }
+      500
     );
   }
 
   const providedToken = getProvidedToken(request);
   if (!providedToken || !tokenMatches(providedToken, expectedToken)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonResponse({ error: "Unauthorized" }, 401);
   }
 
   // ── Parse body ───────────────────────────────────────────
@@ -261,9 +279,9 @@ export async function PUT(request: NextRequest) {
   // ── Supabase (service role — RLS bypassed after token check) ──
   const supabase = createServiceClient();
   if (!supabase) {
-    return NextResponse.json(
+    return jsonResponse(
       { error: "Server misconfiguration: SUPABASE_SERVICE_ROLE_KEY is not set" },
-      { status: 500 }
+      500
     );
   }
 
@@ -278,9 +296,9 @@ export async function PUT(request: NextRequest) {
       .in("email", uniqueEmails);
 
     if (error) {
-      return NextResponse.json(
+      return jsonResponse(
         { error: `Error looking up employees: ${error.message}` },
-        { status: 500 }
+        500
       );
     }
 
@@ -315,9 +333,9 @@ export async function PUT(request: NextRequest) {
       .in("engagement_code", uniqueCodes);
 
     if (error) {
-      return NextResponse.json(
+      return jsonResponse(
         { error: `Error looking up engagements: ${error.message}` },
-        { status: 500 }
+        500
       );
     }
     for (const eng of engagements ?? []) knownCodes.add(eng.engagement_code);
@@ -334,9 +352,9 @@ export async function PUT(request: NextRequest) {
       });
 
     if (error) {
-      return NextResponse.json(
+      return jsonResponse(
         { error: `Error saving imputations: ${error.message}` },
-        { status: 500 }
+        500
       );
     }
   }
@@ -353,13 +371,13 @@ export async function PUT(request: NextRequest) {
   const hasIncidences =
     emailsDesconocidos.length > 0 || engagementsDesconocidos.length > 0;
 
-  return NextResponse.json(
+  return jsonResponse(
     {
       status: hasIncidences ? "partial" : "ok",
       personas: payload.personas.length,
       filas: rows.length,
       incidencias,
     },
-    { status: hasIncidences ? 207 : 200 }
+    hasIncidences ? 207 : 200
   );
 }
