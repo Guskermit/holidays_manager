@@ -397,6 +397,7 @@ export const strings = {
     availabilityGroupTeam:     "Equipo",
     availabilityGroupCategory: "Categoría",
     availabilityGroupSpec:     "Especialización",
+    availabilityExportCsv:     "Descargar CSV",
   },
 
   // ── Admin ──────────────────────────────────────────────────

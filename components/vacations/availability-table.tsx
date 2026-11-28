@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { DownloadIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { strings } from "@/lib/strings";
 import { isHoliday, isWeekend, toDateString, type Office } from "@/lib/holidays";
@@ -423,6 +425,97 @@ export function AvailabilityTable({ employees, projects, teams = [], teamAssignm
   const selectedProject = projects.find(p => p.id_engagement === projectFilter);
   const isGrouped = !isIndividual;
 
+  const escapeCsv = (val: string | number) => `"${String(val).replace(/"/g, '""')}"`;
+
+  const downloadCsv = () => {
+    const weekHeaders = weeks.map(w => `${w.dayNum} ${w.monthAbbr}`);
+
+    let headers: string[] = [];
+    const rows: string[] = [];
+
+    if (isGrouped) {
+      const groupColHeader = activeDims.length > 0
+        ? activeDims
+            .map(d => ({
+              project: strings.vacations.availabilityGroupProject,
+              team: strings.vacations.availabilityGroupTeam,
+              category: strings.vacations.availabilityGroupCategory,
+              specialization: strings.vacations.availabilityGroupSpec,
+            }[d]))
+            .join(" · ")
+        : strings.vacations.availabilityGroupByLabel;
+
+      headers = [
+        groupColHeader,
+        strings.vacations.availabilityColCount,
+        ...weekHeaders,
+      ];
+
+      // Total row
+      const totalRow = [
+        escapeCsv(strings.vacations.availabilityTotalRow),
+        escapeCsv(visibleEmployees.length),
+        ...weeklyTotals.map(wt => escapeCsv(wt.total === 0 ? "—" : wt.available)),
+      ];
+      rows.push(totalRow.join(","));
+
+      // Group rows
+      for (const group of groups) {
+        const weekData = groupWeeklyData.get(group.id) ?? [];
+        const row = [
+          escapeCsv(group.label),
+          escapeCsv(group.employeeIds.size),
+          ...weekData.map(wd => escapeCsv(wd.total === 0 ? "—" : wd.available)),
+        ];
+        rows.push(row.join(","));
+      }
+    } else {
+      headers = [
+        strings.vacations.availabilityColEmployee,
+        strings.vacations.availabilityColCategory,
+        strings.vacations.availabilityColSpecs,
+        ...weekHeaders,
+      ];
+
+      // Total row
+      const totalRow = [
+        escapeCsv(strings.vacations.availabilityTotalRow),
+        escapeCsv(""),
+        escapeCsv(""),
+        ...weeklyTotals.map(wt => escapeCsv(wt.total === 0 ? "—" : wt.available)),
+      ];
+      rows.push(totalRow.join(","));
+
+      // Individual employee rows
+      for (const emp of visibleEmployees) {
+        const weekData = employeeWeeklyData.get(emp.id) ?? [];
+        const categoryLabel = emp.category
+          ? (CATEGORY_LABELS[emp.category as Category] ?? emp.category)
+          : "—";
+        const specsLabel = emp.specializations.length === 0
+          ? "—"
+          : emp.specializations.join(", ");
+
+        const row = [
+          escapeCsv(emp.name),
+          escapeCsv(categoryLabel),
+          escapeCsv(specsLabel),
+          ...weekData.map(wd => escapeCsv(wd.total === 0 ? "—" : `${wd.available}/${wd.total}`)),
+        ];
+        rows.push(row.join(","));
+      }
+    }
+
+    const csv = "\uFEFF" + [headers.map(escapeCsv).join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `disponibilidad-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex flex-col gap-6">
 
@@ -602,47 +695,61 @@ export function AvailabilityTable({ employees, projects, teams = [], teamAssignm
         </div>
       )}
 
-      {/* ── Legend ── */}
-      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-        {isGrouped ? (
-          <>
-            <span className="flex items-center gap-1.5">
-              <span className="size-3 rounded bg-emerald-200 dark:bg-emerald-800" />
-              {strings.vacations.availabilityLegendFull}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="size-3 rounded bg-amber-200 dark:bg-amber-800" />
-              {strings.vacations.availabilityLegendPartial}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="size-3 rounded bg-orange-200 dark:bg-orange-800" />
-              {strings.vacations.availabilityLegendLow}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="size-3 rounded bg-red-200 dark:bg-red-800" />
-              {strings.vacations.availabilityLegendNone}
-            </span>
-          </>
-        ) : (
-          <>
-            <span className="flex items-center gap-1.5">
-              <span className="size-3 rounded bg-emerald-200 dark:bg-emerald-800" />
-              Disponible completo
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="size-3 rounded bg-amber-200 dark:bg-amber-800" />
-              Disponible parcial
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="size-3 rounded bg-red-200 dark:bg-red-800" />
-              No disponible
-            </span>
-          </>
+      {/* ── Legend & Export ── */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+          {isGrouped ? (
+            <>
+              <span className="flex items-center gap-1.5">
+                <span className="size-3 rounded bg-emerald-200 dark:bg-emerald-800" />
+                {strings.vacations.availabilityLegendFull}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="size-3 rounded bg-amber-200 dark:bg-amber-800" />
+                {strings.vacations.availabilityLegendPartial}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="size-3 rounded bg-orange-200 dark:bg-orange-800" />
+                {strings.vacations.availabilityLegendLow}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="size-3 rounded bg-red-200 dark:bg-red-800" />
+                {strings.vacations.availabilityLegendNone}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="flex items-center gap-1.5">
+                <span className="size-3 rounded bg-emerald-200 dark:bg-emerald-800" />
+                Disponible completo
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="size-3 rounded bg-amber-200 dark:bg-amber-800" />
+                Disponible parcial
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="size-3 rounded bg-red-200 dark:bg-red-800" />
+                No disponible
+              </span>
+            </>
+          )}
+          <span className="flex items-center gap-1.5">
+            <span className="size-3 rounded bg-muted border" />
+            {strings.vacations.availabilityLegendHoliday}
+          </span>
+        </div>
+
+        {visibleEmployees.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={downloadCsv}
+            className="h-8 text-xs shrink-0"
+          >
+            <DownloadIcon className="size-3.5 mr-1.5" />
+            {strings.vacations.availabilityExportCsv}
+          </Button>
         )}
-        <span className="flex items-center gap-1.5">
-          <span className="size-3 rounded bg-muted border" />
-          {strings.vacations.availabilityLegendHoliday}
-        </span>
       </div>
 
       {/* ── Table ── */}
